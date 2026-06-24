@@ -1,28 +1,63 @@
-export function createStrokeStore({ canvas, onChange }) {
-  const strokes = [];
-  const context = canvas.getContext("2d");
+export function createStrokeStore({ onChange }) {
+  const pages = new Map();
+  const undoStack = [];
 
   return {
-    addStroke(stroke) {
-      strokes.push(cloneStroke(stroke));
-      this.redraw();
+    registerPage({ pageNumber, canvas }) {
+      pages.set(pageNumber, {
+        canvas,
+        context: canvas.getContext("2d"),
+        strokes: [],
+      });
+      onChange?.();
+    },
+
+    unregisterAllPages() {
+      pages.clear();
+      undoStack.length = 0;
+      onChange?.();
+    },
+
+    addStroke(pageNumber, stroke) {
+      const pageState = pages.get(pageNumber);
+      if (!pageState) return;
+
+      const savedStroke = cloneStroke(stroke);
+      pageState.strokes.push(savedStroke);
+      undoStack.push({ pageNumber, stroke: savedStroke });
+      this.redrawPage(pageNumber);
       onChange?.();
     },
 
     undo() {
-      if (strokes.length === 0) return;
-      strokes.pop();
-      this.redraw();
+      const item = undoStack.pop();
+      if (!item) return;
+
+      const pageState = pages.get(item.pageNumber);
+      if (pageState) {
+        pageState.strokes.pop();
+        this.redrawPage(item.pageNumber);
+      }
+
       onChange?.();
     },
 
     clear() {
-      strokes.length = 0;
-      this.redraw();
+      for (const pageNumber of pages.keys()) {
+        const pageState = pages.get(pageNumber);
+        pageState.strokes.length = 0;
+        this.redrawPage(pageNumber);
+      }
+
+      undoStack.length = 0;
       onChange?.();
     },
 
-    redraw(draftStroke = null) {
+    redrawPage(pageNumber, draftStroke = null) {
+      const pageState = pages.get(pageNumber);
+      if (!pageState) return;
+
+      const { canvas, context, strokes } = pageState;
       context.clearRect(0, 0, canvas.width, canvas.height);
 
       for (const stroke of strokes) {
@@ -34,16 +69,30 @@ export function createStrokeStore({ canvas, onChange }) {
       }
     },
 
-    getStrokes() {
-      return strokes.map(cloneStroke);
+    redrawAll() {
+      for (const pageNumber of pages.keys()) {
+        this.redrawPage(pageNumber);
+      }
+    },
+
+    getStrokesByPage() {
+      const strokesByPage = new Map();
+
+      for (const [pageNumber, pageState] of pages) {
+        if (pageState.strokes.length > 0) {
+          strokesByPage.set(pageNumber, pageState.strokes.map(cloneStroke));
+        }
+      }
+
+      return strokesByPage;
     },
 
     canUndo() {
-      return strokes.length > 0;
+      return undoStack.length > 0;
     },
 
     hasStrokes() {
-      return strokes.length > 0;
+      return undoStack.length > 0;
     },
   };
 }

@@ -1,6 +1,7 @@
 const MIN_POINT_DISTANCE = 0.75;
 
-export function createAnnotator({ canvas, strokeStore, statusEl }) {
+export function createAnnotator({ strokeStore, statusEl }) {
+  const pages = new Map();
   let isSpaceHeld = false;
   let currentStroke = null;
   let lastPointer = null;
@@ -15,10 +16,20 @@ export function createAnnotator({ canvas, strokeStore, statusEl }) {
     }
   });
 
-  function handlePointerMove(event) {
-    const point = getCanvasPoint(event);
+  function setPages(pageViews) {
+    pages.clear();
 
-    if (!point) {
+    for (const pageView of pageViews) {
+      pages.set(pageView.pageNumber, pageView);
+    }
+
+    cancelStroke();
+  }
+
+  function handlePointerMove(event) {
+    const pointer = getPagePoint(event);
+
+    if (!pointer) {
       lastPointer = null;
 
       if (isSpaceHeld && currentStroke) {
@@ -27,18 +38,24 @@ export function createAnnotator({ canvas, strokeStore, statusEl }) {
       return;
     }
 
-    lastPointer = point;
+    lastPointer = pointer;
 
     if (!isSpaceHeld) {
       return;
     }
 
     if (!currentStroke) {
-      startStroke(point);
+      startStroke(pointer);
       return;
     }
 
-    addPoint(point);
+    if (currentStroke.pageNumber !== pointer.pageNumber) {
+      finishStroke();
+      startStroke(pointer);
+      return;
+    }
+
+    addPoint(pointer.point);
   }
 
   function handleKeyDown(event) {
@@ -71,13 +88,14 @@ export function createAnnotator({ canvas, strokeStore, statusEl }) {
     statusEl.textContent = "Ready";
   }
 
-  function startStroke(point) {
+  function startStroke(pointer) {
     currentStroke = {
+      pageNumber: pointer.pageNumber,
       color: "#e11d48",
       width: 2.5,
-      points: [point],
+      points: [pointer.point],
     };
-    strokeStore.redraw(currentStroke);
+    strokeStore.redrawPage(currentStroke.pageNumber, currentStroke);
   }
 
   function addPoint(point) {
@@ -88,7 +106,7 @@ export function createAnnotator({ canvas, strokeStore, statusEl }) {
     }
 
     currentStroke.points.push(point);
-    strokeStore.redraw(currentStroke);
+    strokeStore.redrawPage(currentStroke.pageNumber, currentStroke);
   }
 
   function finishStroke() {
@@ -97,9 +115,9 @@ export function createAnnotator({ canvas, strokeStore, statusEl }) {
     }
 
     if (currentStroke.points.length > 1) {
-      strokeStore.addStroke(currentStroke);
+      strokeStore.addStroke(currentStroke.pageNumber, currentStroke);
     } else {
-      strokeStore.redraw();
+      strokeStore.redrawPage(currentStroke.pageNumber);
     }
 
     currentStroke = null;
@@ -108,11 +126,25 @@ export function createAnnotator({ canvas, strokeStore, statusEl }) {
   function cancelStroke() {
     isSpaceHeld = false;
     currentStroke = null;
-    strokeStore.redraw();
+    strokeStore.redrawAll();
     statusEl.textContent = "Ready";
   }
 
-  function getCanvasPoint(event) {
+  function getPagePoint(event) {
+    for (const pageView of pages.values()) {
+      const point = getCanvasPoint(event, pageView.annotationCanvas);
+      if (point) {
+        return {
+          pageNumber: pageView.pageNumber,
+          point,
+        };
+      }
+    }
+
+    return null;
+  }
+
+  function getCanvasPoint(event, canvas) {
     if (canvas.width === 0 || canvas.height === 0) {
       return null;
     }
@@ -130,6 +162,10 @@ export function createAnnotator({ canvas, strokeStore, statusEl }) {
       y: y * (canvas.height / rect.height),
     };
   }
+
+  return {
+    setPages,
+  };
 }
 
 function isEditableTarget(target) {

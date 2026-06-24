@@ -1,8 +1,11 @@
 import "./style.css";
 import { exportAnnotatedPdf } from "./exporter.js";
 import { createAnnotator } from "./annotator.js";
-import { renderPdfPage } from "./pdfViewer.js";
+import { loadPdfDocument, renderPdfPage } from "./pdfViewer.js";
 import { createStrokeStore } from "./strokeStore.js";
+
+const MAX_RENDERED_PAGES = 25;
+const DEFAULT_RENDER_SCALE = 1.5;
 
 const app = document.querySelector("#app");
 
@@ -22,10 +25,7 @@ app.innerHTML = `
 
     <section class="workspace" aria-label="PDF annotation workspace">
       <div id="empty-state" class="empty-state">Select a PDF</div>
-      <div id="page-shell" class="page-shell" hidden>
-        <canvas id="pdf-canvas"></canvas>
-        <canvas id="annotation-canvas" aria-label="Annotation layer"></canvas>
-      </div>
+      <div id="pages-container" class="pages-container" hidden></div>
     </section>
   </main>
 `;
@@ -36,22 +36,21 @@ const clearButton = document.querySelector("#clear-button");
 const exportButton = document.querySelector("#export-button");
 const statusEl = document.querySelector("#status");
 const emptyState = document.querySelector("#empty-state");
-const pageShell = document.querySelector("#page-shell");
-const pdfCanvas = document.querySelector("#pdf-canvas");
-const annotationCanvas = document.querySelector("#annotation-canvas");
+const pagesContainer = document.querySelector("#pages-container");
 
 let originalPdfBytes = null;
-let pdfViewport = null;
-let renderScale = 1.5;
+let renderScale = DEFAULT_RENDER_SCALE;
 let loadedFileName = "annotated.pdf";
+let totalPageCount = 0;
+let renderedPageCount = 0;
+const pageViewports = new Map();
+const pageViews = [];
 
 const strokeStore = createStrokeStore({
-  canvas: annotationCanvas,
   onChange: updateControls,
 });
 
-createAnnotator({
-  canvas: annotationCanvas,
+const annotator = createAnnotator({
   strokeStore,
   statusEl,
 });
@@ -63,26 +62,32 @@ pdfInput.addEventListener("change", async () => {
   setBusy(true, "Loading PDF");
 
   try {
+    resetDocumentView();
     originalPdfBytes = await file.arrayBuffer();
     loadedFileName = file.name;
 
-    const result = await renderPdfPage({
+    const pdf = await loadPdfDocument({
       bytes: originalPdfBytes,
-      canvas: pdfCanvas,
-      scale: renderScale,
     });
 
-    pdfViewport = result.viewport;
-    renderScale = result.scale;
+    totalPageCount = pdf.numPages;
+    renderedPageCount = Math.min(totalPageCount, MAX_RENDERED_PAGES);
+    renderScale = DEFAULT_RENDER_SCALE;
 
-    resizeAnnotationCanvas(result.width, result.height);
-    strokeStore.clear();
+    for (let pageNumber = 1; pageNumber <= renderedPageCount; pageNumber += 1) {
+      statusEl.textContent = `Rendering page ${pageNumber} of ${renderedPageCount}`;
+      await renderPageView({ pdf, pageNumber });
+    }
 
     emptyState.hidden = true;
-    pageShell.hidden = false;
-    statusEl.textContent = "Ready";
+    pagesContainer.hidden = false;
+    annotator.setPages(pageViews);
+    statusEl.textContent = getReadyStatus();
   } catch (error) {
     console.error(error);
+    resetDocumentView();
+    originalPdfBytes = null;
+    loadedFileName = "annotated.pdf";
     statusEl.textContent = "Could not load PDF";
   } finally {
     setBusy(false);
@@ -99,15 +104,15 @@ clearButton.addEventListener("click", () => {
 });
 
 exportButton.addEventListener("click", async () => {
-  if (!originalPdfBytes || !pdfViewport) return;
+  if (!originalPdfBytes) return;
 
   setBusy(true, "Exporting");
 
   try {
     await exportAnnotatedPdf({
       originalBytes: originalPdfBytes,
-      strokes: strokeStore.getStrokes(),
-      viewport: pdfViewport,
+      strokesByPage: strokeStore.getStrokesByPage(),
+      pageViewports,
       scale: renderScale,
       sourceFileName: loadedFileName,
     });
@@ -128,7 +133,40 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
-function resizeAnnotationCanvas(width, height) {
+async function renderPageView({ pdf, pageNumber }) {
+  const pageShell = document.createElement("div");
+  const pdfCanvas = document.createElement("canvas");
+  const annotationCanvas = document.createElement("canvas");
+
+  pageShell.className = "page-shell";
+  pageShell.dataset.pageNumber = String(pageNumber);
+  pdfCanvas.className = "pdf-canvas";
+  annotationCanvas.className = "annotation-canvas";
+  annotationCanvas.setAttribute("aria-label", `Annotation layer page ${pageNumber}`);
+
+  pageShell.append(pdfCanvas, annotationCanvas);
+  pagesContainer.append(pageShell);
+
+  const result = await renderPdfPage({
+    pdf,
+    pageNumber,
+    canvas: pdfCanvas,
+    scale: renderScale,
+  });
+
+  resizeAnnotationCanvas({
+    pageShell,
+    annotationCanvas,
+    width: result.width,
+    height: result.height,
+  });
+
+  pageViewports.set(pageNumber, result.viewport);
+  strokeStore.registerPage({ pageNumber, canvas: annotationCanvas });
+  pageViews.push({ pageNumber, annotationCanvas });
+}
+
+function resizeAnnotationCanvas({ pageShell, annotationCanvas, width, height }) {
   annotationCanvas.width = width;
   annotationCanvas.height = height;
   annotationCanvas.style.width = `${width}px`;
@@ -136,6 +174,26 @@ function resizeAnnotationCanvas(width, height) {
 
   pageShell.style.width = `${width}px`;
   pageShell.style.height = `${height}px`;
+}
+
+function resetDocumentView() {
+  strokeStore.unregisterAllPages();
+  pageViewports.clear();
+  pageViews.length = 0;
+  annotator.setPages([]);
+  pagesContainer.replaceChildren();
+  pagesContainer.hidden = true;
+  emptyState.hidden = false;
+  totalPageCount = 0;
+  renderedPageCount = 0;
+}
+
+function getReadyStatus() {
+  if (totalPageCount > renderedPageCount) {
+    return `Showing first ${renderedPageCount} of ${totalPageCount} pages`;
+  }
+
+  return `${renderedPageCount} page${renderedPageCount === 1 ? "" : "s"} ready`;
 }
 
 function setBusy(isBusy, message) {

@@ -3,10 +3,14 @@ import pdfWorkerUrl from "pdfjs-dist/build/pdf.worker.mjs?url";
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
-export async function renderPdfPage({ bytes, canvas, scale }) {
+export async function loadPdfDocument({ bytes }) {
   const loadingTask = pdfjsLib.getDocument({ data: bytes.slice(0) });
-  const pdf = await loadingTask.promise;
-  const page = await pdf.getPage(1);
+
+  return loadingTask.promise;
+}
+
+export async function renderPdfPage({ pdf, pageNumber, canvas, scale }) {
+  const page = await pdf.getPage(pageNumber);
   const viewport = page.getViewport({ scale });
   const context = canvas.getContext("2d");
   const width = Math.floor(viewport.width);
@@ -25,8 +29,8 @@ export async function renderPdfPage({ bytes, canvas, scale }) {
   }).promise;
 
   return {
-    pdf,
     page,
+    pageNumber,
     viewport,
     scale,
     width,
