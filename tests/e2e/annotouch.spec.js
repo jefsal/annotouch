@@ -10,6 +10,7 @@ const PEN_COLORS = [
   { label: "Blue", hex: "#2563eb", y: 260 },
   { label: "White", hex: "#ffffff", y: 300 },
 ];
+const MAX_ANNOTATABLE_PAGES = 200;
 const errorsByPage = new WeakMap();
 
 test.describe("Annotouch browser QA", () => {
@@ -46,8 +47,7 @@ test.describe("Annotouch browser QA", () => {
 
       await uploadPdf(page, fixturePath, pageCount);
 
-      const expectedRenderedPages = Math.min(pageCount, 25);
-      await expect(page.locator(".page-shell")).toHaveCount(expectedRenderedPages);
+      await expect(page.locator(".page-shell")).toHaveCount(pageCount);
 
       const [download] = await Promise.all([
         page.waitForEvent("download"),
@@ -66,6 +66,67 @@ test.describe("Annotouch browser QA", () => {
       await expect(page.getByRole("status")).toHaveText("Exported");
     });
   }
+
+  test("caps annotation shells at 200 pages while exporting the full PDF", async ({
+    page,
+  }, testInfo) => {
+    const fixturePath = await createPdfFixture(testInfo, 205);
+
+    await uploadPdf(page, fixturePath, 205);
+
+    await expect(page.locator(".page-shell")).toHaveCount(MAX_ANNOTATABLE_PAGES);
+    await expect(page.locator(".page-shell[data-page-number='200']")).toHaveCount(1);
+    await expect(page.locator(".page-shell[data-page-number='201']")).toHaveCount(0);
+
+    const [download] = await Promise.all([
+      page.waitForEvent("download"),
+      page.getByRole("button", { name: "Export" }).click(),
+    ]);
+
+    expect(download.suggestedFilename()).toBe("fixture-205-page-annotated.pdf");
+
+    const exportedPath = testInfo.outputPath("fixture-205-page-annotated.pdf");
+    await download.saveAs(exportedPath);
+    await expectPdfPageCount(exportedPath, 205);
+  });
+
+  test("renders pages lazily and exports strokes drawn on a later rendered page", async ({
+    page,
+  }, testInfo) => {
+    const fixturePath = await createPdfFixture(testInfo, 30);
+
+    await uploadPdf(page, fixturePath, 30);
+
+    const initiallyRenderedPages = await page
+      .locator(".page-shell[data-render-state='rendered']")
+      .count();
+    expect(initiallyRenderedPages).toBeGreaterThan(0);
+    expect(initiallyRenderedPages).toBeLessThan(30);
+
+    const page30Canvas = await scrollToRenderedAnnotationCanvas(page, 30);
+
+    await page.getByRole("button", { name: "Red pen" }).click();
+    await drawStroke(page, page30Canvas, PEN_COLORS[1].y);
+    await expectCanvasHasColor(page30Canvas, PEN_COLORS[1]);
+
+    const [download] = await Promise.all([
+      page.waitForEvent("download"),
+      page.getByRole("button", { name: "Export" }).click(),
+    ]);
+
+    expect(download.suggestedFilename()).toBe("fixture-30-page-annotated.pdf");
+
+    const exportedPath = testInfo.outputPath("fixture-30-page-annotated.pdf");
+    await download.saveAs(exportedPath);
+    await expectPdfPageCount(exportedPath, 30);
+
+    await uploadPdf(page, exportedPath, 30);
+    const exportedPage30Shell = await scrollToRenderedPageShell(page, 30);
+    await expectCanvasHasColor(
+      exportedPage30Shell.locator(".pdf-canvas"),
+      PEN_COLORS[1]
+    );
+  });
 
   test("draws colors, preserves prior strokes, supports undo and clear, and exports colored PDF", async ({
     page,
@@ -184,13 +245,38 @@ async function uploadPdf(page, filePath, pageCount) {
   await page.locator("#pdf-input").setInputFiles(filePath);
 
   const statusText =
-    pageCount > 25
-      ? `Showing first 25 of ${pageCount} pages`
+    pageCount > MAX_ANNOTATABLE_PAGES
+      ? `Showing first ${MAX_ANNOTATABLE_PAGES} of ${pageCount} pages`
       : `${pageCount} page${pageCount === 1 ? "" : "s"} ready`;
 
   await expect(page.getByRole("status")).toHaveText(statusText, {
     timeout: 45_000,
   });
+
+  await expect(page.locator(".page-shell").first()).toHaveAttribute(
+    "data-render-state",
+    "rendered"
+  );
+}
+
+async function scrollToRenderedAnnotationCanvas(page, pageNumber) {
+  const pageShell = await scrollToRenderedPageShell(page, pageNumber);
+  const annotationCanvas = pageShell.locator(".annotation-canvas");
+  await expect(annotationCanvas).toHaveCount(1);
+
+  return annotationCanvas;
+}
+
+async function scrollToRenderedPageShell(page, pageNumber) {
+  const pageShell = page.locator(`.page-shell[data-page-number='${pageNumber}']`);
+
+  await expect(pageShell).toHaveCount(1);
+  await pageShell.scrollIntoViewIfNeeded();
+  await expect(pageShell).toHaveAttribute("data-render-state", "rendered", {
+    timeout: 20_000,
+  });
+
+  return pageShell;
 }
 
 async function drawStroke(page, canvas, y) {

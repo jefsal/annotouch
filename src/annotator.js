@@ -20,10 +20,22 @@ export function createAnnotator({ getPenSettings, strokeStore, statusEl }) {
     pages.clear();
 
     for (const pageView of pageViews) {
-      pages.set(pageView.pageNumber, pageView);
+      registerPage(pageView);
     }
 
     cancelStroke();
+  }
+
+  function registerPage(pageView) {
+    pages.set(pageView.pageNumber, pageView);
+  }
+
+  function unregisterPage(pageNumber) {
+    if (currentStroke?.pageNumber === pageNumber) {
+      cancelStroke();
+    }
+
+    pages.delete(pageNumber);
   }
 
   function handlePointerMove(event) {
@@ -166,7 +178,9 @@ export function createAnnotator({ getPenSettings, strokeStore, statusEl }) {
   }
 
   return {
+    registerPage,
     setPages,
+    unregisterPage,
   };
 }
 

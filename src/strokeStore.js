@@ -4,11 +4,20 @@ export function createStrokeStore({ onChange }) {
 
   return {
     registerPage({ pageNumber, canvas }) {
-      pages.set(pageNumber, {
-        canvas,
-        context: canvas.getContext("2d"),
-        strokes: [],
-      });
+      const pageState = getOrCreatePageState(pages, pageNumber);
+
+      pageState.canvas = canvas;
+      pageState.context = canvas.getContext("2d");
+      this.redrawPage(pageNumber);
+      onChange?.();
+    },
+
+    unregisterPage(pageNumber) {
+      const pageState = pages.get(pageNumber);
+      if (!pageState) return;
+
+      pageState.canvas = null;
+      pageState.context = null;
       onChange?.();
     },
 
@@ -18,11 +27,16 @@ export function createStrokeStore({ onChange }) {
       onChange?.();
     },
 
-    addStroke(pageNumber, stroke) {
-      const pageState = pages.get(pageNumber);
-      if (!pageState) return;
+    reset() {
+      pages.clear();
+      undoStack.length = 0;
+      onChange?.();
+    },
 
+    addStroke(pageNumber, stroke) {
+      const pageState = getOrCreatePageState(pages, pageNumber);
       const savedStroke = cloneStroke(stroke);
+
       pageState.strokes.push(savedStroke);
       undoStack.push({ pageNumber, stroke: savedStroke });
       this.redrawPage(pageNumber);
@@ -55,7 +69,7 @@ export function createStrokeStore({ onChange }) {
 
     redrawPage(pageNumber, draftStroke = null) {
       const pageState = pages.get(pageNumber);
-      if (!pageState) return;
+      if (!pageState?.canvas || !pageState.context) return;
 
       const { canvas, context, strokes } = pageState;
       context.clearRect(0, 0, canvas.width, canvas.height);
@@ -92,9 +106,27 @@ export function createStrokeStore({ onChange }) {
     },
 
     hasStrokes() {
-      return undoStack.length > 0;
+      for (const pageState of pages.values()) {
+        if (pageState.strokes.length > 0) {
+          return true;
+        }
+      }
+
+      return false;
     },
   };
+}
+
+function getOrCreatePageState(pages, pageNumber) {
+  if (!pages.has(pageNumber)) {
+    pages.set(pageNumber, {
+      canvas: null,
+      context: null,
+      strokes: [],
+    });
+  }
+
+  return pages.get(pageNumber);
 }
 
 function drawStroke(context, stroke) {

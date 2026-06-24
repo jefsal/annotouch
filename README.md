@@ -5,11 +5,16 @@ Annotouch is an browser app for marking up local PDFs without clicking or pressi
 ## Current MVP
 
 - Loads a local PDF in the browser.
-- Renders up to the first 25 pages.
+- Creates stable page shells and lazily renders pages as they near the viewport.
+- Allows annotation on up to the first 200 pages.
 - Adds a transparent drawing layer over each rendered page.
 - Stores strokes by page.
 - Supports undo, clear, and PDF export.
-- Keeps pages beyond the first 25 unchanged when exporting.
+- Keeps pages beyond the first 200 unchanged when exporting.
+
+PDFs with more than 200 pages still export with their full original page count.
+Only pages 1-200 are rendered and annotatable in the current phase; later pages
+are preserved unchanged in the exported PDF.
 
 ## Not Included Yet
 
@@ -46,13 +51,13 @@ the generated-fixture regression tests. Only Playwright's generated outputs,
 
 ## Project Structure
 
-- `src/main.js` wires the UI, PDF loading, rendering, and export flow.
+- `src/main.js` wires the UI, PDF loading, lazy rendering, and export flow.
 - `src/pdfViewer.js` handles PDF.js document loading and page rendering.
 - `src/annotator.js` handles `Space` plus pointer-movement drawing.
 - `src/strokeStore.js` stores and redraws page-specific strokes.
 - `src/exporter.js` writes annotations back into the exported PDF.
 - `playwright.config.js` starts Vite and configures Chromium browser QA.
-- `tests/e2e/annotouch.spec.js` generates PDF fixtures and covers upload, drawing, color, undo, clear, and export regressions.
+- `tests/e2e/annotouch.spec.js` generates PDF fixtures and covers upload, lazy rendering, drawing, color, undo, clear, capped annotation, and export regressions.
 
 ## Why
 

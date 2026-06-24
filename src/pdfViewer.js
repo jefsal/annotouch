@@ -9,12 +9,27 @@ export async function loadPdfDocument({ bytes }) {
   return loadingTask.promise;
 }
 
-export async function renderPdfPage({ pdf, pageNumber, canvas, scale }) {
+export async function getPdfPageViewport({ pdf, pageNumber, scale }) {
   const page = await pdf.getPage(pageNumber);
   const viewport = page.getViewport({ scale });
+
+  return {
+    page,
+    pageNumber,
+    viewport,
+    scale,
+    width: Math.floor(viewport.width),
+    height: Math.floor(viewport.height),
+  };
+}
+
+export async function renderPdfPage({ pdf, pageNumber, canvas, scale }) {
+  const { page, viewport, width, height } = await getPdfPageViewport({
+    pdf,
+    pageNumber,
+    scale,
+  });
   const context = canvas.getContext("2d");
-  const width = Math.floor(viewport.width);
-  const height = Math.floor(viewport.height);
 
   canvas.width = width;
   canvas.height = height;

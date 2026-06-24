@@ -1,11 +1,16 @@
 import "./style.css";
 import { exportAnnotatedPdf } from "./exporter.js";
 import { createAnnotator } from "./annotator.js";
-import { loadPdfDocument, renderPdfPage } from "./pdfViewer.js";
+import {
+  getPdfPageViewport,
+  loadPdfDocument,
+  renderPdfPage,
+} from "./pdfViewer.js";
 import { createStrokeStore } from "./strokeStore.js";
 
-const MAX_RENDERED_PAGES = 25;
+const MAX_ANNOTATABLE_PAGES = 200;
 const DEFAULT_RENDER_SCALE = 1.5;
+const PAGE_RENDER_ROOT_MARGIN = "1200px 0px";
 const PEN_COLORS = [
   { label: "Black", value: "#111827" },
   { label: "Red", value: "#e11d48" },
@@ -53,16 +58,20 @@ const clearButton = document.querySelector("#clear-button");
 const exportButton = document.querySelector("#export-button");
 const statusEl = document.querySelector("#status");
 const emptyState = document.querySelector("#empty-state");
+const workspace = document.querySelector(".workspace");
 const pagesContainer = document.querySelector("#pages-container");
 const colorControls = document.querySelector("#color-controls");
 
 let originalPdfBytes = null;
+let pdfDocument = null;
 let renderScale = DEFAULT_RENDER_SCALE;
 let loadedFileName = "annotated.pdf";
 let totalPageCount = 0;
-let renderedPageCount = 0;
+let annotatablePageCount = 0;
+let pageObserver = null;
+let documentVersion = 0;
 const pageViewports = new Map();
-const pageViews = [];
+const pageViews = new Map();
 const penSettings = { ...DEFAULT_PEN_SETTINGS };
 
 const strokeStore = createStrokeStore({
@@ -81,29 +90,33 @@ pdfInput.addEventListener("change", async () => {
   const file = pdfInput.files?.[0];
   if (!file) return;
 
-  setBusy(true, "Loading PDF");
-
   try {
     resetDocumentView();
+    setBusy(true, "Loading PDF");
+
     originalPdfBytes = await file.arrayBuffer();
     loadedFileName = file.name;
 
-    const pdf = await loadPdfDocument({
+    pdfDocument = await loadPdfDocument({
       bytes: originalPdfBytes,
     });
 
-    totalPageCount = pdf.numPages;
-    renderedPageCount = Math.min(totalPageCount, MAX_RENDERED_PAGES);
+    totalPageCount = pdfDocument.numPages;
+    annotatablePageCount = Math.min(totalPageCount, MAX_ANNOTATABLE_PAGES);
     renderScale = DEFAULT_RENDER_SCALE;
 
-    for (let pageNumber = 1; pageNumber <= renderedPageCount; pageNumber += 1) {
-      statusEl.textContent = `Rendering page ${pageNumber} of ${renderedPageCount}`;
-      await renderPageView({ pdf, pageNumber });
-    }
+    const version = documentVersion;
+    const didPrepare = await preparePageViews({
+      pdf: pdfDocument,
+      pageCount: annotatablePageCount,
+      version,
+    });
+    if (!didPrepare) return;
 
     emptyState.hidden = true;
     pagesContainer.hidden = false;
-    annotator.setPages(pageViews);
+    observePageViews(version);
+    await renderPageView(pageViews.get(1), version);
     statusEl.textContent = getReadyStatus();
   } catch (error) {
     console.error(error);
@@ -155,67 +168,207 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
-async function renderPageView({ pdf, pageNumber }) {
+async function preparePageViews({ pdf, pageCount, version }) {
+  const fragment = document.createDocumentFragment();
+
+  for (let pageNumber = 1; pageNumber <= pageCount; pageNumber += 1) {
+    if (version !== documentVersion) return false;
+
+    statusEl.textContent = `Preparing page ${pageNumber} of ${pageCount}`;
+
+    const result = await getPdfPageViewport({
+      pdf,
+      pageNumber,
+      scale: renderScale,
+    });
+
+    if (version !== documentVersion) return false;
+
+    const pageShell = createPageShell({
+      pageNumber,
+      width: result.width,
+      height: result.height,
+    });
+
+    pageViewports.set(pageNumber, result.viewport);
+    pageViews.set(pageNumber, {
+      pageNumber,
+      pageShell,
+      width: result.width,
+      height: result.height,
+      isRendered: false,
+      isRendering: false,
+      pdfCanvas: null,
+      annotationCanvas: null,
+    });
+    fragment.append(pageShell);
+  }
+
+  pagesContainer.append(fragment);
+  return true;
+}
+
+function createPageShell({ pageNumber, width, height }) {
   const pageShell = document.createElement("div");
+  const placeholder = document.createElement("div");
+
+  pageShell.className = "page-shell";
+  pageShell.style.width = `${width}px`;
+  pageShell.style.height = `${height}px`;
+  pageShell.dataset.pageNumber = String(pageNumber);
+  pageShell.dataset.renderState = "pending";
+
+  placeholder.className = "page-placeholder";
+  placeholder.textContent = `Page ${pageNumber}`;
+
+  pageShell.append(placeholder);
+  return pageShell;
+}
+
+function observePageViews(version) {
+  pageObserver?.disconnect();
+
+  pageObserver = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+
+        const pageNumber = Number(entry.target.dataset.pageNumber);
+        const pageView = pageViews.get(pageNumber);
+        renderPageView(pageView, version);
+      }
+    },
+    {
+      root: workspace,
+      rootMargin: PAGE_RENDER_ROOT_MARGIN,
+      threshold: 0,
+    }
+  );
+
+  for (const pageView of pageViews.values()) {
+    pageObserver.observe(pageView.pageShell);
+  }
+}
+
+async function renderPageView(pageView, version) {
+  if (
+    !pageView ||
+    !pdfDocument ||
+    pageView.isRendered ||
+    pageView.isRendering ||
+    version !== documentVersion
+  ) {
+    return;
+  }
+
+  const pdf = pdfDocument;
+  pageView.isRendering = true;
+  pageView.pageShell.dataset.renderState = "rendering";
+  pageView.pageShell.classList.add("is-loading");
+
   const pdfCanvas = document.createElement("canvas");
   const annotationCanvas = document.createElement("canvas");
 
-  pageShell.className = "page-shell";
-  pageShell.dataset.pageNumber = String(pageNumber);
   pdfCanvas.className = "pdf-canvas";
   annotationCanvas.className = "annotation-canvas";
-  annotationCanvas.setAttribute("aria-label", `Annotation layer page ${pageNumber}`);
+  annotationCanvas.setAttribute(
+    "aria-label",
+    `Annotation layer page ${pageView.pageNumber}`
+  );
 
-  pageShell.append(pdfCanvas, annotationCanvas);
-  pagesContainer.append(pageShell);
-
-  const result = await renderPdfPage({
-    pdf,
-    pageNumber,
-    canvas: pdfCanvas,
-    scale: renderScale,
+  pageView.pageShell.append(pdfCanvas, annotationCanvas);
+  resizeCanvas({
+    canvas: annotationCanvas,
+    width: pageView.width,
+    height: pageView.height,
   });
 
-  resizeAnnotationCanvas({
-    pageShell,
-    annotationCanvas,
-    width: result.width,
-    height: result.height,
-  });
+  try {
+    const result = await renderPdfPage({
+      pdf,
+      pageNumber: pageView.pageNumber,
+      canvas: pdfCanvas,
+      scale: renderScale,
+    });
 
-  pageViewports.set(pageNumber, result.viewport);
-  strokeStore.registerPage({ pageNumber, canvas: annotationCanvas });
-  pageViews.push({ pageNumber, annotationCanvas });
+    if (version !== documentVersion) {
+      return;
+    }
+
+    resizeCanvas({
+      canvas: annotationCanvas,
+      width: result.width,
+      height: result.height,
+    });
+    pageView.pageShell.style.width = `${result.width}px`;
+    pageView.pageShell.style.height = `${result.height}px`;
+
+    pageView.pdfCanvas = pdfCanvas;
+    pageView.annotationCanvas = annotationCanvas;
+    pageView.width = result.width;
+    pageView.height = result.height;
+    pageView.isRendered = true;
+    pageView.isRendering = false;
+    pageView.pageShell.dataset.renderState = "rendered";
+    pageView.pageShell.classList.remove("is-loading");
+    pageView.pageShell.querySelector(".page-placeholder")?.remove();
+    pageObserver?.unobserve(pageView.pageShell);
+
+    pageViewports.set(pageView.pageNumber, result.viewport);
+    strokeStore.registerPage({
+      pageNumber: pageView.pageNumber,
+      canvas: annotationCanvas,
+    });
+    annotator.registerPage({
+      pageNumber: pageView.pageNumber,
+      annotationCanvas,
+    });
+  } catch (error) {
+    if (version !== documentVersion) {
+      return;
+    }
+
+    console.error(error);
+    pageView.isRendering = false;
+    pageView.pageShell.dataset.renderState = "error";
+    pageView.pageShell.classList.remove("is-loading");
+    statusEl.textContent = `Could not render page ${pageView.pageNumber}`;
+  }
 }
 
-function resizeAnnotationCanvas({ pageShell, annotationCanvas, width, height }) {
-  annotationCanvas.width = width;
-  annotationCanvas.height = height;
-  annotationCanvas.style.width = `${width}px`;
-  annotationCanvas.style.height = `${height}px`;
-
-  pageShell.style.width = `${width}px`;
-  pageShell.style.height = `${height}px`;
+function resizeCanvas({ canvas, width, height }) {
+  canvas.width = width;
+  canvas.height = height;
+  canvas.style.width = `${width}px`;
+  canvas.style.height = `${height}px`;
 }
 
 function resetDocumentView() {
-  strokeStore.unregisterAllPages();
+  documentVersion += 1;
+  pageObserver?.disconnect();
+  pageObserver = null;
+  const destroyPromise = pdfDocument?.destroy?.();
+  destroyPromise?.catch?.(() => {});
+  pdfDocument = null;
+  strokeStore.reset();
   pageViewports.clear();
-  pageViews.length = 0;
+  pageViews.clear();
   annotator.setPages([]);
   pagesContainer.replaceChildren();
   pagesContainer.hidden = true;
   emptyState.hidden = false;
   totalPageCount = 0;
-  renderedPageCount = 0;
+  annotatablePageCount = 0;
 }
 
 function getReadyStatus() {
-  if (totalPageCount > renderedPageCount) {
-    return `Showing first ${renderedPageCount} of ${totalPageCount} pages`;
+  if (totalPageCount > annotatablePageCount) {
+    return `Showing first ${annotatablePageCount} of ${totalPageCount} pages`;
   }
 
-  return `${renderedPageCount} page${renderedPageCount === 1 ? "" : "s"} ready`;
+  return `${annotatablePageCount} page${
+    annotatablePageCount === 1 ? "" : "s"
+  } ready`;
 }
 
 function setBusy(isBusy, message) {
