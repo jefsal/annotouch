@@ -64,6 +64,12 @@ button {
   cursor: pointer;
 }
 
+.pen-color-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .file-picker input {
   position: absolute;
   inset: 0;
@@ -77,10 +83,33 @@ button {
   cursor: pointer;
 }
 
+.color-swatch {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(17, 24, 39, 0.12);
+  background: var(--swatch-color);
+}
+
+.color-swatch-white {
+  border-color: #c6ccd6;
+}
+
+.color-swatch.is-selected {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
 button:hover:not(:disabled),
 .file-picker:hover {
   border-color: #8a93a3;
   background: #f8fafc;
+}
+
+.color-swatch:hover:not(:disabled) {
+  background: var(--swatch-color);
+  border-color: #8a93a3;
 }
 
 button:disabled,

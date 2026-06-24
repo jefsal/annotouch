@@ -1,6 +1,6 @@
 const MIN_POINT_DISTANCE = 0.75;
 
-export function createAnnotator({ strokeStore, statusEl }) {
+export function createAnnotator({ getPenSettings, strokeStore, statusEl }) {
   const pages = new Map();
   let isSpaceHeld = false;
   let currentStroke = null;
@@ -89,10 +89,12 @@ export function createAnnotator({ strokeStore, statusEl }) {
   }
 
   function startStroke(pointer) {
+    const penSettings = getPenSettings();
+
     currentStroke = {
       pageNumber: pointer.pageNumber,
-      color: "#e11d48",
-      width: 2.5,
+      color: penSettings.color,
+      width: penSettings.width,
       points: [pointer.point],
     };
     strokeStore.redrawPage(currentStroke.pageNumber, currentStroke);

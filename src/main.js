@@ -6,6 +6,17 @@ import { createStrokeStore } from "./strokeStore.js";
 
 const MAX_RENDERED_PAGES = 25;
 const DEFAULT_RENDER_SCALE = 1.5;
+const PEN_COLORS = [
+  { label: "Red", value: "#e11d48" },
+  { label: "Green", value: "#16a34a" },
+  { label: "Blue", value: "#2563eb" },
+  { label: "Black", value: "#111827" },
+  { label: "White", value: "#ffffff" },
+];
+const DEFAULT_PEN_SETTINGS = {
+  color: "#e11d48",
+  width: 2.5,
+};
 
 const app = document.querySelector("#app");
 
@@ -17,6 +28,12 @@ app.innerHTML = `
         <span>Open PDF</span>
         <input id="pdf-input" type="file" accept="application/pdf" />
       </label>
+      <div
+        id="color-controls"
+        class="pen-color-group"
+        role="group"
+        aria-label="Pen color"
+      ></div>
       <button id="undo-button" type="button" disabled title="Undo">Undo</button>
       <button id="clear-button" type="button" disabled title="Clear">Clear</button>
       <button id="export-button" type="button" disabled title="Export PDF">Export</button>
@@ -37,6 +54,7 @@ const exportButton = document.querySelector("#export-button");
 const statusEl = document.querySelector("#status");
 const emptyState = document.querySelector("#empty-state");
 const pagesContainer = document.querySelector("#pages-container");
+const colorControls = document.querySelector("#color-controls");
 
 let originalPdfBytes = null;
 let renderScale = DEFAULT_RENDER_SCALE;
@@ -45,15 +63,19 @@ let totalPageCount = 0;
 let renderedPageCount = 0;
 const pageViewports = new Map();
 const pageViews = [];
+const penSettings = { ...DEFAULT_PEN_SETTINGS };
 
 const strokeStore = createStrokeStore({
   onChange: updateControls,
 });
 
 const annotator = createAnnotator({
+  getPenSettings,
   strokeStore,
   statusEl,
 });
+
+renderColorControls();
 
 pdfInput.addEventListener("change", async () => {
   const file = pdfInput.files?.[0];
@@ -213,4 +235,47 @@ function updateControls() {
   undoButton.disabled = isBusy || !strokeStore.canUndo();
   clearButton.disabled = isBusy || !strokeStore.hasStrokes();
   exportButton.disabled = isBusy || !originalPdfBytes;
+}
+
+function getPenSettings() {
+  return { ...penSettings };
+}
+
+function renderColorControls() {
+  for (const color of PEN_COLORS) {
+    const button = document.createElement("button");
+    const isSelected = color.value === penSettings.color;
+
+    button.type = "button";
+    button.className = "color-swatch";
+    button.dataset.colorValue = color.value;
+    button.title = color.label;
+    button.setAttribute("aria-label", `${color.label} pen`);
+    button.setAttribute("aria-pressed", String(isSelected));
+    button.style.setProperty("--swatch-color", color.value);
+
+    if (color.value === "#ffffff") {
+      button.classList.add("color-swatch-white");
+    }
+
+    if (isSelected) {
+      button.classList.add("is-selected");
+    }
+
+    button.addEventListener("click", () => {
+      penSettings.color = color.value;
+      updateSelectedColor();
+      button.blur();
+    });
+
+    colorControls.append(button);
+  }
+}
+
+function updateSelectedColor() {
+  for (const button of colorControls.querySelectorAll(".color-swatch")) {
+    const isSelected = button.dataset.colorValue === penSettings.color;
+    button.classList.toggle("is-selected", isSelected);
+    button.setAttribute("aria-pressed", String(isSelected));
+  }
 }
