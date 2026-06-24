@@ -1,6 +1,13 @@
 # Annotouch
 
-Annotouch is an browser app for marking up local PDFs without clicking or pressing a trackpad. Open a PDF, hold `Space`, move the pointer over a page, and release `Space` to finish the stroke.
+Annotouch is a browser app for marking up local PDFs without clicking or pressing a trackpad. Open a PDF, hold `Space`, move the pointer over a page, and release `Space` to finish the stroke.
+
+## Why
+
+I created this app because while taking notes in class I realized not having a
+tablet to take notes on put me at a disadvantage when trying to learn.
+Annotating a pdf for in-class work using traditional trackpad movements felt limiting.
+[Osu](https://github.com/ppy/osu) inspired this solution by using a keystroke to 'click' then moving the cursor to create a 'stroke.'
 
 ## Current MVP
 
@@ -15,13 +22,6 @@ Annotouch is an browser app for marking up local PDFs without clicking or pressi
 PDFs with more than 200 pages still export with their full original page count.
 Only pages 1-200 are rendered and annotatable in the current phase; later pages
 are preserved unchanged in the exported PDF.
-
-## Not Included Yet
-
-- Zoom or pan
-- Eraser or stroke editing
-- Text comments
-- Accounts, cloud storage, or collaboration
 
 ## Development
 
@@ -59,9 +59,3 @@ the generated-fixture regression tests. Only Playwright's generated outputs,
 - `playwright.config.js` starts Vite and configures Chromium browser QA.
 - `tests/e2e/annotouch.spec.js` generates PDF fixtures and covers upload, lazy rendering, drawing, color, undo, clear, capped annotation, and export regressions.
 
-## Why
-
-I created this app because while taking notes in class I realized not having a
-tablet to take notes on put me at a disadvantage when trying to learn.
-Annotating a pdf for in class work using traditional trackpad movements felt limiting.
-[Osu](https://github.com/ppy/osu) inspired this solution by using a keystroke to 'click' then moving the cursor to create a 'stroke.'
