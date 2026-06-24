@@ -32,6 +32,18 @@ npm run build
 npm run preview
 ```
 
+Run browser QA:
+
+```sh
+npx playwright install chromium
+npm run test:e2e
+```
+
+The Playwright source files are part of the project and should be committed:
+`playwright.config.js` configures the browser test runner, and `tests/` contains
+the generated-fixture regression tests. Only Playwright's generated outputs,
+`playwright-report/` and `test-results/`, are git-ignored.
+
 ## Project Structure
 
 - `src/main.js` wires the UI, PDF loading, rendering, and export flow.
@@ -39,6 +51,8 @@ npm run preview
 - `src/annotator.js` handles `Space` plus pointer-movement drawing.
 - `src/strokeStore.js` stores and redraws page-specific strokes.
 - `src/exporter.js` writes annotations back into the exported PDF.
+- `playwright.config.js` starts Vite and configures Chromium browser QA.
+- `tests/e2e/annotouch.spec.js` generates PDF fixtures and covers upload, drawing, color, undo, clear, and export regressions.
 
 ## Why
 

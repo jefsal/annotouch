@@ -7,10 +7,10 @@ import { createStrokeStore } from "./strokeStore.js";
 const MAX_RENDERED_PAGES = 25;
 const DEFAULT_RENDER_SCALE = 1.5;
 const PEN_COLORS = [
+  { label: "Black", value: "#111827" },
   { label: "Red", value: "#e11d48" },
   { label: "Green", value: "#16a34a" },
   { label: "Blue", value: "#2563eb" },
-  { label: "Black", value: "#111827" },
   { label: "White", value: "#ffffff" },
 ];
 const DEFAULT_PEN_SETTINGS = {
