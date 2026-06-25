@@ -1,6 +1,7 @@
 export function createStrokeStore({ onChange }) {
   const pages = new Map();
   const undoStack = [];
+  const redoStack = [];
 
   return {
     registerPage({ pageNumber, canvas }) {
@@ -24,12 +25,14 @@ export function createStrokeStore({ onChange }) {
     unregisterAllPages() {
       pages.clear();
       undoStack.length = 0;
+      redoStack.length = 0;
       onChange?.();
     },
 
     reset() {
       pages.clear();
       undoStack.length = 0;
+      redoStack.length = 0;
       onChange?.();
     },
 
@@ -39,6 +42,7 @@ export function createStrokeStore({ onChange }) {
 
       pageState.strokes.push(savedStroke);
       undoStack.push({ pageNumber, stroke: savedStroke });
+      redoStack.length = 0;
       this.redrawPage(pageNumber);
       onChange?.();
     },
@@ -53,6 +57,18 @@ export function createStrokeStore({ onChange }) {
         this.redrawPage(item.pageNumber);
       }
 
+      redoStack.push(item);
+      onChange?.();
+    },
+
+    redo() {
+      const item = redoStack.pop();
+      if (!item) return;
+
+      const pageState = getOrCreatePageState(pages, item.pageNumber);
+      pageState.strokes.push(item.stroke);
+      undoStack.push(item);
+      this.redrawPage(item.pageNumber);
       onChange?.();
     },
 
@@ -64,6 +80,7 @@ export function createStrokeStore({ onChange }) {
       }
 
       undoStack.length = 0;
+      redoStack.length = 0;
       onChange?.();
     },
 
@@ -103,6 +120,10 @@ export function createStrokeStore({ onChange }) {
 
     canUndo() {
       return undoStack.length > 0;
+    },
+
+    canRedo() {
+      return redoStack.length > 0;
     },
 
     hasStrokes() {

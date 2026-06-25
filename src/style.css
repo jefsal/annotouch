@@ -71,6 +71,12 @@ button {
   gap: 8px;
 }
 
+.history-controls {
+  display: inline-flex;
+  align-items: stretch;
+  width: 88px;
+}
+
 .file-picker input {
   position: absolute;
   inset: 0;
@@ -82,6 +88,27 @@ button {
 button {
   padding: 0 12px;
   cursor: pointer;
+}
+
+.history-button {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 2px;
+  font-size: 14px; 
+}
+
+.history-button:first-child {
+  border-radius: 6px 0 0 6px;
+}
+
+.history-button:last-child {
+  margin-left: -1px;
+  border-radius: 0 6px 6px 0;
+}
+
+.history-button:hover,
+.history-button:focus-visible {
+  z-index: 1;
 }
 
 .color-swatch {

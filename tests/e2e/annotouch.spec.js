@@ -128,13 +128,14 @@ test.describe("Annotouch browser QA", () => {
     );
   });
 
-  test("draws colors, preserves prior strokes, supports undo and clear, and exports colored PDF", async ({
+  test("draws colors, preserves prior strokes, supports undo, redo, clear, and exports colored PDF", async ({
     page,
   }, testInfo) => {
     const fixturePath = await createPdfFixture(testInfo, 1);
 
     await uploadPdf(page, fixturePath, 1);
     await expect(page.getByRole("button", { name: "Undo" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Redo" })).toBeDisabled();
     await expect(page.getByRole("button", { name: "Clear" })).toBeDisabled();
     await expect(page.getByRole("button", { name: "Export" })).toBeEnabled();
 
@@ -152,7 +153,23 @@ test.describe("Annotouch browser QA", () => {
     await expectCanvasHasColor(annotationCanvas, PEN_COLORS[2]);
 
     await page.getByRole("button", { name: "Undo" }).click();
+    await expect(page.getByRole("button", { name: "Redo" })).toBeEnabled();
     await expectCanvasHasColor(annotationCanvas, PEN_COLORS[1]);
+    await expectCanvasLacksColor(annotationCanvas, PEN_COLORS[2]);
+
+    await page.getByRole("button", { name: "Redo" }).click();
+    await expect(page.getByRole("button", { name: "Redo" })).toBeDisabled();
+    await expectCanvasHasColor(annotationCanvas, PEN_COLORS[2]);
+
+    await page.keyboard.press("Control+Z");
+    await expect(page.getByRole("button", { name: "Redo" })).toBeEnabled();
+    await expectCanvasLacksColor(annotationCanvas, PEN_COLORS[2]);
+
+    await page.keyboard.press("Control+Shift+Z");
+    await expect(page.getByRole("button", { name: "Redo" })).toBeDisabled();
+    await expectCanvasHasColor(annotationCanvas, PEN_COLORS[2]);
+
+    await page.getByRole("button", { name: "Undo" }).click();
     await expectCanvasLacksColor(annotationCanvas, PEN_COLORS[2]);
 
     for (const color of [
@@ -163,6 +180,7 @@ test.describe("Annotouch browser QA", () => {
     ]) {
       await page.getByRole("button", { name: `${color.label} pen` }).click();
       await drawStroke(page, annotationCanvas, color.y);
+      await expect(page.getByRole("button", { name: "Redo" })).toBeDisabled();
       await expectCanvasHasColor(annotationCanvas, color);
     }
 
@@ -184,6 +202,7 @@ test.describe("Annotouch browser QA", () => {
     await page.getByRole("button", { name: "Clear" }).click();
     await expectCanvasToBeEmpty(annotationCanvas);
     await expect(page.getByRole("button", { name: "Undo" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Redo" })).toBeDisabled();
     await expect(page.getByRole("button", { name: "Clear" })).toBeDisabled();
 
     await uploadPdf(page, exportedPath, 1);

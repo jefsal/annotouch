@@ -39,7 +39,10 @@ app.innerHTML = `
         role="group"
         aria-label="Pen color"
       ></div>
-      <button id="undo-button" type="button" disabled title="Undo">Undo</button>
+      <div class="history-controls" role="group" aria-label="History">
+        <button id="undo-button" class="history-button" type="button" disabled title="Undo">Undo</button>
+        <button id="redo-button" class="history-button" type="button" disabled title="Redo">Redo</button>
+      </div>
       <button id="clear-button" type="button" disabled title="Clear">Clear</button>
       <button id="export-button" type="button" disabled title="Export PDF">Export</button>
       <div id="status" class="status" role="status">No PDF loaded</div>
@@ -54,6 +57,7 @@ app.innerHTML = `
 
 const pdfInput = document.querySelector("#pdf-input");
 const undoButton = document.querySelector("#undo-button");
+const redoButton = document.querySelector("#redo-button");
 const clearButton = document.querySelector("#clear-button");
 const exportButton = document.querySelector("#export-button");
 const statusEl = document.querySelector("#status");
@@ -134,6 +138,10 @@ undoButton.addEventListener("click", () => {
   strokeStore.undo();
 });
 
+redoButton.addEventListener("click", () => {
+  strokeStore.redo();
+});
+
 clearButton.addEventListener("click", () => {
   strokeStore.clear();
 });
@@ -162,8 +170,13 @@ exportButton.addEventListener("click", async () => {
 });
 
 document.addEventListener("keydown", (event) => {
-  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "z") {
-    event.preventDefault();
+  if (!isUndoRedoShortcut(event)) return;
+
+  event.preventDefault();
+
+  if (event.shiftKey) {
+    strokeStore.redo();
+  } else {
     strokeStore.undo();
   }
 });
@@ -375,6 +388,7 @@ function setBusy(isBusy, message) {
   app.classList.toggle("is-busy", isBusy);
   pdfInput.disabled = isBusy;
   undoButton.disabled = isBusy || !strokeStore.canUndo();
+  redoButton.disabled = isBusy || !strokeStore.canRedo();
   clearButton.disabled = isBusy || !strokeStore.hasStrokes();
   exportButton.disabled = isBusy || !originalPdfBytes;
 
@@ -386,6 +400,7 @@ function setBusy(isBusy, message) {
 function updateControls() {
   const isBusy = app.classList.contains("is-busy");
   undoButton.disabled = isBusy || !strokeStore.canUndo();
+  redoButton.disabled = isBusy || !strokeStore.canRedo();
   clearButton.disabled = isBusy || !strokeStore.hasStrokes();
   exportButton.disabled = isBusy || !originalPdfBytes;
 }
@@ -431,4 +446,23 @@ function updateSelectedColor() {
     button.classList.toggle("is-selected", isSelected);
     button.setAttribute("aria-pressed", String(isSelected));
   }
+}
+
+function isUndoRedoShortcut(event) {
+  return (
+    (event.metaKey || event.ctrlKey) &&
+    !event.altKey &&
+    event.key.toLowerCase() === "z" &&
+    !isEditableTarget(event.target)
+  );
+}
+
+function isEditableTarget(target) {
+  if (!(target instanceof Element)) {
+    return false;
+  }
+
+  return Boolean(
+    target.closest("input, textarea, select, [contenteditable='true']")
+  );
 }
