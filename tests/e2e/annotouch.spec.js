@@ -212,6 +212,35 @@ test.describe("Annotouch browser QA", () => {
       await expectCanvasHasColor(pdfCanvas, color);
     }
   });
+
+  test("applies selected stroke widths", async ({ page }, testInfo) => {
+    const fixturePath = await createPdfFixture(testInfo, 1);
+
+    await uploadPdf(page, fixturePath, 1);
+
+    const annotationCanvas = page.locator(".annotation-canvas").first();
+    const widthOptions = [
+      { label: "Small", value: "2.5", y: 140 },
+      { label: "Med", value: "5", y: 180 },
+      { label: "Large", value: "10", y: 220 },
+    ];
+    const measuredInk = [];
+    const widthSelect = page.getByRole("combobox", { name: "Stroke width" });
+
+    await expect(widthSelect).toHaveValue("2.5");
+
+    for (const option of widthOptions) {
+      await widthSelect.selectOption({ label: option.label });
+      await expect(widthSelect).toHaveValue(option.value);
+      await drawStroke(page, annotationCanvas, option.y);
+      measuredInk.push(await measureStrokeInk(annotationCanvas, option.y));
+      await page.getByRole("button", { name: "Clear" }).click();
+      await expectCanvasToBeEmpty(annotationCanvas);
+    }
+
+    expect(measuredInk[1]).toBeGreaterThan(measuredInk[0] * 1.6);
+    expect(measuredInk[2]).toBeGreaterThan(measuredInk[1] * 1.6);
+  });
 });
 
 async function createPdfFixture(testInfo, pageCount) {
@@ -392,6 +421,23 @@ async function countOpaqueCanvasPixels(canvas) {
 
     return opaquePixels;
   });
+}
+
+async function measureStrokeInk(canvas, y) {
+  return canvas.evaluate((element, y) => {
+    const context = element.getContext("2d");
+    const sampleY = Math.min(y, element.height - 30);
+    const top = Math.max(0, sampleY - 18);
+    const sampleHeight = Math.min(element.height - top, 37);
+    const data = context.getImageData(80, top, 330, sampleHeight).data;
+    let alphaTotal = 0;
+
+    for (let index = 3; index < data.length; index += 4) {
+      alphaTotal += data[index];
+    }
+
+    return alphaTotal;
+  }, y);
 }
 
 function hexToRgb(hex) {
