@@ -18,7 +18,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -49,7 +50,8 @@ input {
 }
 
 .file-picker,
-button {
+button,
+.width-select {
   height: 34px;
   border: 1px solid #c6ccd6;
   border-radius: 6px;
@@ -129,8 +131,16 @@ button {
   outline-offset: 2px;
 }
 
+.width-select {
+  min-width: 86px;
+  padding: 0 8px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
 button:hover:not(:disabled),
-.file-picker:hover {
+.file-picker:hover,
+.width-select:hover {
   border-color: #8a93a3;
   background: #f8fafc;
 }

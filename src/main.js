@@ -18,9 +18,14 @@ const PEN_COLORS = [
   { label: "Blue", value: "#2563eb" },
   { label: "White", value: "#ffffff" },
 ];
+const PEN_WIDTHS = [
+  { label: "Small", value: 2.5 },
+  { label: "Med", value: 5 },
+  { label: "Large", value: 10 },
+];
 const DEFAULT_PEN_SETTINGS = {
   color: "#e11d48",
-  width: 2.5,
+  width: PEN_WIDTHS[0].value,
 };
 
 const app = document.querySelector("#app");
@@ -39,6 +44,7 @@ app.innerHTML = `
         role="group"
         aria-label="Pen color"
       ></div>
+      <select id="width-select" class="width-select" aria-label="Stroke width"></select>
       <div class="history-controls" role="group" aria-label="History">
         <button id="undo-button" class="history-button" type="button" disabled title="Undo">Undo</button>
         <button id="redo-button" class="history-button" type="button" disabled title="Redo">Redo</button>
@@ -65,6 +71,7 @@ const emptyState = document.querySelector("#empty-state");
 const workspace = document.querySelector(".workspace");
 const pagesContainer = document.querySelector("#pages-container");
 const colorControls = document.querySelector("#color-controls");
+const widthSelect = document.querySelector("#width-select");
 
 let originalPdfBytes = null;
 let pdfDocument = null;
@@ -89,6 +96,7 @@ const annotator = createAnnotator({
 });
 
 renderColorControls();
+renderWidthControls();
 
 pdfInput.addEventListener("change", async () => {
   const file = pdfInput.files?.[0];
@@ -446,6 +454,22 @@ function updateSelectedColor() {
     button.classList.toggle("is-selected", isSelected);
     button.setAttribute("aria-pressed", String(isSelected));
   }
+}
+
+function renderWidthControls() {
+  for (const width of PEN_WIDTHS) {
+    const option = document.createElement("option");
+
+    option.value = String(width.value);
+    option.textContent = width.label;
+    widthSelect.append(option);
+  }
+
+  widthSelect.value = String(penSettings.width);
+  widthSelect.addEventListener("change", () => {
+    penSettings.width = Number(widthSelect.value);
+    widthSelect.blur();
+  });
 }
 
 function isUndoRedoShortcut(event) {
