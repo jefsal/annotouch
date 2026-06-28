@@ -12,16 +12,16 @@ const MAX_ANNOTATABLE_PAGES = 200;
 const DEFAULT_RENDER_SCALE = 1.5;
 const PAGE_RENDER_ROOT_MARGIN = "1200px 0px";
 const PEN_COLORS = [
-  { label: "Black", value: "#111827" },
-  { label: "Red", value: "#e11d48" },
-  { label: "Green", value: "#16a34a" },
-  { label: "Blue", value: "#2563eb" },
-  { label: "White", value: "#ffffff" },
+  { label: "black", value: "#111827" },
+  { label: "red", value: "#e11d48" },
+  { label: "green", value: "#16a34a" },
+  { label: "blue", value: "#2563eb" },
+  { label: "white", value: "#ffffff" },
 ];
 const PEN_WIDTHS = [
-  { label: "Small", value: 2.5 },
-  { label: "Med", value: 5 },
-  { label: "Large", value: 10 },
+  { label: "small", value: 2.5 },
+  { label: "med", value: 5 },
+  { label: "large", value: 10 },
 ];
 const DEFAULT_PEN_SETTINGS = {
   color: "#e11d48",
@@ -33,29 +33,47 @@ const app = document.querySelector("#app");
 app.innerHTML = `
   <main class="app-shell">
     <header class="toolbar">
-      <div class="brand">Annotouch</div>
-      <label class="file-picker">
-        <span>Open PDF</span>
-        <input id="pdf-input" type="file" accept="application/pdf" />
-      </label>
-      <div
-        id="color-controls"
-        class="pen-color-group"
-        role="group"
-        aria-label="Pen color"
-      ></div>
-      <select id="width-select" class="width-select" aria-label="Stroke width"></select>
-      <div class="history-controls" role="group" aria-label="History">
-        <button id="undo-button" class="history-button" type="button" disabled title="Undo">Undo</button>
-        <button id="redo-button" class="history-button" type="button" disabled title="Redo">Redo</button>
+      <div class="brand-block">
+        <div class="brand">annotouch</div>
       </div>
-      <button id="clear-button" type="button" disabled title="Clear">Clear</button>
-      <button id="export-button" type="button" disabled title="Export PDF">Export</button>
-      <div id="status" class="status" role="status">No PDF loaded</div>
+      <input id="pdf-input" class="file-input" type="file" accept="application/pdf" />
+
+<!--
+      <label class="file-picker" for="pdf-input">
+
+      </label>
+-->
+      <div class="toolbar-section">
+        <div
+          id="color-controls"
+          class="pen-color-group"
+          role="group"
+          aria-label="pen color"
+        ></div>
+      </div>
+        <select id="width-select" class="width-select" aria-label="stroke width"></select>
+
+        <!--
+        <div class="history-controls" role="group" aria-label="history">
+          <button id="undo-button" class="history-button" type="button" disabled title="undo">undo</button>
+          <button id="redo-button" class="history-button" type="button" disabled title="redo">redo</button>
+        </div>
+-->
+        <button id="clear-button" type="button" disabled title="clear">clear</button>
+      <div id="document-summary" class="document-summary" hidden>
+        <span id="document-name" class="document-name"></span>
+        <span id="document-count" class="document-count"></span>
+      </div>
+ 
+      <button id="export-button" class="export-button" type="button" disabled title="export PDF">export</button>
     </header>
 
-    <section class="workspace" aria-label="PDF annotation workspace">
-      <div id="empty-state" class="empty-state">Select a PDF</div>
+    <section class="workspace" aria-label="pdf annotation workspace">
+      <label id="empty-state" class="empty-state" for="pdf-input">
+        <span class="empty-title">drop a PDF </span>
+        <span class="empty-copy">or choose a local file</span>
+        <span class="empty-action">choose PDF</span>
+      </label>
       <div id="pages-container" class="pages-container" hidden></div>
     </section>
   </main>
@@ -72,6 +90,9 @@ const workspace = document.querySelector(".workspace");
 const pagesContainer = document.querySelector("#pages-container");
 const colorControls = document.querySelector("#color-controls");
 const widthSelect = document.querySelector("#width-select");
+const documentSummary = document.querySelector("#document-summary");
+const documentNameEl = document.querySelector("#document-name");
+const documentCountEl = document.querySelector("#document-count");
 
 let originalPdfBytes = null;
 let pdfDocument = null;
@@ -98,13 +119,48 @@ const annotator = createAnnotator({
 renderColorControls();
 renderWidthControls();
 
-pdfInput.addEventListener("change", async () => {
+pdfInput.addEventListener("click", () => {
+  pdfInput.value = "";
+});
+
+pdfInput.addEventListener("change", () => {
   const file = pdfInput.files?.[0];
   if (!file) return;
 
+  openPdfFile(file);
+});
+
+workspace.addEventListener("dragenter", handleFileDrag);
+workspace.addEventListener("dragover", handleFileDrag);
+workspace.addEventListener("dragleave", (event) => {
+  if (!workspace.contains(event.relatedTarget)) {
+    workspace.classList.remove("is-dragging");
+  }
+});
+workspace.addEventListener("drop", (event) => {
+  event.preventDefault();
+  workspace.classList.remove("is-dragging");
+
+  const file = [...event.dataTransfer.files].find((item) =>
+    isPdfFile(item)
+  );
+
+  if (file) {
+    openPdfFile(file);
+  } else {
+    statusEl.textContent = "drop a PDF file";
+  }
+});
+
+async function openPdfFile(file) {
+  if (!isPdfFile(file)) {
+    statusEl.textContent = "choose a PDF file";
+    return;
+  }
+
   try {
     resetDocumentView();
-    setBusy(true, "Loading PDF");
+    setBusy(true, "loading PDF");
 
     originalPdfBytes = await file.arrayBuffer();
     loadedFileName = file.name;
@@ -127,6 +183,8 @@ pdfInput.addEventListener("change", async () => {
 
     emptyState.hidden = true;
     pagesContainer.hidden = false;
+    updateDocumentSummary();
+    app.classList.add("has-document");
     observePageViews(version);
     await renderPageView(pageViews.get(1), version);
     statusEl.textContent = getReadyStatus();
@@ -135,18 +193,18 @@ pdfInput.addEventListener("change", async () => {
     resetDocumentView();
     originalPdfBytes = null;
     loadedFileName = "annotated.pdf";
-    statusEl.textContent = "Could not load PDF";
+    statusEl.textContent = "could not load PDF";
   } finally {
     setBusy(false);
     updateControls();
   }
-});
+}
 
-undoButton.addEventListener("click", () => {
+undoButton?.addEventListener("click", () => {
   strokeStore.undo();
 });
 
-redoButton.addEventListener("click", () => {
+redoButton?.addEventListener("click", () => {
   strokeStore.redo();
 });
 
@@ -157,7 +215,7 @@ clearButton.addEventListener("click", () => {
 exportButton.addEventListener("click", async () => {
   if (!originalPdfBytes) return;
 
-  setBusy(true, "Exporting");
+  setBusy(true, "exporting");
 
   try {
     await exportAnnotatedPdf({
@@ -167,10 +225,10 @@ exportButton.addEventListener("click", async () => {
       scale: renderScale,
       sourceFileName: loadedFileName,
     });
-    statusEl.textContent = "Exported";
+    statusEl.textContent = "exported";
   } catch (error) {
     console.error(error);
-    statusEl.textContent = "Export failed";
+    statusEl.textContent = "export failed";
   } finally {
     setBusy(false);
     updateControls();
@@ -195,7 +253,7 @@ async function preparePageViews({ pdf, pageCount, version }) {
   for (let pageNumber = 1; pageNumber <= pageCount; pageNumber += 1) {
     if (version !== documentVersion) return false;
 
-    statusEl.textContent = `Preparing page ${pageNumber} of ${pageCount}`;
+    statusEl.textContent = `preparing page ${pageNumber} of ${pageCount}`;
 
     const result = await getPdfPageViewport({
       pdf,
@@ -240,7 +298,7 @@ function createPageShell({ pageNumber, width, height }) {
   pageShell.dataset.renderState = "pending";
 
   placeholder.className = "page-placeholder";
-  placeholder.textContent = `Page ${pageNumber}`;
+  placeholder.textContent = `page ${pageNumber}`;
 
   pageShell.append(placeholder);
   return pageShell;
@@ -294,7 +352,7 @@ async function renderPageView(pageView, version) {
   annotationCanvas.className = "annotation-canvas";
   annotationCanvas.setAttribute(
     "aria-label",
-    `Annotation layer page ${pageView.pageNumber}`
+    `annotation layer page ${pageView.pageNumber}`
   );
 
   pageView.pageShell.append(pdfCanvas, annotationCanvas);
@@ -353,7 +411,7 @@ async function renderPageView(pageView, version) {
     pageView.isRendering = false;
     pageView.pageShell.dataset.renderState = "error";
     pageView.pageShell.classList.remove("is-loading");
-    statusEl.textContent = `Could not render page ${pageView.pageNumber}`;
+    statusEl.textContent = `could not render page ${pageView.pageNumber}`;
   }
 }
 
@@ -378,13 +436,17 @@ function resetDocumentView() {
   pagesContainer.replaceChildren();
   pagesContainer.hidden = true;
   emptyState.hidden = false;
+  app.classList.remove("has-document");
+  documentSummary.hidden = true;
+  documentNameEl.textContent = "";
+  documentCountEl.textContent = "";
   totalPageCount = 0;
   annotatablePageCount = 0;
 }
 
 function getReadyStatus() {
   if (totalPageCount > annotatablePageCount) {
-    return `Showing first ${annotatablePageCount} of ${totalPageCount} pages`;
+    return `showing first ${annotatablePageCount} of ${totalPageCount} pages`;
   }
 
   return `${annotatablePageCount} page${
@@ -395,8 +457,8 @@ function getReadyStatus() {
 function setBusy(isBusy, message) {
   app.classList.toggle("is-busy", isBusy);
   pdfInput.disabled = isBusy;
-  undoButton.disabled = isBusy || !strokeStore.canUndo();
-  redoButton.disabled = isBusy || !strokeStore.canRedo();
+  setControlDisabled(undoButton, isBusy || !strokeStore.canUndo());
+  setControlDisabled(redoButton, isBusy || !strokeStore.canRedo());
   clearButton.disabled = isBusy || !strokeStore.hasStrokes();
   exportButton.disabled = isBusy || !originalPdfBytes;
 
@@ -407,10 +469,17 @@ function setBusy(isBusy, message) {
 
 function updateControls() {
   const isBusy = app.classList.contains("is-busy");
-  undoButton.disabled = isBusy || !strokeStore.canUndo();
-  redoButton.disabled = isBusy || !strokeStore.canRedo();
+  setControlDisabled(undoButton, isBusy || !strokeStore.canUndo());
+  setControlDisabled(redoButton, isBusy || !strokeStore.canRedo());
   clearButton.disabled = isBusy || !strokeStore.hasStrokes();
   exportButton.disabled = isBusy || !originalPdfBytes;
+  updateDocumentSummary();
+}
+
+function setControlDisabled(control, isDisabled) {
+  if (control) {
+    control.disabled = isDisabled;
+  }
 }
 
 function getPenSettings() {
@@ -470,6 +539,37 @@ function renderWidthControls() {
     penSettings.width = Number(widthSelect.value);
     widthSelect.blur();
   });
+}
+
+function handleFileDrag(event) {
+  event.preventDefault();
+
+  if (app.classList.contains("is-busy")) {
+    return;
+  }
+
+  workspace.classList.add("is-dragging");
+  event.dataTransfer.dropEffect = "copy";
+}
+
+function isPdfFile(file) {
+  return file?.type === "application/pdf" || /\.pdf$/i.test(file?.name ?? "");
+}
+
+function updateDocumentSummary() {
+  if (!originalPdfBytes) {
+    documentSummary.hidden = true;
+    return;
+  }
+
+  const strokeCount = strokeStore.getStrokeCount();
+
+  documentNameEl.textContent = loadedFileName;
+  documentNameEl.title = loadedFileName;
+  documentCountEl.textContent = `${annotatablePageCount}/${totalPageCount} pages | ${strokeCount} stroke${
+    strokeCount === 1 ? "" : "s"
+  }`;
+  documentSummary.hidden = false;
 }
 
 function isUndoRedoShortcut(event) {

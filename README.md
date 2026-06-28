@@ -11,16 +11,15 @@ Annotating a pdf for in-class work using traditional trackpad movements felt lim
 
 ## Current MVP
 
-- Loads a local PDF in the browser.
-- Creates stable page shells and lazily renders pages as they near the viewport.
-- Allows annotation on up to the first 200 pages.
-- Adds a transparent drawing layer over each rendered page.
+- Loads local PDF in the browser.
+- Creates page shells and lazily renders pages as they near the viewport.
+- Allows annotations on up to the first 200 pages.
 - Stores strokes by page.
-- Supports undo, clear, and PDF export.
-- Keeps pages beyond the first 200 unchanged when exporting.
+- Supports undo, redo, clear, and PDF export.
+- Keeps pages beyond the first 200 unchanged and intact when exporting.
 
 PDFs with more than 200 pages still export with their full original page count.
-Only pages 1-200 are rendered and annotatable in the current phase; later pages
+Only pages 1-200 are rendered and annotatable currently, but later pages
 are preserved unchanged in the exported PDF.
 
 ## Development

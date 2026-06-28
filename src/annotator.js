@@ -82,7 +82,7 @@ export function createAnnotator({ getPenSettings, strokeStore, statusEl }) {
     }
 
     isSpaceHeld = true;
-    statusEl.textContent = "Drawing";
+    statusEl.textContent = "drawing";
 
     if (lastPointer && !currentStroke) {
       startStroke(lastPointer);
@@ -97,7 +97,7 @@ export function createAnnotator({ getPenSettings, strokeStore, statusEl }) {
     event.preventDefault();
     isSpaceHeld = false;
     finishStroke();
-    statusEl.textContent = "Ready";
+    statusEl.textContent = "ready";
   }
 
   function startStroke(pointer) {
@@ -141,7 +141,7 @@ export function createAnnotator({ getPenSettings, strokeStore, statusEl }) {
     isSpaceHeld = false;
     currentStroke = null;
     strokeStore.redrawAll();
-    statusEl.textContent = "Ready";
+    statusEl.textContent = "ready";
   }
 
   function getPagePoint(event) {
