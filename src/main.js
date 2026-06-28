@@ -66,7 +66,6 @@ app.innerHTML = `
       </div>
  
       <button id="export-button" class="export-button" type="button" disabled title="export PDF">export</button>
-     <div id="status" class="status" role="status">no PDF loaded</div>
     </header>
 
     <section class="workspace" aria-label="pdf annotation workspace">
