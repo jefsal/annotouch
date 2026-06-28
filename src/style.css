@@ -420,8 +420,12 @@ button:disabled,
   }
 
   .brand-block {
-    flex: 0 0 100%;
+    flex: 0 0 auto;
     width: auto;
+  }
+
+  .has-document .brand-block {
+    flex-basis: 100%;
   }
 
   .file-picker {
