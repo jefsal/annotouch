@@ -135,6 +135,16 @@ export function createStrokeStore({ onChange }) {
 
       return false;
     },
+
+    getStrokeCount() {
+      let count = 0;
+
+      for (const pageState of pages.values()) {
+        count += pageState.strokes.length;
+      }
+
+      return count;
+    },
   };
 }
 
