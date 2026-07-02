@@ -1,13 +1,13 @@
 # Annotouch
 
-Annotouch is a browser app for marking up local PDFs without clicking or pressing a trackpad. Open a PDF, hold `Space`, move the pointer over a page, and release `Space` to finish the stroke.
+Annotouch is a browser app for marking up local PDFs without clicking or pressing down on your trackpad. Simply,open a PDF, hold `Space`, move the pointer over a page, and release `Space` to finish the stroke.
 
 ## Why
 
 I created this app because while taking notes in class I realized not having a
 tablet to take notes on put me at a disadvantage when trying to learn.
 Annotating a pdf for in-class work using traditional trackpad movements felt limiting.
-[Osu](https://github.com/ppy/osu) inspired this solution by using a keystroke to 'click' then moving the cursor to create a 'stroke.'
+[Osu](https://github.com/ppy/osu) inspired this solution by using a keystroke to 'click' then moving the cursor to register a move complete.
 
 ## Current MVP
 
