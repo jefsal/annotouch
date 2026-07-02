@@ -27,14 +27,33 @@ const DEFAULT_PEN_SETTINGS = {
   color: "#e11d48",
   width: PEN_WIDTHS[0].value,
 };
+const THEME_STORAGE_KEY = "annotouch-theme";
+const THEMES = {
+  LIGHT: "light",
+  NIGHT: "night",
+};
+const NIGHT_FILTER = "invert(1) hue-rotate(180deg)";
+const NIGHT_BODY_BACKGROUND = "#111827";
+const NIGHT_FILTER_SOURCE_BACKGROUND = "#eef1f5";
 
 const app = document.querySelector("#app");
+let theme = getInitialTheme();
+
+applyTheme(theme);
 
 app.innerHTML = `
   <main class="app-shell">
     <header class="toolbar">
       <div class="brand-block">
-        <div class="brand">annotouch</div>
+        <div
+          id="theme-toggle"
+          class="brand"
+          role="button"
+          tabindex="0"
+          aria-label="toggle night mode"
+          aria-pressed="${theme === THEMES.NIGHT}"
+          title="toggle night mode"
+        >annotouch</div>
       </div>
       <input id="pdf-input" class="file-input" type="file" accept="application/pdf" />
 
@@ -64,6 +83,7 @@ app.innerHTML = `
         <span id="document-name" class="document-name"></span>
         <span id="document-count" class="document-count"></span>
       </div>
+      <div id="status" class="status is-muted" role="status" aria-live="polite">no PDF loaded</div>
  
       <button id="export-button" class="export-button" type="button" disabled title="export PDF">export</button>
     </header>
@@ -93,6 +113,7 @@ const widthSelect = document.querySelector("#width-select");
 const documentSummary = document.querySelector("#document-summary");
 const documentNameEl = document.querySelector("#document-name");
 const documentCountEl = document.querySelector("#document-count");
+const themeToggle = document.querySelector("#theme-toggle");
 
 let originalPdfBytes = null;
 let pdfDocument = null;
@@ -118,6 +139,19 @@ const annotator = createAnnotator({
 
 renderColorControls();
 renderWidthControls();
+updateThemeToggle();
+updateNightCompensation();
+
+themeToggle.addEventListener("click", () => {
+  toggleTheme();
+});
+
+themeToggle.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter" && event.key !== " ") return;
+
+  event.preventDefault();
+  toggleTheme();
+});
 
 pdfInput.addEventListener("click", () => {
   pdfInput.value = "";
@@ -148,13 +182,13 @@ workspace.addEventListener("drop", (event) => {
   if (file) {
     openPdfFile(file);
   } else {
-    statusEl.textContent = "drop a PDF file";
+    setStatus("drop a PDF file");
   }
 });
 
 async function openPdfFile(file) {
   if (!isPdfFile(file)) {
-    statusEl.textContent = "choose a PDF file";
+    setStatus("choose a PDF file");
     return;
   }
 
@@ -187,13 +221,13 @@ async function openPdfFile(file) {
     app.classList.add("has-document");
     observePageViews(version);
     await renderPageView(pageViews.get(1), version);
-    statusEl.textContent = getReadyStatus();
+    setStatus(getReadyStatus());
   } catch (error) {
     console.error(error);
     resetDocumentView();
     originalPdfBytes = null;
     loadedFileName = "annotated.pdf";
-    statusEl.textContent = "could not load PDF";
+    setStatus("could not load PDF");
   } finally {
     setBusy(false);
     updateControls();
@@ -225,10 +259,10 @@ exportButton.addEventListener("click", async () => {
       scale: renderScale,
       sourceFileName: loadedFileName,
     });
-    statusEl.textContent = "exported";
+    setStatus("exported");
   } catch (error) {
     console.error(error);
-    statusEl.textContent = "export failed";
+    setStatus("export failed");
   } finally {
     setBusy(false);
     updateControls();
@@ -253,7 +287,7 @@ async function preparePageViews({ pdf, pageCount, version }) {
   for (let pageNumber = 1; pageNumber <= pageCount; pageNumber += 1) {
     if (version !== documentVersion) return false;
 
-    statusEl.textContent = `preparing page ${pageNumber} of ${pageCount}`;
+    setStatus(`preparing page ${pageNumber} of ${pageCount}`);
 
     const result = await getPdfPageViewport({
       pdf,
@@ -301,6 +335,7 @@ function createPageShell({ pageNumber, width, height }) {
   placeholder.textContent = `page ${pageNumber}`;
 
   pageShell.append(placeholder);
+  applyNightCompensation(pageShell);
   return pageShell;
 }
 
@@ -411,7 +446,7 @@ async function renderPageView(pageView, version) {
     pageView.isRendering = false;
     pageView.pageShell.dataset.renderState = "error";
     pageView.pageShell.classList.remove("is-loading");
-    statusEl.textContent = `could not render page ${pageView.pageNumber}`;
+    setStatus(`could not render page ${pageView.pageNumber}`);
   }
 }
 
@@ -463,7 +498,7 @@ function setBusy(isBusy, message) {
   exportButton.disabled = isBusy || !originalPdfBytes;
 
   if (message) {
-    statusEl.textContent = message;
+    setStatus(message);
   }
 }
 
@@ -480,6 +515,11 @@ function setControlDisabled(control, isDisabled) {
   if (control) {
     control.disabled = isDisabled;
   }
+}
+
+function setStatus(message, { muted = false } = {}) {
+  statusEl.textContent = message;
+  statusEl.classList.toggle("is-muted", muted);
 }
 
 function getPenSettings() {
@@ -589,4 +629,76 @@ function isEditableTarget(target) {
   return Boolean(
     target.closest("input, textarea, select, [contenteditable='true']")
   );
+}
+
+function getInitialTheme() {
+  const savedTheme = readStoredTheme();
+
+  if (savedTheme) {
+    return savedTheme;
+  }
+
+  if (window.matchMedia?.("(prefers-color-scheme: dark)").matches) {
+    return THEMES.NIGHT;
+  }
+
+  return THEMES.LIGHT;
+}
+
+function readStoredTheme() {
+  try {
+    const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
+
+    if (storedTheme === THEMES.LIGHT || storedTheme === THEMES.NIGHT) {
+      return storedTheme;
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
+
+function persistTheme(nextTheme) {
+  try {
+    window.localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
+  } catch {
+    // The selected theme still applies for this page load if storage is blocked.
+  }
+}
+
+function applyTheme(nextTheme) {
+  document.documentElement.dataset.theme = nextTheme;
+  document.documentElement.style.colorScheme =
+    nextTheme === THEMES.NIGHT ? "dark" : "light";
+  document.body.style.background =
+    nextTheme === THEMES.NIGHT ? NIGHT_BODY_BACKGROUND : "";
+  app.style.background =
+    nextTheme === THEMES.NIGHT ? NIGHT_FILTER_SOURCE_BACKGROUND : "";
+  app.style.filter = nextTheme === THEMES.NIGHT ? NIGHT_FILTER : "";
+  updateNightCompensation();
+}
+
+function updateThemeToggle() {
+  const isNight = theme === THEMES.NIGHT;
+
+  themeToggle.setAttribute("aria-pressed", String(isNight));
+  themeToggle.title = isNight ? "switch to light mode" : "toggle night mode";
+}
+
+function toggleTheme() {
+  theme = theme === THEMES.NIGHT ? THEMES.LIGHT : THEMES.NIGHT;
+  applyTheme(theme);
+  persistTheme(theme);
+  updateThemeToggle();
+}
+
+function updateNightCompensation() {
+  document
+    .querySelectorAll(".page-shell, .color-swatch")
+    .forEach(applyNightCompensation);
+}
+
+function applyNightCompensation(element) {
+  element.style.filter = theme === THEMES.NIGHT ? NIGHT_FILTER : "";
 }

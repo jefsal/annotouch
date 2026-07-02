@@ -39,6 +39,61 @@ test.describe("Annotouch browser QA", () => {
     expect(errors?.pageErrors ?? []).toEqual([]);
   });
 
+  test("matches the no PDF loaded status opacity to the disabled clear button", async ({
+    page,
+  }) => {
+    const clearButton = page.getByRole("button", { name: "clear" });
+    const status = page.getByRole("status");
+
+    await expect(clearButton).toBeDisabled();
+    await expect(clearButton).toHaveCSS("opacity", "0.36");
+    await expect(status).toHaveText("no PDF loaded");
+    await expect(status).toHaveCSS("opacity", "0.36");
+  });
+
+  test("toggles night mode from the annotouch brand and persists it", async ({
+    page,
+  }) => {
+    await page.evaluate(() => {
+      localStorage.setItem("annotouch-theme", "light");
+    });
+    await page.reload();
+
+    const themeToggle = page.locator("#theme-toggle");
+    const themeToggleBox = await themeToggle.boundingBox();
+
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+    await expect(themeToggle).toHaveText("annotouch");
+    await expect(themeToggle).toHaveAttribute("aria-pressed", "false");
+    await expect(themeToggle).toHaveCSS("cursor", "pointer");
+    expect(themeToggleBox?.x).toBeLessThan(32);
+
+    await themeToggle.click();
+
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "night");
+    await expect(themeToggle).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator("#app")).toHaveCSS(
+      "filter",
+      "invert(1) hue-rotate(180deg)"
+    );
+    await expect(page.locator("#app")).toHaveCSS(
+      "background-color",
+      "rgb(238, 241, 245)"
+    );
+    await expect(page.locator("body")).toHaveCSS(
+      "background-color",
+      "rgb(17, 24, 39)"
+    );
+
+    await page.reload();
+
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "night");
+    await expect(page.locator("#theme-toggle")).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
+  });
+
   for (const pageCount of [1, 3, 25, 30]) {
     test(`uploads and exports a ${pageCount}-page fixture`, async ({
       page,

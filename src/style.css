@@ -67,6 +67,10 @@ select {
   line-height: 1.1;
 }
 
+#theme-toggle {
+  cursor: pointer;
+}
+
 .brand-kicker {
   color: #687386;
   font-size: 11px;
@@ -221,6 +225,10 @@ button:disabled,
   opacity: 0.48;
 }
 
+#clear-button:disabled {
+  opacity: 0.36;
+}
+
 .is-busy .export-button {
   background: #1f6feb;
 }
@@ -268,6 +276,10 @@ button:disabled,
   border: 1px solid #e0e5ec;
   border-radius: 4px;
   background: #f8fafc;
+}
+
+.status.is-muted {
+  opacity: 0.36;
 }
 
 .document-summary[hidden] ~ .status {
