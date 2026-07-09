@@ -82,6 +82,61 @@ test.describe("Annotouch browser QA", () => {
     );
   });
 
+  test("adapts the toolbar title width at narrow widths", async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width: 540, height: 720 });
+
+    const toolbar = page.locator(".toolbar");
+    const exportButton = page.getByRole("button", { name: "export" });
+
+    await expect(page.locator(".history-controls")).toBeHidden();
+    await expect(page.locator("#status")).toBeHidden();
+    await expect(exportButton).toBeVisible();
+
+    const emptyToolbarBox = await toolbar.boundingBox();
+    expect(emptyToolbarBox).not.toBeNull();
+    expect(emptyToolbarBox.height).toBeLessThanOrEqual(64);
+
+    const fixturePath = await createPdfFixture(testInfo, 1);
+    const longFileName =
+      "semester-notes-with-a-long-file-name-for-toolbar-testing.pdf";
+    const longFixturePath = testInfo.outputPath("fixtures", longFileName);
+
+    await writeFile(longFixturePath, await readFile(fixturePath));
+    await uploadPdf(page, longFixturePath, 1);
+
+    await expect(page.locator("#document-name")).toHaveText(longFileName);
+    await expect(page.locator("#document-count")).toBeHidden();
+    await expect(page.locator(".history-controls")).toBeHidden();
+    await expect(page.locator("#status")).toBeHidden();
+    await expect(exportButton).toBeVisible();
+
+    const loadedToolbarBox = await toolbar.boundingBox();
+    const summaryBox = await page.locator("#document-summary").boundingBox();
+
+    expect(loadedToolbarBox).not.toBeNull();
+    expect(summaryBox).not.toBeNull();
+    expect(loadedToolbarBox.height).toBeLessThanOrEqual(64);
+    expect(summaryBox.width).toBeLessThanOrEqual(100);
+
+    await page.setViewportSize({ width: 600, height: 720 });
+
+    const widerToolbarBox = await toolbar.boundingBox();
+    const widerSummaryBox = await page.locator("#document-summary").boundingBox();
+
+    expect(widerToolbarBox).not.toBeNull();
+    expect(widerSummaryBox).not.toBeNull();
+    expect(widerToolbarBox.height).toBeLessThanOrEqual(64);
+    expect(widerSummaryBox.width).toBeGreaterThanOrEqual(150);
+    expect(widerSummaryBox.width).toBeLessThanOrEqual(180);
+    await expect(page.locator("#document-name")).toHaveCSS("font-size", "13px");
+    await expect(page.locator("#document-count")).toBeVisible();
+    await expect(page.locator("#document-count")).toHaveText(
+      "1/1 pages | 0 strokes"
+    );
+  });
+
   for (const pageCount of [1, 3, 25, 30]) {
     test(`uploads and exports a ${pageCount}-page fixture`, async ({
       page,
@@ -401,7 +456,7 @@ async function uploadPdf(page, filePath, pageCount) {
       ? `showing first ${MAX_ANNOTATABLE_PAGES} of ${pageCount} pages`
       : `${pageCount} page${pageCount === 1 ? "" : "s"} ready`;
 
-  await expect(page.getByRole("status")).toHaveText(statusText, {
+  await expect(page.locator("#status")).toHaveText(statusText, {
     timeout: 45_000,
   });
 
