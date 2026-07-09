@@ -76,7 +76,6 @@ app.innerHTML = `
           <button id="undo-button" class="history-button" type="button" disabled title="undo">undo</button>
           <button id="redo-button" class="history-button" type="button" disabled title="redo">redo</button>
         </div>
-        <button id="clear-button" type="button" disabled title="clear">clear</button>
       <div id="document-summary" class="document-summary" hidden>
         <span id="document-name" class="document-name"></span>
         <span id="document-count" class="document-count"></span>
@@ -100,7 +99,6 @@ app.innerHTML = `
 const pdfInput = document.querySelector("#pdf-input");
 const undoButton = document.querySelector("#undo-button");
 const redoButton = document.querySelector("#redo-button");
-const clearButton = document.querySelector("#clear-button");
 const exportButton = document.querySelector("#export-button");
 const statusEl = document.querySelector("#status");
 const emptyState = document.querySelector("#empty-state");
@@ -238,10 +236,6 @@ undoButton?.addEventListener("click", () => {
 
 redoButton?.addEventListener("click", () => {
   strokeStore.redo();
-});
-
-clearButton.addEventListener("click", () => {
-  strokeStore.clear();
 });
 
 exportButton.addEventListener("click", async () => {
@@ -492,7 +486,6 @@ function setBusy(isBusy, message) {
   pdfInput.disabled = isBusy;
   setControlDisabled(undoButton, isBusy || !strokeStore.canUndo());
   setControlDisabled(redoButton, isBusy || !strokeStore.canRedo());
-  clearButton.disabled = isBusy || !strokeStore.hasStrokes();
   exportButton.disabled = isBusy || !originalPdfBytes;
 
   if (message) {
@@ -504,7 +497,6 @@ function updateControls() {
   const isBusy = app.classList.contains("is-busy");
   setControlDisabled(undoButton, isBusy || !strokeStore.canUndo());
   setControlDisabled(redoButton, isBusy || !strokeStore.canRedo());
-  clearButton.disabled = isBusy || !strokeStore.hasStrokes();
   exportButton.disabled = isBusy || !originalPdfBytes;
   updateDocumentSummary();
 }

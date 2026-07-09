@@ -225,10 +225,6 @@ button:disabled,
   opacity: 0.48;
 }
 
-#clear-button:disabled {
-  opacity: 0.36;
-}
-
 .is-busy .export-button {
   background: #1f6feb;
 }

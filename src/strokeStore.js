@@ -105,18 +105,6 @@ export function createStrokeStore({ onChange }) {
       onChange?.();
     },
 
-    clear() {
-      for (const pageNumber of pages.keys()) {
-        const pageState = pages.get(pageNumber);
-        pageState.strokes.length = 0;
-        this.redrawPage(pageNumber);
-      }
-
-      undoStack.length = 0;
-      redoStack.length = 0;
-      onChange?.();
-    },
-
     redrawPage(pageNumber, draftStroke = null) {
       const pageState = pages.get(pageNumber);
       if (!pageState?.canvas || !pageState.context) return;
@@ -157,16 +145,6 @@ export function createStrokeStore({ onChange }) {
 
     canRedo() {
       return redoStack.length > 0;
-    },
-
-    hasStrokes() {
-      for (const pageState of pages.values()) {
-        if (pageState.strokes.length > 0) {
-          return true;
-        }
-      }
-
-      return false;
     },
 
     getStrokeCount() {

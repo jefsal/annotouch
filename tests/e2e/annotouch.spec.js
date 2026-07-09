@@ -39,18 +39,6 @@ test.describe("Annotouch browser QA", () => {
     expect(errors?.pageErrors ?? []).toEqual([]);
   });
 
-  test("matches the no PDF loaded status opacity to the disabled clear button", async ({
-    page,
-  }) => {
-    const clearButton = page.getByRole("button", { name: "clear" });
-    const status = page.getByRole("status");
-
-    await expect(clearButton).toBeDisabled();
-    await expect(clearButton).toHaveCSS("opacity", "0.36");
-    await expect(status).toHaveText("no PDF loaded");
-    await expect(status).toHaveCSS("opacity", "0.36");
-  });
-
   test("toggles night mode from the annotouch brand and persists it", async ({
     page,
   }) => {
@@ -183,7 +171,7 @@ test.describe("Annotouch browser QA", () => {
     );
   });
 
-  test("draws colors, preserves prior strokes, supports undo, redo, clear, and exports colored PDF", async ({
+  test("draws colors, preserves prior strokes, supports undo, redo, and exports colored PDF", async ({
     page,
   }, testInfo) => {
     const fixturePath = await createPdfFixture(testInfo, 1);
@@ -191,7 +179,6 @@ test.describe("Annotouch browser QA", () => {
     await uploadPdf(page, fixturePath, 1);
     await expect(page.getByRole("button", { name: "undo" })).toBeDisabled();
     await expect(page.getByRole("button", { name: "redo" })).toBeDisabled();
-    await expect(page.getByRole("button", { name: "clear" })).toBeDisabled();
     await expect(page.getByRole("button", { name: "export" })).toBeEnabled();
 
     const annotationCanvas = page.locator(".annotation-canvas").first();
@@ -199,7 +186,6 @@ test.describe("Annotouch browser QA", () => {
     await page.getByRole("button", { name: "red pen" }).click();
     await drawStroke(page, annotationCanvas, PEN_COLORS[1].y);
     await expect(page.getByRole("button", { name: "undo" })).toBeEnabled();
-    await expect(page.getByRole("button", { name: "clear" })).toBeEnabled();
     await expectCanvasHasColor(annotationCanvas, PEN_COLORS[1]);
 
     await page.getByRole("button", { name: "green pen" }).click();
@@ -254,12 +240,6 @@ test.describe("Annotouch browser QA", () => {
     await download.saveAs(exportedPath);
     await expectPdfPageCount(exportedPath, 1);
 
-    await page.getByRole("button", { name: "clear" }).click();
-    await expectCanvasToBeEmpty(annotationCanvas);
-    await expect(page.getByRole("button", { name: "undo" })).toBeDisabled();
-    await expect(page.getByRole("button", { name: "redo" })).toBeDisabled();
-    await expect(page.getByRole("button", { name: "clear" })).toBeDisabled();
-
     await uploadPdf(page, exportedPath, 1);
     const pdfCanvas = page.locator(".pdf-canvas").first();
 
@@ -313,7 +293,6 @@ test.describe("Annotouch browser QA", () => {
     await eraseStroke(page, annotationCanvas, PEN_COLORS[2].y);
     await expect(documentCount).toHaveText("1/1 pages | 0 strokes");
     await expectCanvasToBeEmpty(annotationCanvas);
-    await expect(page.getByRole("button", { name: "clear" })).toBeDisabled();
 
     await page.keyboard.press("Control+Z");
     await expect(documentCount).toHaveText("1/1 pages | 1 stroke");
@@ -359,7 +338,7 @@ test.describe("Annotouch browser QA", () => {
       await expect(widthSelect).toHaveValue(option.value);
       await drawStroke(page, annotationCanvas, option.y);
       measuredInk.push(await measureStrokeInk(annotationCanvas, option.y));
-      await page.getByRole("button", { name: "clear" }).click();
+      await page.getByRole("button", { name: "undo" }).click();
       await expectCanvasToBeEmpty(annotationCanvas);
     }
 

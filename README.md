@@ -16,7 +16,7 @@ Annotating a pdf for in-class work using traditional trackpad movements felt lim
 - Allows annotations on up to the first 200 pages.
 - Stores strokes by page.
 - Erases whole strokes by holding `e` and moving over them.
-- Supports undo, redo, clear, and PDF export.
+- Supports undo, redo, and PDF export.
 - Keeps pages beyond the first 200 unchanged and intact when exporting.
 
 PDFs with more than 200 pages still export with their full original page count.
@@ -57,4 +57,4 @@ the generated-fixture regression tests. Only Playwright's generated outputs,
 - `src/strokeStore.js` stores and redraws page-specific strokes.
 - `src/exporter.js` writes annotations back into the exported PDF.
 - `playwright.config.js` starts Vite and configures Chromium browser QA.
-- `tests/e2e/annotouch.spec.js` generates PDF fixtures and covers upload, lazy rendering, drawing, color, undo, clear, capped annotation, and export regressions.
+- `tests/e2e/annotouch.spec.js` generates PDF fixtures and covers upload, lazy rendering, drawing, color, undo, capped annotation, and export regressions.
