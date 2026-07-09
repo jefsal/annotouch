@@ -39,36 +39,69 @@ export function createStrokeStore({ onChange }) {
     addStroke(pageNumber, stroke) {
       const pageState = getOrCreatePageState(pages, pageNumber);
       const savedStroke = cloneStroke(stroke);
+      const index = pageState.strokes.length;
 
       pageState.strokes.push(savedStroke);
-      undoStack.push({ pageNumber, stroke: savedStroke });
+      undoStack.push({
+        type: "add",
+        pageNumber,
+        stroke: savedStroke,
+        index,
+      });
       redoStack.length = 0;
       this.redrawPage(pageNumber);
       onChange?.();
     },
 
-    undo() {
-      const item = undoStack.pop();
-      if (!item) return;
+    eraseStrokeAt(pageNumber, point, tolerance = 8) {
+      const pageState = pages.get(pageNumber);
+      if (!pageState?.strokes.length) return false;
 
-      const pageState = pages.get(item.pageNumber);
-      if (pageState) {
-        pageState.strokes.pop();
-        this.redrawPage(item.pageNumber);
+      for (let index = pageState.strokes.length - 1; index >= 0; index -= 1) {
+        const stroke = pageState.strokes[index];
+        const hitRadius = stroke.width / 2 + tolerance;
+
+        if (!isPointNearStroke(point, stroke, hitRadius)) {
+          continue;
+        }
+
+        pageState.strokes.splice(index, 1);
+        undoStack.push({
+          type: "erase",
+          pageNumber,
+          stroke,
+          index,
+        });
+        redoStack.length = 0;
+        this.redrawPage(pageNumber);
+        onChange?.();
+        return true;
       }
 
-      redoStack.push(item);
+      return false;
+    },
+
+    undo() {
+      const action = undoStack.pop();
+      if (!action) return;
+
+      if (undoAction(pages, action)) {
+        this.redrawPage(action.pageNumber);
+      }
+
+      redoStack.push(action);
       onChange?.();
     },
 
     redo() {
-      const item = redoStack.pop();
-      if (!item) return;
+      const action = redoStack.pop();
+      if (!action) return;
 
-      const pageState = getOrCreatePageState(pages, item.pageNumber);
-      pageState.strokes.push(item.stroke);
-      undoStack.push(item);
-      this.redrawPage(item.pageNumber);
+      if (redoAction(pages, action)) {
+        this.redrawPage(action.pageNumber);
+      }
+
+      undoStack.push(action);
       onChange?.();
     },
 
@@ -160,6 +193,49 @@ function getOrCreatePageState(pages, pageNumber) {
   return pages.get(pageNumber);
 }
 
+function undoAction(pages, action) {
+  if (action.type === "add") {
+    return removeStroke(pages, action.pageNumber, action.stroke);
+  }
+
+  if (action.type === "erase") {
+    return insertStroke(pages, action.pageNumber, action.stroke, action.index);
+  }
+
+  return false;
+}
+
+function redoAction(pages, action) {
+  if (action.type === "add") {
+    return insertStroke(pages, action.pageNumber, action.stroke, action.index);
+  }
+
+  if (action.type === "erase") {
+    return removeStroke(pages, action.pageNumber, action.stroke);
+  }
+
+  return false;
+}
+
+function insertStroke(pages, pageNumber, stroke, index) {
+  const pageState = getOrCreatePageState(pages, pageNumber);
+  const insertionIndex = Math.min(Math.max(index, 0), pageState.strokes.length);
+
+  pageState.strokes.splice(insertionIndex, 0, stroke);
+  return true;
+}
+
+function removeStroke(pages, pageNumber, stroke) {
+  const pageState = pages.get(pageNumber);
+  if (!pageState) return false;
+
+  const index = pageState.strokes.indexOf(stroke);
+  if (index === -1) return false;
+
+  pageState.strokes.splice(index, 1);
+  return true;
+}
+
 function drawStroke(context, stroke) {
   if (stroke.points.length < 2) return;
 
@@ -186,4 +262,53 @@ function cloneStroke(stroke) {
     width: stroke.width,
     points: stroke.points.map((point) => ({ ...point })),
   };
+}
+
+function isPointNearStroke(point, stroke, hitRadius) {
+  if (stroke.points.length === 0) {
+    return false;
+  }
+
+  if (stroke.points.length === 1) {
+    return distance(point, stroke.points[0]) <= hitRadius;
+  }
+
+  for (let index = 1; index < stroke.points.length; index += 1) {
+    const start = stroke.points[index - 1];
+    const end = stroke.points[index];
+
+    if (pointToSegmentDistance(point, start, end) <= hitRadius) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function pointToSegmentDistance(point, start, end) {
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const lengthSquared = dx * dx + dy * dy;
+
+  if (lengthSquared === 0) {
+    return distance(point, start);
+  }
+
+  const t = Math.max(
+    0,
+    Math.min(
+      1,
+      ((point.x - start.x) * dx + (point.y - start.y) * dy) / lengthSquared
+    )
+  );
+  const projection = {
+    x: start.x + t * dx,
+    y: start.y + t * dy,
+  };
+
+  return distance(point, projection);
+}
+
+function distance(a, b) {
+  return Math.hypot(a.x - b.x, a.y - b.y);
 }

@@ -72,12 +72,10 @@ app.innerHTML = `
       </div>
         <select id="width-select" class="width-select" aria-label="stroke width"></select>
 
-        <!--
         <div class="history-controls" role="group" aria-label="history">
           <button id="undo-button" class="history-button" type="button" disabled title="undo">undo</button>
           <button id="redo-button" class="history-button" type="button" disabled title="redo">redo</button>
         </div>
--->
         <button id="clear-button" type="button" disabled title="clear">clear</button>
       <div id="document-summary" class="document-summary" hidden>
         <span id="document-name" class="document-name"></span>

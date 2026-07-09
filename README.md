@@ -1,6 +1,6 @@
 # Annotouch
 
-Annotouch is a browser app for marking up local PDFs without clicking or pressing down on your trackpad. Simply,open a PDF, hold `Space`, move the pointer over a page, and release `Space` to finish the stroke.
+Annotouch is a browser app for marking up local PDFs without clicking or pressing down on your trackpad. Open a PDF, hold `Space`, move the pointer over a page, and release `Space` to finish the stroke. Hold `E` and move over an existing stroke to erase it.
 
 ## Why
 
@@ -15,6 +15,7 @@ Annotating a pdf for in-class work using traditional trackpad movements felt lim
 - Creates page shells and lazily renders pages as they near the viewport.
 - Allows annotations on up to the first 200 pages.
 - Stores strokes by page.
+- Erases whole strokes by holding `e` and moving over them.
 - Supports undo, redo, clear, and PDF export.
 - Keeps pages beyond the first 200 unchanged and intact when exporting.
 
@@ -52,9 +53,8 @@ the generated-fixture regression tests. Only Playwright's generated outputs,
 
 - `src/main.js` wires the UI, PDF loading, lazy rendering, and export flow.
 - `src/pdfViewer.js` handles PDF.js document loading and page rendering.
-- `src/annotator.js` handles `Space` plus pointer-movement drawing.
+- `src/annotator.js` handles `Space` drawing and `e` erasing with pointer movement.
 - `src/strokeStore.js` stores and redraws page-specific strokes.
 - `src/exporter.js` writes annotations back into the exported PDF.
 - `playwright.config.js` starts Vite and configures Chromium browser QA.
 - `tests/e2e/annotouch.spec.js` generates PDF fixtures and covers upload, lazy rendering, drawing, color, undo, clear, capped annotation, and export regressions.
-

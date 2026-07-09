@@ -1,8 +1,10 @@
 const MIN_POINT_DISTANCE = 0.75;
+const ERASER_TOLERANCE = 8;
 
 export function createAnnotator({ getPenSettings, strokeStore, statusEl }) {
   const pages = new Map();
   let isSpaceHeld = false;
+  let isEraserHeld = false;
   let currentStroke = null;
   let lastPointer = null;
 
@@ -52,6 +54,11 @@ export function createAnnotator({ getPenSettings, strokeStore, statusEl }) {
 
     lastPointer = pointer;
 
+    if (isEraserHeld) {
+      eraseAtPointer(pointer);
+      return;
+    }
+
     if (!isSpaceHeld) {
       return;
     }
@@ -71,13 +78,24 @@ export function createAnnotator({ getPenSettings, strokeStore, statusEl }) {
   }
 
   function handleKeyDown(event) {
-    if (event.code !== "Space" || isEditableTarget(event.target)) {
+    if (isEditableTarget(event.target)) {
       return;
     }
 
+    if (event.code === "Space") {
+      handleSpaceKeyDown(event);
+      return;
+    }
+
+    if (event.code === "KeyE") {
+      handleEraserKeyDown(event);
+    }
+  }
+
+  function handleSpaceKeyDown(event) {
     event.preventDefault();
 
-    if (event.repeat) {
+    if (event.repeat || isEraserHeld) {
       return;
     }
 
@@ -89,14 +107,56 @@ export function createAnnotator({ getPenSettings, strokeStore, statusEl }) {
     }
   }
 
+  function handleEraserKeyDown(event) {
+    event.preventDefault();
+
+    if (event.repeat) {
+      return;
+    }
+
+    const hadCurrentStroke = Boolean(currentStroke);
+
+    if (currentStroke) {
+      finishStroke();
+    }
+
+    isSpaceHeld = false;
+    isEraserHeld = true;
+    statusEl.textContent = "erasing";
+
+    if (lastPointer && !hadCurrentStroke) {
+      eraseAtPointer(lastPointer);
+    }
+  }
+
   function handleKeyUp(event) {
-    if (event.code !== "Space") {
+    if (event.code === "Space") {
+      handleSpaceKeyUp(event);
+      return;
+    }
+
+    if (event.code === "KeyE") {
+      handleEraserKeyUp(event);
+    }
+  }
+
+  function handleSpaceKeyUp(event) {
+    event.preventDefault();
+    isSpaceHeld = false;
+    finishStroke();
+
+    if (!isEraserHeld) {
+      statusEl.textContent = "ready";
+    }
+  }
+
+  function handleEraserKeyUp(event) {
+    if (!isEraserHeld) {
       return;
     }
 
     event.preventDefault();
-    isSpaceHeld = false;
-    finishStroke();
+    isEraserHeld = false;
     statusEl.textContent = "ready";
   }
 
@@ -137,8 +197,17 @@ export function createAnnotator({ getPenSettings, strokeStore, statusEl }) {
     currentStroke = null;
   }
 
+  function eraseAtPointer(pointer) {
+    strokeStore.eraseStrokeAt(
+      pointer.pageNumber,
+      pointer.point,
+      ERASER_TOLERANCE
+    );
+  }
+
   function cancelStroke() {
     isSpaceHeld = false;
+    isEraserHeld = false;
     currentStroke = null;
     strokeStore.redrawAll();
     statusEl.textContent = "ready";

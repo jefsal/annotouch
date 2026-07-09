@@ -268,6 +268,76 @@ test.describe("Annotouch browser QA", () => {
     }
   });
 
+  test("erases whole strokes with E and supports undo, redo, and export", async ({
+    page,
+  }, testInfo) => {
+    const fixturePath = await createPdfFixture(testInfo, 1);
+
+    await uploadPdf(page, fixturePath, 1);
+
+    const annotationCanvas = page.locator(".annotation-canvas").first();
+    const documentCount = page.locator("#document-count");
+
+    await page.getByRole("button", { name: "red pen" }).click();
+    await drawStroke(page, annotationCanvas, PEN_COLORS[1].y);
+    await page.getByRole("button", { name: "green pen" }).click();
+    await drawStroke(page, annotationCanvas, PEN_COLORS[2].y);
+
+    await expect(documentCount).toHaveText("1/1 pages | 2 strokes");
+    await expectCanvasHasColor(annotationCanvas, PEN_COLORS[1]);
+    await expectCanvasHasColor(annotationCanvas, PEN_COLORS[2]);
+
+    await page.getByRole("combobox", { name: "stroke width" }).focus();
+    await moveWithEraserKey(page, annotationCanvas, PEN_COLORS[1].y, {
+      expectActive: false,
+    });
+    await expect(page.getByRole("status")).toHaveText("ready");
+    await expectCanvasHasColor(annotationCanvas, PEN_COLORS[1]);
+    await page.evaluate(() => document.activeElement?.blur());
+
+    await eraseStroke(page, annotationCanvas, PEN_COLORS[1].y);
+    await expect(documentCount).toHaveText("1/1 pages | 1 stroke");
+    await expectCanvasLacksColor(annotationCanvas, PEN_COLORS[1]);
+    await expectCanvasHasColor(annotationCanvas, PEN_COLORS[2]);
+
+    await page.keyboard.press("Control+Z");
+    await expect(documentCount).toHaveText("1/1 pages | 2 strokes");
+    await expectCanvasHasColor(annotationCanvas, PEN_COLORS[1]);
+    await expectCanvasHasColor(annotationCanvas, PEN_COLORS[2]);
+
+    await page.keyboard.press("Control+Shift+Z");
+    await expect(documentCount).toHaveText("1/1 pages | 1 stroke");
+    await expectCanvasLacksColor(annotationCanvas, PEN_COLORS[1]);
+    await expectCanvasHasColor(annotationCanvas, PEN_COLORS[2]);
+
+    await eraseStroke(page, annotationCanvas, PEN_COLORS[2].y);
+    await expect(documentCount).toHaveText("1/1 pages | 0 strokes");
+    await expectCanvasToBeEmpty(annotationCanvas);
+    await expect(page.getByRole("button", { name: "clear" })).toBeDisabled();
+
+    await page.keyboard.press("Control+Z");
+    await expect(documentCount).toHaveText("1/1 pages | 1 stroke");
+    await expectCanvasLacksColor(annotationCanvas, PEN_COLORS[1]);
+    await expectCanvasHasColor(annotationCanvas, PEN_COLORS[2]);
+
+    const [download] = await Promise.all([
+      page.waitForEvent("download"),
+      page.getByRole("button", { name: "export" }).click(),
+    ]);
+
+    expect(download.suggestedFilename()).toBe("fixture-1-page-annotated.pdf");
+
+    const exportedPath = testInfo.outputPath("fixture-1-page-erased.pdf");
+    await download.saveAs(exportedPath);
+    await expectPdfPageCount(exportedPath, 1);
+
+    await uploadPdf(page, exportedPath, 1);
+    const pdfCanvas = page.locator(".pdf-canvas").first();
+
+    await expectCanvasLacksColor(pdfCanvas, PEN_COLORS[1]);
+    await expectCanvasHasColor(pdfCanvas, PEN_COLORS[2]);
+  });
+
   test("applies selected stroke widths", async ({ page }, testInfo) => {
     const fixturePath = await createPdfFixture(testInfo, 1);
 
@@ -396,6 +466,34 @@ async function drawStroke(page, canvas, y) {
   await page.mouse.move(box.x + endX, box.y + drawY, { steps: 12 });
   await page.keyboard.up("Space");
   await expect(page.getByRole("status")).toHaveText("ready");
+}
+
+async function eraseStroke(page, canvas, y) {
+  await moveWithEraserKey(page, canvas, y, { expectActive: true });
+}
+
+async function moveWithEraserKey(page, canvas, y, { expectActive }) {
+  await canvas.scrollIntoViewIfNeeded();
+  const box = await canvas.boundingBox();
+  expect(box).not.toBeNull();
+
+  const startX = Math.min(110, box.width - 60);
+  const endX = Math.min(360, box.width - 30);
+  const eraseY = Math.min(y, box.height - 30);
+
+  await page.mouse.move(box.x + startX, box.y + eraseY);
+  await page.keyboard.down("e");
+
+  if (expectActive) {
+    await expect(page.getByRole("status")).toHaveText("erasing");
+  }
+
+  await page.mouse.move(box.x + endX, box.y + eraseY, { steps: 12 });
+  await page.keyboard.up("e");
+
+  if (expectActive) {
+    await expect(page.getByRole("status")).toHaveText("ready");
+  }
 }
 
 async function expectPdfPageCount(filePath, expectedPageCount) {
