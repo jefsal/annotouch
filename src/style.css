@@ -130,6 +130,10 @@ button,
   width: 88px;
 }
 
+.hide-history-controls .history-controls {
+  display: none;
+}
+
 button {
   padding: 0 12px;
   cursor: pointer;
@@ -292,6 +296,86 @@ button:disabled,
   border: 0;
   clip: rect(0 0 0 0);
   clip-path: inset(50%);
+}
+
+.settings-button {
+  position: fixed;
+  right: 14px;
+  bottom: 14px;
+  z-index: 30;
+  display: grid;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  place-items: center;
+  border-color: rgba(104, 115, 134, 0.35);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  color: #4f5969;
+  opacity: 0.42;
+  box-shadow: 0 2px 8px rgba(16, 24, 40, 0.08);
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease,
+    opacity 140ms ease;
+}
+
+.settings-button svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.settings-button:hover:not(:disabled),
+.settings-button:focus-visible,
+.settings-button[aria-expanded="true"] {
+  border-color: #8a93a3;
+  background: rgba(255, 255, 255, 0.96);
+  color: #171923;
+  opacity: 1;
+}
+
+.settings-panel {
+  position: fixed;
+  right: 14px;
+  bottom: 54px;
+  z-index: 31;
+  min-width: 164px;
+  padding: 10px 12px;
+  border: 1px solid #d7dde6;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow:
+    0 4px 12px rgba(16, 24, 40, 0.12),
+    0 1px 2px rgba(16, 24, 40, 0.08);
+  backdrop-filter: blur(12px);
+}
+
+.settings-panel[hidden] {
+  display: none;
+}
+
+.settings-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #242936;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.settings-checkbox input {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: #1f6feb;
 }
 
 .workspace {
@@ -580,6 +664,18 @@ button:disabled,
     min-width: 58px;
     padding-inline: 6px;
     font-size: 12px;
+  }
+
+  .settings-button {
+    right: 10px;
+    bottom: 10px;
+    width: 30px;
+    height: 30px;
+  }
+
+  .settings-panel {
+    right: 10px;
+    bottom: 48px;
   }
 }
 

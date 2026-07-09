@@ -28,6 +28,10 @@ const DEFAULT_PEN_SETTINGS = {
   width: PEN_WIDTHS[0].value,
 };
 const THEME_STORAGE_KEY = "annotouch-theme";
+const TOOLBAR_SETTINGS_STORAGE_KEY = "annotouch-toolbar-settings";
+const DEFAULT_TOOLBAR_SETTINGS = {
+  showHistoryControls: true,
+};
 const THEMES = {
   LIGHT: "light",
   NIGHT: "night",
@@ -38,8 +42,10 @@ const NIGHT_FILTER_SOURCE_BACKGROUND = "#eef1f5";
 
 const app = document.querySelector("#app");
 let theme = getInitialTheme();
+let toolbarSettings = getInitialToolbarSettings();
 
 applyTheme(theme);
+applyToolbarSettings(toolbarSettings);
 
 app.innerHTML = `
   <main class="app-shell">
@@ -93,6 +99,36 @@ app.innerHTML = `
       </label>
       <div id="pages-container" class="pages-container" hidden></div>
     </section>
+    <button
+      id="settings-button"
+      class="settings-button"
+      type="button"
+      aria-label="settings"
+      aria-controls="settings-panel"
+      aria-expanded="false"
+      title="settings"
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <circle cx="12" cy="12" r="3"></circle>
+        <path d="M19.4 15a1.8 1.8 0 0 0 .36 1.98l.04.04a2 2 0 1 1-2.82 2.82l-.04-.04a1.8 1.8 0 0 0-1.98-.36 1.8 1.8 0 0 0-1.08 1.65V21a2 2 0 1 1-4 0v-.06a1.8 1.8 0 0 0-1.08-1.65 1.8 1.8 0 0 0-1.98.36l-.04.04a2 2 0 1 1-2.82-2.82l.04-.04A1.8 1.8 0 0 0 4.6 15a1.8 1.8 0 0 0-1.65-1.08H3a2 2 0 1 1 0-4h.06A1.8 1.8 0 0 0 4.71 8.8a1.8 1.8 0 0 0-.36-1.98l-.04-.04a2 2 0 1 1 2.82-2.82l.04.04a1.8 1.8 0 0 0 1.98.36h.01a1.8 1.8 0 0 0 1.08-1.65V3a2 2 0 1 1 4 0v.06a1.8 1.8 0 0 0 1.08 1.65 1.8 1.8 0 0 0 1.98-.36l.04-.04a2 2 0 1 1 2.82 2.82l-.04.04a1.8 1.8 0 0 0-.36 1.98v.01a1.8 1.8 0 0 0 1.65 1.08H21a2 2 0 1 1 0 4h-.06A1.8 1.8 0 0 0 19.4 15z"></path>
+      </svg>
+    </button>
+    <div
+      id="settings-panel"
+      class="settings-panel"
+      role="dialog"
+      aria-label="settings"
+      hidden
+    >
+      <label class="settings-checkbox">
+        <input
+          id="show-history-controls"
+          type="checkbox"
+          ${toolbarSettings.showHistoryControls ? "checked" : ""}
+        />
+        <span>show undo/redo</span>
+      </label>
+    </div>
   </main>
 `;
 
@@ -110,6 +146,11 @@ const documentSummary = document.querySelector("#document-summary");
 const documentNameEl = document.querySelector("#document-name");
 const documentCountEl = document.querySelector("#document-count");
 const themeToggle = document.querySelector("#theme-toggle");
+const settingsButton = document.querySelector("#settings-button");
+const settingsPanel = document.querySelector("#settings-panel");
+const showHistoryControlsInput = document.querySelector(
+  "#show-history-controls"
+);
 
 let originalPdfBytes = null;
 let pdfDocument = null;
@@ -147,6 +188,19 @@ themeToggle.addEventListener("keydown", (event) => {
 
   event.preventDefault();
   toggleTheme();
+});
+
+settingsButton.addEventListener("click", () => {
+  setSettingsPanelOpen(settingsPanel.hidden);
+});
+
+showHistoryControlsInput.addEventListener("change", () => {
+  toolbarSettings = {
+    ...toolbarSettings,
+    showHistoryControls: showHistoryControlsInput.checked,
+  };
+  applyToolbarSettings(toolbarSettings);
+  persistToolbarSettings(toolbarSettings);
 });
 
 pdfInput.addEventListener("click", () => {
@@ -271,6 +325,19 @@ document.addEventListener("keydown", (event) => {
   } else {
     strokeStore.undo();
   }
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape" || settingsPanel.hidden) return;
+
+  setSettingsPanelOpen(false);
+  settingsButton.focus();
+});
+
+document.addEventListener("pointerdown", (event) => {
+  if (settingsPanel.hidden || !isSettingsOutsideTarget(event.target)) return;
+
+  setSettingsPanelOpen(false);
 });
 
 async function preparePageViews({ pdf, pageCount, version }) {
@@ -512,6 +579,19 @@ function setStatus(message, { muted = false } = {}) {
   statusEl.classList.toggle("is-muted", muted);
 }
 
+function setSettingsPanelOpen(isOpen) {
+  settingsPanel.hidden = !isOpen;
+  settingsButton.setAttribute("aria-expanded", String(isOpen));
+}
+
+function isSettingsOutsideTarget(target) {
+  if (!(target instanceof Node)) {
+    return true;
+  }
+
+  return !settingsButton.contains(target) && !settingsPanel.contains(target);
+}
+
 function getPenSettings() {
   return { ...penSettings };
 }
@@ -655,6 +735,48 @@ function persistTheme(nextTheme) {
   } catch {
     // The selected theme still applies for this page load if storage is blocked.
   }
+}
+
+function getInitialToolbarSettings() {
+  try {
+    const storedSettings = window.localStorage.getItem(
+      TOOLBAR_SETTINGS_STORAGE_KEY
+    );
+
+    if (!storedSettings) {
+      return { ...DEFAULT_TOOLBAR_SETTINGS };
+    }
+
+    const parsedSettings = JSON.parse(storedSettings);
+
+    if (typeof parsedSettings?.showHistoryControls === "boolean") {
+      return {
+        showHistoryControls: parsedSettings.showHistoryControls,
+      };
+    }
+  } catch {
+    return { ...DEFAULT_TOOLBAR_SETTINGS };
+  }
+
+  return { ...DEFAULT_TOOLBAR_SETTINGS };
+}
+
+function persistToolbarSettings(nextSettings) {
+  try {
+    window.localStorage.setItem(
+      TOOLBAR_SETTINGS_STORAGE_KEY,
+      JSON.stringify(nextSettings)
+    );
+  } catch {
+    // The selected setting still applies for this page load if storage is blocked.
+  }
+}
+
+function applyToolbarSettings(nextSettings) {
+  app.classList.toggle(
+    "hide-history-controls",
+    !nextSettings.showHistoryControls
+  );
 }
 
 function applyTheme(nextTheme) {

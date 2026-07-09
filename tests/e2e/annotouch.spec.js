@@ -82,6 +82,54 @@ test.describe("Annotouch browser QA", () => {
     );
   });
 
+  test("opens and closes the settings overlay", async ({ page }) => {
+    const settingsButton = page.getByRole("button", { name: "settings" });
+    const settingsPanel = page.getByRole("dialog", { name: "settings" });
+
+    await expect(settingsButton).toBeVisible();
+    await expect(settingsButton).toHaveAttribute("aria-expanded", "false");
+    await expect(settingsPanel).toBeHidden();
+
+    await settingsButton.click();
+
+    await expect(settingsPanel).toBeVisible();
+    await expect(settingsButton).toHaveAttribute("aria-expanded", "true");
+    await expect(page.getByLabel("show undo/redo")).toBeChecked();
+
+    await page.keyboard.press("Escape");
+
+    await expect(settingsPanel).toBeHidden();
+    await expect(settingsButton).toHaveAttribute("aria-expanded", "false");
+
+    await settingsButton.click();
+    await expect(settingsPanel).toBeVisible();
+
+    await page.mouse.click(20, 120);
+
+    await expect(settingsPanel).toBeHidden();
+    await expect(settingsButton).toHaveAttribute("aria-expanded", "false");
+  });
+
+  test("keeps the settings button visible at narrow widths", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 340, height: 640 });
+
+    const settingsButton = page.getByRole("button", { name: "settings" });
+    const settingsButtonBox = await settingsButton.boundingBox();
+
+    await expect(settingsButton).toBeVisible();
+    expect(settingsButtonBox).not.toBeNull();
+    expect(settingsButtonBox.x).toBeGreaterThanOrEqual(0);
+    expect(settingsButtonBox.y).toBeGreaterThanOrEqual(0);
+    expect(settingsButtonBox.x + settingsButtonBox.width).toBeLessThanOrEqual(
+      340
+    );
+    expect(settingsButtonBox.y + settingsButtonBox.height).toBeLessThanOrEqual(
+      640
+    );
+  });
+
   test("adapts the toolbar title width at narrow widths", async ({
     page,
   }, testInfo) => {
@@ -224,6 +272,49 @@ test.describe("Annotouch browser QA", () => {
       exportedPage30Shell.locator(".pdf-canvas"),
       PEN_COLORS[1]
     );
+  });
+
+  test("hides undo/redo controls from settings while preserving keyboard history and persistence", async ({
+    page,
+  }, testInfo) => {
+    const fixturePath = await createPdfFixture(testInfo, 1);
+
+    await uploadPdf(page, fixturePath, 1);
+
+    const historyControls = page.locator(".history-controls");
+    const settingsButton = page.getByRole("button", { name: "settings" });
+    const settingsPanel = page.getByRole("dialog", { name: "settings" });
+    const showHistoryControls = page.getByLabel("show undo/redo");
+    const annotationCanvas = page.locator(".annotation-canvas").first();
+
+    await page.getByRole("button", { name: "red pen" }).click();
+    await drawStroke(page, annotationCanvas, PEN_COLORS[1].y);
+    await expect(historyControls).toBeVisible();
+    await expect(page.getByRole("button", { name: "undo" })).toBeEnabled();
+
+    await settingsButton.click();
+    await expect(settingsPanel).toBeVisible();
+    await showHistoryControls.uncheck();
+
+    await expect(historyControls).toBeHidden();
+    await expect(page.locator("#app")).toHaveClass(/hide-history-controls/);
+
+    await page.keyboard.press("Escape");
+    await expect(settingsPanel).toBeHidden();
+
+    await page.keyboard.press("Control+Z");
+    await expectCanvasToBeEmpty(annotationCanvas);
+
+    await page.keyboard.press("Control+Shift+Z");
+    await expectCanvasHasColor(annotationCanvas, PEN_COLORS[1]);
+
+    await page.reload();
+
+    await expect(page.locator(".history-controls")).toBeHidden();
+    await expect(page.locator("#app")).toHaveClass(/hide-history-controls/);
+
+    await page.getByRole("button", { name: "settings" }).click();
+    await expect(page.getByLabel("show undo/redo")).not.toBeChecked();
   });
 
   test("draws colors, preserves prior strokes, supports undo, redo, and exports colored PDF", async ({
