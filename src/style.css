@@ -182,10 +182,10 @@ button {
 }
 
 .width-select {
-  min-width: 82px;
-  padding: 0 8px;
+  min-width: 4rem;
+  padding: 0 2px;
   cursor: pointer;
-  font-size: 13px;
+  font-size: 11px;
 }
 
 .export-button {
@@ -550,10 +550,11 @@ button:disabled,
   }
 
   .width-select {
-    height: 38px;
-    min-width: 70px;
-    padding: 0 6px;
-    font-size: 12px;
+    max-height: 2.5rem;
+    height: 2.2rem;
+    min-width: 3rem;
+    padding: 0 2px;
+    font-size: 11px;
   }
 
   .history-controls,
@@ -648,12 +649,6 @@ button:disabled,
     height: 20px;
   }
 
-  .width-select {
-    height: 34px;
-    min-width: 64px;
-    padding: 0 4px;
-  }
-
   .document-summary {
     flex-basis: 56px;
     max-width: 70px;
@@ -667,14 +662,14 @@ button:disabled,
   }
 
   .settings-button {
-    right: 10px;
+    right: 1rem;
     bottom: 10px;
     width: 30px;
     height: 30px;
   }
 
   .settings-panel {
-    right: 10px;
+    right: 1rem;
     bottom: 48px;
   }
 }

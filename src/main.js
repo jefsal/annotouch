@@ -19,7 +19,7 @@ const PEN_COLORS = [
   { label: "white", value: "#ffffff" },
 ];
 const PEN_WIDTHS = [
-  { label: "small", value: 2.5 },
+  { label: "small", value: 2 },
   { label: "med", value: 5 },
   { label: "large", value: 10 },
 ];
@@ -30,7 +30,7 @@ const DEFAULT_PEN_SETTINGS = {
 const THEME_STORAGE_KEY = "annotouch-theme";
 const TOOLBAR_SETTINGS_STORAGE_KEY = "annotouch-toolbar-settings";
 const DEFAULT_TOOLBAR_SETTINGS = {
-  showHistoryControls: true,
+  showHistoryControls: false,
 };
 const THEMES = {
   LIGHT: "light",
