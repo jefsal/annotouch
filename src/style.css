@@ -160,6 +160,39 @@ button {
   z-index: 1;
 }
 
+.zoom-controls {
+  display: inline-flex;
+  align-items: stretch;
+  flex: 0 0 auto;
+  width: 32px;
+  height: 36px;
+  overflow: hidden;
+  border: 1px solid #c8cfda;
+  border-radius: 4px;
+  background: #ffffff;
+  box-shadow: 0 1px 1px rgba(16, 24, 40, 0.03);
+}
+
+.zoom-button {
+  width: 16px;
+  min-width: 0;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  font-size: 13px;
+}
+
+.zoom-button + .zoom-button {
+  border-left: 1px solid #c8cfda;
+}
+
+.zoom-button:hover,
+.zoom-button:focus-visible {
+  z-index: 1;
+}
+
 .color-swatch {
   width: 26px;
   height: 26px;
@@ -447,17 +480,15 @@ button:disabled,
 
 .pages-container {
   display: grid;
-  justify-content: center;
+  justify-items: center;
   gap: 28px;
-  width: 100%;
+  width: max-content;
+  min-width: 100%;
 }
 
 .page-shell {
   position: relative;
   overflow: hidden;
-  width: min(100%, var(--page-width));
-  max-width: var(--page-width);
-  aspect-ratio: var(--page-width) / var(--page-height);
   border: 1px solid #d7dde6;
   border-radius: 4px;
   background: #ffffff;
@@ -519,7 +550,7 @@ button:disabled,
   }
 
   .has-document .brand-block {
-    flex-basis: 92px;
+    display: none;
   }
 
   .brand {
@@ -559,6 +590,10 @@ button:disabled,
 
   .history-controls,
   .status {
+    display: none;
+  }
+
+  .zoom-controls {
     display: none;
   }
 

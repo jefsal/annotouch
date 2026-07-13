@@ -33,8 +33,8 @@ export async function renderPdfPage({ pdf, pageNumber, canvas, scale }) {
 
   canvas.width = width;
   canvas.height = height;
-  canvas.style.width = `${width}px`;
-  canvas.style.height = `${height}px`;
+  canvas.style.width = "100%";
+  canvas.style.height = "100%";
 
   context.clearRect(0, 0, width, height);
 

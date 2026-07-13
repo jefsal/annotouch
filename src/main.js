@@ -10,6 +10,10 @@ import { createStrokeStore } from "./strokeStore.js";
 
 const MAX_ANNOTATABLE_PAGES = 200;
 const DEFAULT_RENDER_SCALE = 1.5;
+const DEFAULT_VIEW_SCALE = 1;
+const MIN_VIEW_SCALE = 0.1;
+const MAX_VIEW_SCALE = 2;
+const VIEW_SCALE_STEP = 0.1;
 const PAGE_RENDER_ROOT_MARGIN = "1200px 0px";
 const PEN_COLORS = [
   { label: "black", value: "#111827" },
@@ -82,6 +86,10 @@ app.innerHTML = `
           <button id="undo-button" class="history-button" type="button" disabled title="undo">undo</button>
           <button id="redo-button" class="history-button" type="button" disabled title="redo">redo</button>
         </div>
+      <div class="zoom-controls" role="group" aria-label="zoom">
+        <button id="zoom-out-button" class="zoom-button" type="button" disabled title="zoom out" aria-label="zoom out">-</button>
+        <button id="zoom-in-button" class="zoom-button" type="button" disabled title="zoom in" aria-label="zoom in">+</button>
+      </div>
       <div id="document-summary" class="document-summary" hidden>
         <span id="document-name" class="document-name"></span>
         <span id="document-count" class="document-count"></span>
@@ -135,6 +143,8 @@ app.innerHTML = `
 const pdfInput = document.querySelector("#pdf-input");
 const undoButton = document.querySelector("#undo-button");
 const redoButton = document.querySelector("#redo-button");
+const zoomOutButton = document.querySelector("#zoom-out-button");
+const zoomInButton = document.querySelector("#zoom-in-button");
 const exportButton = document.querySelector("#export-button");
 const statusEl = document.querySelector("#status");
 const emptyState = document.querySelector("#empty-state");
@@ -155,6 +165,7 @@ const showHistoryControlsInput = document.querySelector(
 let originalPdfBytes = null;
 let pdfDocument = null;
 let renderScale = DEFAULT_RENDER_SCALE;
+let viewScale = DEFAULT_VIEW_SCALE;
 let loadedFileName = "annotated.pdf";
 let totalPageCount = 0;
 let annotatablePageCount = 0;
@@ -256,6 +267,7 @@ async function openPdfFile(file) {
     totalPageCount = pdfDocument.numPages;
     annotatablePageCount = Math.min(totalPageCount, MAX_ANNOTATABLE_PAGES);
     renderScale = DEFAULT_RENDER_SCALE;
+    viewScale = DEFAULT_VIEW_SCALE;
 
     const version = documentVersion;
     const didPrepare = await preparePageViews({
@@ -290,6 +302,16 @@ undoButton?.addEventListener("click", () => {
 
 redoButton?.addEventListener("click", () => {
   strokeStore.redo();
+});
+
+zoomOutButton.addEventListener("click", () => {
+  zoomOut();
+  zoomOutButton.blur();
+});
+
+zoomInButton.addEventListener("click", () => {
+  zoomIn();
+  zoomInButton.blur();
 });
 
 exportButton.addEventListener("click", async () => {
@@ -356,14 +378,8 @@ async function preparePageViews({ pdf, pageCount, version }) {
 
     if (version !== documentVersion) return false;
 
-    const pageShell = createPageShell({
-      pageNumber,
-      width: result.width,
-      height: result.height,
-    });
-
-    pageViewports.set(pageNumber, result.viewport);
-    pageViews.set(pageNumber, {
+    const pageShell = createPageShell({ pageNumber });
+    const pageView = {
       pageNumber,
       pageShell,
       width: result.width,
@@ -372,7 +388,12 @@ async function preparePageViews({ pdf, pageCount, version }) {
       isRendering: false,
       pdfCanvas: null,
       annotationCanvas: null,
-    });
+    };
+
+    applyViewScaleToPage(pageView);
+
+    pageViewports.set(pageNumber, result.viewport);
+    pageViews.set(pageNumber, pageView);
     fragment.append(pageShell);
   }
 
@@ -380,13 +401,11 @@ async function preparePageViews({ pdf, pageCount, version }) {
   return true;
 }
 
-function createPageShell({ pageNumber, width, height }) {
+function createPageShell({ pageNumber }) {
   const pageShell = document.createElement("div");
   const placeholder = document.createElement("div");
 
   pageShell.className = "page-shell";
-  pageShell.style.width = `${width}px`;
-  pageShell.style.height = `${height}px`;
   pageShell.dataset.pageNumber = String(pageNumber);
   pageShell.dataset.renderState = "pending";
 
@@ -473,13 +492,12 @@ async function renderPageView(pageView, version) {
       width: result.width,
       height: result.height,
     });
-    pageView.pageShell.style.width = `${result.width}px`;
-    pageView.pageShell.style.height = `${result.height}px`;
 
     pageView.pdfCanvas = pdfCanvas;
     pageView.annotationCanvas = annotationCanvas;
     pageView.width = result.width;
     pageView.height = result.height;
+    applyViewScaleToPage(pageView);
     pageView.isRendered = true;
     pageView.isRendering = false;
     pageView.pageShell.dataset.renderState = "rendered";
@@ -512,8 +530,56 @@ async function renderPageView(pageView, version) {
 function resizeCanvas({ canvas, width, height }) {
   canvas.width = width;
   canvas.height = height;
-  canvas.style.width = `${width}px`;
-  canvas.style.height = `${height}px`;
+  canvas.style.width = "100%";
+  canvas.style.height = "100%";
+}
+
+function applyViewScaleToPage(pageView) {
+  pageView.pageShell.style.width = `${Math.max(
+    1,
+    pageView.width * viewScale
+  )}px`;
+  pageView.pageShell.style.height = `${Math.max(
+    1,
+    pageView.height * viewScale
+  )}px`;
+}
+
+function applyViewScaleToPages() {
+  for (const pageView of pageViews.values()) {
+    applyViewScaleToPage(pageView);
+  }
+}
+
+function setViewScale(
+  nextScale,
+  { min = MIN_VIEW_SCALE, max = MAX_VIEW_SCALE } = {}
+) {
+  const clampedScale = clamp(nextScale, min, max);
+
+  if (Math.abs(clampedScale - viewScale) < Number.EPSILON) {
+    return;
+  }
+
+  viewScale = clampedScale;
+  applyViewScaleToPages();
+  updateControls();
+}
+
+function zoomIn() {
+  setViewScale(roundViewScale(viewScale + VIEW_SCALE_STEP));
+}
+
+function zoomOut() {
+  setViewScale(roundViewScale(viewScale - VIEW_SCALE_STEP));
+}
+
+function roundViewScale(nextScale) {
+  return Math.round(nextScale * 100) / 100;
+}
+
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
 }
 
 function resetDocumentView() {
@@ -524,6 +590,7 @@ function resetDocumentView() {
   destroyPromise?.catch?.(() => {});
   pdfDocument = null;
   strokeStore.reset();
+  viewScale = DEFAULT_VIEW_SCALE;
   pageViewports.clear();
   pageViews.clear();
   annotator.setPages([]);
@@ -553,6 +620,7 @@ function setBusy(isBusy, message) {
   pdfInput.disabled = isBusy;
   setControlDisabled(undoButton, isBusy || !strokeStore.canUndo());
   setControlDisabled(redoButton, isBusy || !strokeStore.canRedo());
+  updateZoomControls(isBusy);
   exportButton.disabled = isBusy || !originalPdfBytes;
 
   if (message) {
@@ -564,8 +632,17 @@ function updateControls() {
   const isBusy = app.classList.contains("is-busy");
   setControlDisabled(undoButton, isBusy || !strokeStore.canUndo());
   setControlDisabled(redoButton, isBusy || !strokeStore.canRedo());
+  updateZoomControls(isBusy);
   exportButton.disabled = isBusy || !originalPdfBytes;
   updateDocumentSummary();
+}
+
+function updateZoomControls(isBusy) {
+  const hasDocument = Boolean(originalPdfBytes);
+
+  zoomOutButton.disabled =
+    isBusy || !hasDocument || viewScale <= MIN_VIEW_SCALE;
+  zoomInButton.disabled = isBusy || !hasDocument || viewScale >= MAX_VIEW_SCALE;
 }
 
 function setControlDisabled(control, isDisabled) {

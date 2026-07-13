@@ -185,6 +185,70 @@ test.describe("Annotouch browser QA", () => {
     );
   });
 
+  test("zooms without changing render backing size", async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width: 720, height: 600 });
+    await expect(page.locator(".zoom-controls")).toBeHidden();
+
+    await page.setViewportSize({ width: 800, height: 600 });
+
+    const fixturePath = await createPdfFixture(testInfo, 1);
+
+    await expect(page.getByRole("button", { name: "zoom out" })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "zoom in" })).toBeDisabled();
+
+    await uploadPdf(page, fixturePath, 1);
+
+    const pageShell = page.locator(".page-shell").first();
+    const annotationCanvas = page.locator(".annotation-canvas").first();
+    const initialShellBox = await pageShell.boundingBox();
+    const initialBackingSize = await getCanvasBackingSize(annotationCanvas);
+
+    expect(initialShellBox).not.toBeNull();
+    await expect(page.getByRole("button", { name: "zoom out" })).toBeEnabled();
+    await expect(page.getByRole("button", { name: "zoom in" })).toBeEnabled();
+
+    const zoomControlsBox = await page.locator(".zoom-controls").boundingBox();
+    const widthSelectBox = await page.locator("#width-select").boundingBox();
+
+    expect(zoomControlsBox).not.toBeNull();
+    expect(widthSelectBox).not.toBeNull();
+    expect(zoomControlsBox.width).toBeCloseTo(widthSelectBox.width / 2, 0);
+
+    await page.getByRole("button", { name: "zoom out" }).click();
+
+    const zoomedShellBox = await pageShell.boundingBox();
+
+    expect(zoomedShellBox).not.toBeNull();
+    expect(zoomedShellBox.width).toBeLessThan(initialShellBox.width);
+    expect(await getCanvasBackingSize(annotationCanvas)).toEqual(
+      initialBackingSize
+    );
+
+    await page.getByRole("button", { name: "red pen" }).click();
+    await drawStrokeAtCanvasCoordinates(page, annotationCanvas, {
+      startX: 110,
+      endX: 360,
+      y: PEN_COLORS[1].y,
+    });
+    await expectCanvasHasColor(annotationCanvas, PEN_COLORS[1]);
+
+    const [download] = await Promise.all([
+      page.waitForEvent("download"),
+      page.getByRole("button", { name: "export" }).click(),
+    ]);
+
+    const exportedPath = testInfo.outputPath("fixture-1-page-zoomed-annotated.pdf");
+    await download.saveAs(exportedPath);
+
+    await uploadPdf(page, exportedPath, 1);
+    await expectCanvasHasColor(
+      page.locator(".pdf-canvas").first(),
+      PEN_COLORS[1]
+    );
+  });
+
   for (const pageCount of [1, 3, 25, 30]) {
     test(`uploads and exports a ${pageCount}-page fixture`, async ({
       page,
@@ -577,6 +641,13 @@ async function scrollToRenderedPageShell(page, pageNumber) {
   return pageShell;
 }
 
+async function getCanvasBackingSize(canvas) {
+  return canvas.evaluate((element) => ({
+    width: element.width,
+    height: element.height,
+  }));
+}
+
 async function drawStroke(page, canvas, y) {
   await canvas.scrollIntoViewIfNeeded();
   const box = await canvas.boundingBox();
@@ -589,6 +660,32 @@ async function drawStroke(page, canvas, y) {
   await page.keyboard.down("Space");
   await page.mouse.move(box.x + startX, box.y + drawY);
   await page.mouse.move(box.x + endX, box.y + drawY, { steps: 12 });
+  await page.keyboard.up("Space");
+  await expect(page.getByRole("status")).toHaveText("ready");
+}
+
+async function drawStrokeAtCanvasCoordinates(page, canvas, { startX, endX, y }) {
+  await canvas.scrollIntoViewIfNeeded();
+  const metrics = await canvas.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+
+    return {
+      left: rect.left,
+      top: rect.top,
+      displayWidth: rect.width,
+      displayHeight: rect.height,
+      backingWidth: element.width,
+      backingHeight: element.height,
+    };
+  });
+  const toClientX = (x) =>
+    metrics.left + x * (metrics.displayWidth / metrics.backingWidth);
+  const toClientY = (pointY) =>
+    metrics.top + pointY * (metrics.displayHeight / metrics.backingHeight);
+
+  await page.keyboard.down("Space");
+  await page.mouse.move(toClientX(startX), toClientY(y));
+  await page.mouse.move(toClientX(endX), toClientY(y), { steps: 12 });
   await page.keyboard.up("Space");
   await expect(page.getByRole("status")).toHaveText("ready");
 }
