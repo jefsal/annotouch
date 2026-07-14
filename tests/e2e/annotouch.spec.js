@@ -249,6 +249,182 @@ test.describe("Annotouch browser QA", () => {
     );
   });
 
+  test("warns only while annotations have unsaved content", async ({
+    page,
+  }, testInfo) => {
+    const fixturePath = await createPdfFixture(testInfo, 1);
+
+    await uploadPdf(page, fixturePath, 1);
+    expect(await reloadAndCollectDialogs(page)).toEqual([]);
+
+    await uploadPdf(page, fixturePath, 1);
+    const annotationCanvas = page.locator(".annotation-canvas").first();
+    await drawStroke(page, annotationCanvas, PEN_COLORS[1].y);
+
+    const refreshDialogs = await reloadAndCollectDialogs(page, {
+      accept: false,
+    });
+    expect(refreshDialogs).toEqual([
+      { type: "beforeunload", message: "" },
+    ]);
+    await expectCanvasHasColor(annotationCanvas, PEN_COLORS[1]);
+    await expect(page.locator("#document-count")).toHaveText(
+      "1/1 pages | 1 stroke"
+    );
+    await page.close();
+  });
+
+  test("does not warn when undo returns the stroke count to zero", async ({
+    page,
+  }, testInfo) => {
+    const fixturePath = await createPdfFixture(testInfo, 1);
+
+    await uploadPdf(page, fixturePath, 1);
+    const annotationCanvas = page.locator(".annotation-canvas").first();
+    await drawStroke(page, annotationCanvas, PEN_COLORS[1].y);
+    await page.keyboard.press("Control+Z");
+    await expectCanvasToBeEmpty(annotationCanvas);
+    expect(await reloadAndCollectDialogs(page)).toEqual([]);
+  });
+
+  test("successful export keeps the warning active", async ({
+    page,
+  }, testInfo) => {
+    const fixturePath = await createPdfFixture(testInfo, 1);
+
+    await uploadPdf(page, fixturePath, 1);
+    const annotationCanvas = page.locator(".annotation-canvas").first();
+    await drawStroke(page, annotationCanvas, PEN_COLORS[1].y);
+
+    await Promise.all([
+      page.waitForEvent("download"),
+      page.getByRole("button", { name: "export" }).click(),
+    ]);
+    await expect(page.getByRole("status")).toHaveText("exported");
+
+    expect(
+      await reloadAndCollectDialogs(page, { accept: false })
+    ).toEqual([{ type: "beforeunload", message: "" }]);
+    await expectCanvasHasColor(annotationCanvas, PEN_COLORS[1]);
+    await page.close();
+  });
+
+  test("failed export leaves annotations unsaved", async ({
+    page,
+  }, testInfo) => {
+    const fixturePath = await createPdfFixture(testInfo, 1);
+
+    await uploadPdf(page, fixturePath, 1);
+    const annotationCanvas = page.locator(".annotation-canvas").first();
+    await drawStroke(page, annotationCanvas, PEN_COLORS[1].y);
+    await page.evaluate(() => {
+      URL.createObjectURL = () => {
+        throw new Error("forced export failure");
+      };
+    });
+
+    await page.getByRole("button", { name: "export" }).click();
+    await expect(page.getByRole("status")).toHaveText("export failed");
+    errorsByPage.get(page).consoleErrors.length = 0;
+
+    expect(
+      await reloadAndCollectDialogs(page, { accept: false })
+    ).toEqual([{ type: "beforeunload", message: "" }]);
+    await expectCanvasHasColor(annotationCanvas, PEN_COLORS[1]);
+    await page.close();
+  });
+
+  test("keeps unsaved work when picker replacement is canceled and replaces it when confirmed", async ({
+    page,
+  }, testInfo) => {
+    const firstFixturePath = await createNamedPdfFixture(
+      testInfo,
+      "first.pdf"
+    );
+    const secondFixturePath = await createNamedPdfFixture(
+      testInfo,
+      "second.pdf"
+    );
+
+    await uploadPdf(page, firstFixturePath, 1);
+    const annotationCanvas = page.locator(".annotation-canvas").first();
+    await drawStroke(page, annotationCanvas, PEN_COLORS[1].y);
+
+    const canceledDialogPromise = page.waitForEvent("dialog");
+    const canceledReplacement = page
+      .locator("#pdf-input")
+      .setInputFiles(secondFixturePath);
+    const canceledDialog = await canceledDialogPromise;
+    expect(canceledDialog.type()).toBe("confirm");
+    expect(canceledDialog.message()).toBe(
+      "discard unsaved annotations and open another PDF?"
+    );
+    await canceledDialog.dismiss();
+    await canceledReplacement;
+
+    await expect(page.locator("#document-name")).toHaveText("first.pdf");
+    await expectCanvasHasColor(annotationCanvas, PEN_COLORS[1]);
+
+    await page.locator("#pdf-input").setInputFiles([]);
+    const confirmedDialogPromise = page.waitForEvent("dialog");
+    const confirmedReplacement = page
+      .locator("#pdf-input")
+      .setInputFiles(secondFixturePath);
+    const confirmedDialog = await confirmedDialogPromise;
+    expect(confirmedDialog.message()).toBe(
+      "discard unsaved annotations and open another PDF?"
+    );
+    await confirmedDialog.accept();
+    await confirmedReplacement;
+    await expectPdfReady(page, 1);
+
+    await expect(page.locator("#document-name")).toHaveText("second.pdf");
+    await expect(page.locator("#document-count")).toHaveText(
+      "1/1 pages | 0 strokes"
+    );
+  });
+
+  test("uses the same discard confirmation for PDF drops", async ({
+    page,
+  }, testInfo) => {
+    const firstFixturePath = await createNamedPdfFixture(
+      testInfo,
+      "drop-first.pdf"
+    );
+    const secondFixturePath = await createNamedPdfFixture(
+      testInfo,
+      "drop-second.pdf"
+    );
+
+    await uploadPdf(page, firstFixturePath, 1);
+    const annotationCanvas = page.locator(".annotation-canvas").first();
+    await drawStroke(page, annotationCanvas, PEN_COLORS[1].y);
+
+    const canceledDialogPromise = page.waitForEvent("dialog");
+    const canceledDrop = dropPdf(page, secondFixturePath);
+    const canceledDialog = await canceledDialogPromise;
+    expect(canceledDialog.message()).toBe(
+      "discard unsaved annotations and open another PDF?"
+    );
+    await canceledDialog.dismiss();
+    await canceledDrop;
+
+    await expect(page.locator("#document-name")).toHaveText("drop-first.pdf");
+    await expectCanvasHasColor(annotationCanvas, PEN_COLORS[1]);
+
+    const confirmedDialogPromise = page.waitForEvent("dialog");
+    const confirmedDrop = dropPdf(page, secondFixturePath);
+    const confirmedDialog = await confirmedDialogPromise;
+    await confirmedDialog.accept();
+    await confirmedDrop;
+    await expectPdfReady(page, 1);
+
+    await expect(page.locator("#document-name")).toHaveText("drop-second.pdf");
+    await expect(page.locator("#document-count")).toHaveText(
+      "1/1 pages | 0 strokes"
+    );
+  });
+
   for (const pageCount of [1, 3, 25, 30]) {
     test(`uploads and exports a ${pageCount}-page fixture`, async ({
       page,
@@ -351,6 +527,10 @@ test.describe("Annotouch browser QA", () => {
     const showHistoryControls = page.getByLabel("show undo/redo");
     const annotationCanvas = page.locator(".annotation-canvas").first();
 
+    await settingsButton.click();
+    await showHistoryControls.check();
+    await page.keyboard.press("Escape");
+
     await page.getByRole("button", { name: "red pen" }).click();
     await drawStroke(page, annotationCanvas, PEN_COLORS[1].y);
     await expect(historyControls).toBeVisible();
@@ -372,7 +552,9 @@ test.describe("Annotouch browser QA", () => {
     await page.keyboard.press("Control+Shift+Z");
     await expectCanvasHasColor(annotationCanvas, PEN_COLORS[1]);
 
-    await page.reload();
+    expect(await reloadAndCollectDialogs(page)).toEqual([
+      { type: "beforeunload", message: "" },
+    ]);
 
     await expect(page.locator(".history-controls")).toBeHidden();
     await expect(page.locator("#app")).toHaveClass(/hide-history-controls/);
@@ -603,9 +785,21 @@ async function createPdfFixture(testInfo, pageCount) {
   return filePath;
 }
 
+async function createNamedPdfFixture(testInfo, fileName) {
+  const fixturePath = await createPdfFixture(testInfo, 1);
+  const namedFixturePath = testInfo.outputPath("fixtures", fileName);
+
+  await writeFile(namedFixturePath, await readFile(fixturePath));
+  return namedFixturePath;
+}
+
 async function uploadPdf(page, filePath, pageCount) {
   await page.locator("#pdf-input").setInputFiles(filePath);
 
+  await expectPdfReady(page, pageCount);
+}
+
+async function expectPdfReady(page, pageCount) {
   const statusText =
     pageCount > MAX_ANNOTATABLE_PAGES
       ? `showing first ${MAX_ANNOTATABLE_PAGES} of ${pageCount} pages`
@@ -619,6 +813,69 @@ async function uploadPdf(page, filePath, pageCount) {
     "data-render-state",
     "rendered"
   );
+}
+
+async function dropPdf(page, filePath) {
+  const bytes = await readFile(filePath);
+  const fileName = path.basename(filePath);
+  const dataTransfer = await page.evaluateHandle(
+    ({ base64, fileName }) => {
+      const binary = atob(base64);
+      const bytes = Uint8Array.from(binary, (character) =>
+        character.charCodeAt(0)
+      );
+      const transfer = new DataTransfer();
+
+      transfer.items.add(
+        new File([bytes], fileName, { type: "application/pdf" })
+      );
+      return transfer;
+    },
+    { base64: bytes.toString("base64"), fileName }
+  );
+
+  try {
+    await page.locator(".workspace").dispatchEvent("drop", { dataTransfer });
+  } finally {
+    await dataTransfer.dispose();
+  }
+}
+
+async function reloadAndCollectDialogs(page, { accept = true } = {}) {
+  if (!accept) {
+    const dialogPromise = page.waitForEvent("dialog");
+
+    await page.evaluate(() => {
+      window.setTimeout(() => window.location.reload(), 0);
+    });
+
+    const dialog = await dialogPromise;
+    const dialogs = [
+      { type: dialog.type(), message: dialog.message() },
+    ];
+
+    await dialog.dismiss();
+    const session = await page.context().newCDPSession(page);
+    await session.send("Page.stopLoading");
+    await session.detach();
+    return dialogs;
+  }
+
+  const dialogs = [];
+  const handleDialog = async (dialog) => {
+    dialogs.push({ type: dialog.type(), message: dialog.message() });
+    await dialog.accept();
+  };
+
+  page.on("dialog", handleDialog);
+
+  try {
+    await page.reload();
+  } finally {
+    page.off("dialog", handleDialog);
+  }
+
+  return dialogs;
 }
 
 async function scrollToRenderedAnnotationCanvas(page, pageNumber) {

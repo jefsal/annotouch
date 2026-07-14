@@ -43,6 +43,8 @@ const THEMES = {
 const NIGHT_FILTER = "invert(1) hue-rotate(180deg)";
 const NIGHT_BODY_BACKGROUND = "#111827";
 const NIGHT_FILTER_SOURCE_BACKGROUND = "#eef1f5";
+const DISCARD_ANNOTATIONS_MESSAGE =
+  "discard unsaved annotations and open another PDF?";
 
 const app = document.querySelector("#app");
 let theme = getInitialTheme();
@@ -171,6 +173,7 @@ let totalPageCount = 0;
 let annotatablePageCount = 0;
 let pageObserver = null;
 let documentVersion = 0;
+let hasBeforeUnloadHandler = false;
 const pageViewports = new Map();
 const pageViews = new Map();
 const penSettings = { ...DEFAULT_PEN_SETTINGS };
@@ -222,7 +225,7 @@ pdfInput.addEventListener("change", () => {
   const file = pdfInput.files?.[0];
   if (!file) return;
 
-  openPdfFile(file);
+  requestOpenPdfFile(file);
 });
 
 workspace.addEventListener("dragenter", handleFileDrag);
@@ -241,18 +244,29 @@ workspace.addEventListener("drop", (event) => {
   );
 
   if (file) {
-    openPdfFile(file);
+    requestOpenPdfFile(file);
   } else {
     setStatus("drop a PDF file");
   }
 });
 
-async function openPdfFile(file) {
+function requestOpenPdfFile(file) {
   if (!isPdfFile(file)) {
     setStatus("choose a PDF file");
     return;
   }
 
+  if (
+    hasAnnotationsToDiscard() &&
+    !window.confirm(DISCARD_ANNOTATIONS_MESSAGE)
+  ) {
+    return;
+  }
+
+  openPdfFile(file);
+}
+
+async function openPdfFile(file) {
   try {
     resetDocumentView();
     setBusy(true, "loading PDF");
@@ -635,6 +649,28 @@ function updateControls() {
   updateZoomControls(isBusy);
   exportButton.disabled = isBusy || !originalPdfBytes;
   updateDocumentSummary();
+  updateBeforeUnloadHandler();
+}
+
+function hasAnnotationsToDiscard() {
+  return strokeStore.getStrokeCount() > 0;
+}
+
+function updateBeforeUnloadHandler() {
+  const shouldWarn = hasAnnotationsToDiscard();
+
+  if (shouldWarn === hasBeforeUnloadHandler) {
+    return;
+  }
+
+  const method = shouldWarn ? "addEventListener" : "removeEventListener";
+  window[method]("beforeunload", handleBeforeUnload);
+  hasBeforeUnloadHandler = shouldWarn;
+}
+
+function handleBeforeUnload(event) {
+  event.preventDefault();
+  event.returnValue = "";
 }
 
 function updateZoomControls(isBusy) {
