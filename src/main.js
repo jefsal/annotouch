@@ -364,6 +364,15 @@ document.addEventListener("keydown", (event) => {
 });
 
 document.addEventListener("keydown", (event) => {
+  const color = getColorShortcut(event);
+  if (!color) return;
+
+  event.preventDefault();
+  penSettings.color = color.value;
+  updateSelectedColor();
+});
+
+document.addEventListener("keydown", (event) => {
   if (event.key !== "Escape" || settingsPanel.hidden) return;
 
   setSettingsPanelOpen(false);
@@ -710,15 +719,17 @@ function getPenSettings() {
 }
 
 function renderColorControls() {
-  for (const color of PEN_COLORS) {
+  PEN_COLORS.forEach((color, index) => {
     const button = document.createElement("button");
     const isSelected = color.value === penSettings.color;
+    const shortcut = index + 1;
 
     button.type = "button";
     button.className = "color-swatch";
     button.dataset.colorValue = color.value;
-    button.title = color.label;
+    button.title = `${color.label} (${shortcut})`;
     button.setAttribute("aria-label", `${color.label} pen`);
+    button.setAttribute("aria-keyshortcuts", String(shortcut));
     button.setAttribute("aria-pressed", String(isSelected));
     button.style.setProperty("--swatch-color", color.value);
 
@@ -737,7 +748,7 @@ function renderColorControls() {
     });
 
     colorControls.append(button);
-  }
+  });
 }
 
 function updateSelectedColor() {
@@ -802,6 +813,27 @@ function isUndoRedoShortcut(event) {
     event.key.toLowerCase() === "z" &&
     !isEditableTarget(event.target)
   );
+}
+
+function getColorShortcut(event) {
+  if (
+    event.metaKey ||
+    event.ctrlKey ||
+    event.altKey ||
+    event.shiftKey ||
+    event.repeat ||
+    isEditableTarget(event.target)
+  ) {
+    return null;
+  }
+
+  const shortcutIndex = Number(event.key) - 1;
+
+  if (!Number.isInteger(shortcutIndex)) {
+    return null;
+  }
+
+  return PEN_COLORS[shortcutIndex] ?? null;
 }
 
 function isEditableTarget(target) {

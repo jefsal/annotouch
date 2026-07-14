@@ -640,6 +640,30 @@ test.describe("Annotouch browser QA", () => {
     }
   });
 
+  test("selects pen colors with number keys in toolbar order", async ({
+    page,
+  }) => {
+    for (const [index, color] of PEN_COLORS.entries()) {
+      const colorButton = page.getByRole("button", {
+        name: `${color.label} pen`,
+      });
+
+      await expect(colorButton).toHaveAttribute(
+        "aria-keyshortcuts",
+        String(index + 1)
+      );
+      await page.keyboard.press(String(index + 1));
+      await expect(colorButton).toHaveAttribute("aria-pressed", "true");
+    }
+
+    const widthSelect = page.getByRole("combobox", { name: "stroke width" });
+    await widthSelect.focus();
+    await page.keyboard.press("1");
+    await expect(
+      page.getByRole("button", { name: "white pen" })
+    ).toHaveAttribute("aria-pressed", "true");
+  });
+
   test("erases whole strokes with E and supports undo, redo, and export", async ({
     page,
   }, testInfo) => {
