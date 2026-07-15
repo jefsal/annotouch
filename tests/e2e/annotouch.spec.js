@@ -53,8 +53,17 @@ test.describe("Annotouch browser QA", () => {
     await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
     await expect(themeToggle).toHaveText("annotouch");
     await expect(themeToggle).toHaveAttribute("aria-pressed", "false");
+    await expect(themeToggle).toHaveAttribute("aria-keyshortcuts", "N");
+    await expect(themeToggle).toHaveAttribute("title", "toggle night mode (N)");
     await expect(themeToggle).toHaveCSS("cursor", "pointer");
     expect(themeToggleBox?.x).toBeLessThan(32);
+
+    await page.keyboard.press("n");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "night");
+    await expect(themeToggle).toHaveAttribute("title", "switch to light mode (N)");
+
+    await page.keyboard.press("n");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
 
     await themeToggle.click();
 
@@ -128,6 +137,248 @@ test.describe("Annotouch browser QA", () => {
     expect(settingsButtonBox.y + settingsButtonBox.height).toBeLessThanOrEqual(
       640
     );
+  });
+
+  test("lists all keyboard shortcuts in their configured groups and order", async ({
+    page,
+  }) => {
+    const settingsButton = page.getByRole("button", { name: "settings" });
+    const settingsPanel = page.getByRole("dialog", { name: "settings" });
+
+    await settingsButton.click();
+
+    const viewerButton = page.getByRole("button", {
+      name: "view keyboard shortcuts",
+    });
+    await expect(viewerButton).toBeVisible();
+    await expect(viewerButton).toHaveAttribute("aria-haspopup", "dialog");
+    await expect(viewerButton).toHaveAttribute(
+      "aria-controls",
+      "commands-shortcuts-dialog"
+    );
+    await expect(viewerButton).toHaveAttribute("aria-keyshortcuts", "Meta+K");
+    await expect(viewerButton).toHaveAttribute(
+      "title",
+      "view keyboard shortcuts (⌘ k)"
+    );
+
+    await viewerButton.click();
+
+    const dialog = page.getByRole("dialog", { name: "keyboard shortcuts" });
+    await expect(dialog).toBeVisible();
+    await expect(settingsPanel).toBeHidden();
+    await expect(settingsButton).toHaveAttribute("aria-expanded", "false");
+
+    const groups = await dialog
+      .locator(".commands-shortcuts-group")
+      .evaluateAll((sections) =>
+        sections.map((section) => ({
+          label: section.querySelector("h3")?.textContent,
+          rows: [...section.querySelectorAll(".commands-shortcuts-row")].map(
+            (row) => ({
+              command: row.querySelector("dt")?.textContent,
+              keys: [...row.querySelectorAll("kbd")].map(
+                (key) => key.textContent
+              ),
+            })
+          ),
+        }))
+      );
+
+    expect(groups).toEqual([
+      {
+        label: "general",
+        rows: [
+          { command: "view keyboard shortcuts", keys: ["⌘", "k"] },
+        ],
+      },
+      {
+        label: "tools",
+        rows: [
+          { command: "draw", keys: ["space"] },
+          { command: "erase", keys: ["e"] },
+        ],
+      },
+      {
+        label: "colors",
+        rows: [
+          { command: "black", keys: ["1"] },
+          { command: "red", keys: ["2"] },
+          { command: "green", keys: ["3"] },
+          { command: "blue", keys: ["4"] },
+          { command: "white", keys: ["5"] },
+        ],
+      },
+      {
+        label: "appearance",
+        rows: [{ command: "toggle night mode", keys: ["n"] }],
+      },
+      {
+        label: "history",
+        rows: [
+          { command: "undo", keys: ["⌘", "z", "ctrl", "z"] },
+          {
+            command: "redo",
+            keys: ["⌘", "shift", "z", "ctrl", "shift", "z"],
+          },
+        ],
+      },
+    ]);
+    await expect(dialog.locator(".commands-shortcuts-row")).toHaveCount(11);
+    await expect(dialog.locator(".commands-shortcuts-row button")).toHaveCount(0);
+  });
+
+  test("opens keyboard shortcuts with command k", async ({ page }) => {
+    const settingsButton = page.getByRole("button", { name: "settings" });
+    const settingsPanel = page.getByRole("dialog", { name: "settings" });
+    const dialog = page.getByRole("dialog", { name: "keyboard shortcuts" });
+
+    await settingsButton.click();
+    await expect(settingsPanel).toBeVisible();
+    await page.keyboard.press("Meta+k");
+
+    await expect(dialog).toBeVisible();
+    await expect(settingsPanel).toBeHidden();
+    await expect(settingsButton).toHaveAttribute("aria-expanded", "false");
+  });
+
+  test("closes the shortcuts viewer by button, Escape, and backdrop and restores settings focus", async ({
+    page,
+  }) => {
+    const settingsButton = page.getByRole("button", { name: "settings" });
+    const dialog = page.getByRole("dialog", { name: "keyboard shortcuts" });
+    const closeButton = page.getByRole("button", {
+      name: "close keyboard shortcuts",
+    });
+
+    const openViewer = async () => {
+      await settingsButton.click();
+      await page
+        .getByRole("button", { name: "view keyboard shortcuts" })
+        .click();
+      await expect(dialog).toBeVisible();
+    };
+
+    await openViewer();
+    await expect(closeButton).toBeFocused();
+    await closeButton.click();
+    await expect(dialog).toBeHidden();
+    await expect(settingsButton).toBeFocused();
+
+    await openViewer();
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeHidden();
+    await expect(settingsButton).toBeFocused();
+
+    await openViewer();
+    const dialogBox = await dialog.boundingBox();
+    expect(dialogBox).not.toBeNull();
+    await page.mouse.click(dialogBox.x - 5, dialogBox.y + 5);
+    await expect(dialog).toBeHidden();
+    await expect(settingsButton).toBeFocused();
+  });
+
+  test("uses lowercase borderless shortcuts and a dedicated night palette", async ({
+    page,
+  }) => {
+    await page.evaluate(() => {
+      localStorage.setItem("annotouch-theme", "night");
+    });
+    await page.reload();
+    await page.getByRole("button", { name: "settings" }).click();
+
+    const viewerButton = page.getByRole("button", {
+      name: "view keyboard shortcuts",
+    });
+    await expect(viewerButton).toHaveCSS("border-top-style", "none");
+    await viewerButton.click();
+
+    const dialog = page.getByRole("dialog", { name: "keyboard shortcuts" });
+    const shortcutKeys = dialog.locator("kbd");
+
+    await expect(dialog).toHaveCSS("background-color", "rgb(23, 25, 35)");
+    await expect(dialog).toHaveCSS("color", "rgb(243, 244, 246)");
+    await expect(shortcutKeys).toHaveCount(20);
+    await expect(shortcutKeys.first()).toHaveCSS("border-top-style", "none");
+    await expect(shortcutKeys.first()).toHaveCSS(
+      "color",
+      "rgb(170, 178, 192)"
+    );
+    await expect(
+      page.getByRole("button", { name: "close keyboard shortcuts" })
+    ).toHaveCSS("border-top-style", "none");
+
+    const displayedText = await dialog.locator(".commands-shortcuts-content")
+      .innerText();
+    expect(displayedText).toBe(displayedText.toLowerCase());
+  });
+
+  test("suppresses application shortcuts while the viewer is open", async ({
+    page,
+  }, testInfo) => {
+    const fixturePath = await createPdfFixture(testInfo, 1);
+    await uploadPdf(page, fixturePath, 1);
+
+    const annotationCanvas = page.locator(".annotation-canvas").first();
+    await page.getByRole("button", { name: "red pen" }).click();
+    await drawStroke(page, annotationCanvas, PEN_COLORS[1].y);
+    await expect(page.locator("#document-count")).toHaveText(
+      "1/1 pages | 1 stroke"
+    );
+
+    await page.getByRole("button", { name: "settings" }).click();
+    await page
+      .getByRole("button", { name: "view keyboard shortcuts" })
+      .click();
+
+    const selectedColor = page.getByRole("button", { name: "red pen" });
+    const initialTheme = await page.locator("html").getAttribute("data-theme");
+    await page.keyboard.press("5");
+    await page.keyboard.press("n");
+    await page.keyboard.press("Control+Z");
+    await page.keyboard.press("Control+Shift+Z");
+    await page.keyboard.press("Space");
+    await page.keyboard.press("e");
+
+    await expect(selectedColor).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-theme",
+      initialTheme
+    );
+    await expect(page.locator("#document-count")).toHaveText(
+      "1/1 pages | 1 stroke"
+    );
+    await expectCanvasHasColor(annotationCanvas, PEN_COLORS[1]);
+    await expect(page.getByRole("status")).toHaveText("ready");
+  });
+
+  test("keeps the shortcuts viewer contained and scrollable at narrow sizes", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 320, height: 360 });
+    await page.getByRole("button", { name: "settings" }).click();
+    await page
+      .getByRole("button", { name: "view keyboard shortcuts" })
+      .click();
+
+    const dialog = page.getByRole("dialog", { name: "keyboard shortcuts" });
+    const content = dialog.locator(".commands-shortcuts-content");
+    const dialogBox = await dialog.boundingBox();
+
+    expect(dialogBox).not.toBeNull();
+    expect(dialogBox.x).toBeGreaterThanOrEqual(0);
+    expect(dialogBox.y).toBeGreaterThanOrEqual(0);
+    expect(dialogBox.x + dialogBox.width).toBeLessThanOrEqual(320);
+    expect(dialogBox.y + dialogBox.height).toBeLessThanOrEqual(360);
+    await expect(content).toHaveCSS("overflow-y", "auto");
+    expect(
+      await content.evaluate((element) => element.scrollHeight > element.clientHeight)
+    ).toBe(true);
+
+    await content.evaluate((element) => {
+      element.scrollTop = element.scrollHeight;
+    });
+    await expect(dialog.getByText("redo", { exact: true })).toBeVisible();
   });
 
   test("adapts the toolbar title width at narrow widths", async ({
