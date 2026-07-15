@@ -411,6 +411,154 @@ button:disabled,
   accent-color: #1f6feb;
 }
 
+.settings-reference-button {
+  width: 100%;
+  height: auto;
+  margin-top: 10px;
+  padding: 9px 0 0;
+  border: 0;
+  border-top: 1px solid #e3e7ee;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: #4f5969;
+  font-size: 13px;
+  line-height: 1.3;
+  text-align: left;
+}
+
+.settings-reference-button:hover:not(:disabled) {
+  border-color: #e3e7ee;
+  background: transparent;
+  color: #171923;
+}
+
+.commands-shortcuts-dialog {
+  width: min(460px, calc(100vw - 32px));
+  max-height: min(680px, calc(100dvh - 32px));
+  margin: auto;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid #d7dde6;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #171923;
+  box-shadow:
+    0 24px 64px rgba(16, 24, 40, 0.24),
+    0 4px 12px rgba(16, 24, 40, 0.12);
+}
+
+.commands-shortcuts-dialog::backdrop {
+  background: rgba(23, 25, 35, 0.42);
+  backdrop-filter: blur(2px);
+}
+
+.commands-shortcuts-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px;
+  border-bottom: 1px solid #e3e7ee;
+}
+
+.commands-shortcuts-header h2 {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.25;
+}
+
+.commands-shortcuts-close {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  box-shadow: none;
+  color: #687386;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.commands-shortcuts-content {
+  max-height: min(583px, calc(100dvh - 97px));
+  padding: 4px 18px 18px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.commands-shortcuts-group h3 {
+  margin: 16px 0 7px;
+  color: #687386;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.commands-shortcuts-list {
+  margin: 0;
+}
+
+.commands-shortcuts-row {
+  display: grid;
+  grid-template-columns: minmax(0, 42%) minmax(0, 1fr);
+  border-bottom: 1px solid #eef1f5;
+}
+
+.commands-shortcuts-list dt,
+.commands-shortcuts-list dd {
+  min-height: 37px;
+  margin: 0;
+}
+
+.commands-shortcuts-list dt {
+  display: flex;
+  align-items: center;
+  padding: 7px 8px 7px 0;
+  color: #242936;
+  font-size: 13px;
+}
+
+.commands-shortcuts-list dd {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  padding: 6px 0 6px 8px;
+}
+
+.commands-shortcuts-list kbd {
+  display: inline-flex;
+  min-width: 26px;
+  height: 25px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 7px;
+  border: 1px solid #c8cfda;
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: #f8fafc;
+  color: #242936;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.key-separator,
+.shortcut-separator {
+  color: #8a93a3;
+  font-size: 11px;
+}
+
+.shortcut-separator {
+  margin-inline: 3px;
+}
+
 .workspace {
   min-height: 0;
   overflow: auto;
@@ -706,6 +854,38 @@ button:disabled,
   .settings-panel {
     right: 1rem;
     bottom: 48px;
+  }
+
+  .commands-shortcuts-dialog {
+    width: calc(100vw - 20px);
+    max-height: calc(100dvh - 20px);
+  }
+
+  .commands-shortcuts-header {
+    padding: 13px 14px;
+  }
+
+  .commands-shortcuts-content {
+    max-height: calc(100dvh - 79px);
+    padding: 2px 14px 14px;
+  }
+
+  .commands-shortcuts-list dt {
+    padding-right: 4px;
+  }
+
+  .commands-shortcuts-row {
+    grid-template-columns: minmax(0, 38%) minmax(0, 1fr);
+  }
+
+  .commands-shortcuts-list dd {
+    gap: 3px;
+  }
+
+  .commands-shortcuts-list kbd {
+    min-width: 23px;
+    padding-inline: 5px;
+    font-size: 10px;
   }
 }
 
