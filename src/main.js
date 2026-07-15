@@ -828,31 +828,31 @@ function renderColorControls() {
 function renderCommandsShortcuts() {
   const groups = [
     {
-      label: "Tools",
+      label: "tools",
       commands: [
-        { label: "Draw", keys: ["Space"] },
-        { label: "Erase", keys: ["E"] },
+        { label: "draw", keys: ["space"] },
+        { label: "erase", keys: ["e"] },
       ],
     },
     {
-      label: "Colors",
+      label: "colors",
       commands: PEN_COLORS.map((color, index) => ({
-        label: capitalize(color.label),
+        label: color.label,
         keys: [String(index + 1)],
       })),
     },
     {
-      label: "Appearance",
-      commands: [{ label: "Toggle night mode", keys: ["N"] }],
+      label: "appearance",
+      commands: [{ label: "toggle night mode", keys: ["n"] }],
     },
     {
-      label: "History",
+      label: "history",
       commands: [
-        { label: "Undo", keys: ["⌘", "Z"], alternateKeys: ["Ctrl", "Z"] },
+        { label: "undo", keys: ["⌘", "z"], alternateKeys: ["ctrl", "z"] },
         {
-          label: "Redo",
-          keys: ["⌘", "Shift", "Z"],
-          alternateKeys: ["Ctrl", "Shift", "Z"],
+          label: "redo",
+          keys: ["⌘", "shift", "z"],
+          alternateKeys: ["ctrl", "shift", "z"],
         },
       ],
     },
@@ -912,10 +912,6 @@ function appendShortcutKeys(container, keys) {
     keyElement.textContent = key;
     container.append(keyElement);
   });
-}
-
-function capitalize(value) {
-  return `${value.charAt(0).toUpperCase()}${value.slice(1)}`;
 }
 
 function updateSelectedColor() {

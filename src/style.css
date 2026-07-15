@@ -415,9 +415,8 @@ button:disabled,
   width: 100%;
   height: auto;
   margin-top: 10px;
-  padding: 9px 0 0;
+  padding: 0;
   border: 0;
-  border-top: 1px solid #e3e7ee;
   border-radius: 0;
   background: transparent;
   box-shadow: none;
@@ -428,7 +427,7 @@ button:disabled,
 }
 
 .settings-reference-button:hover:not(:disabled) {
-  border-color: #e3e7ee;
+  border-color: transparent;
   background: transparent;
   color: #171923;
 }
@@ -496,7 +495,6 @@ button:disabled,
   font-weight: 700;
   letter-spacing: 0.08em;
   line-height: 1.2;
-  text-transform: uppercase;
 }
 
 .commands-shortcuts-list {
@@ -538,11 +536,10 @@ button:disabled,
   align-items: center;
   justify-content: center;
   padding: 0 7px;
-  border: 1px solid #c8cfda;
-  border-bottom-width: 2px;
+  border: 0;
   border-radius: 4px;
   background: #f8fafc;
-  color: #242936;
+  color: #8a93a3;
   font-family: inherit;
   font-size: 11px;
   font-weight: 650;
@@ -557,6 +554,45 @@ button:disabled,
 
 .shortcut-separator {
   margin-inline: 3px;
+}
+
+html[data-theme="night"] .commands-shortcuts-dialog {
+  border-color: #343b49;
+  background: #171923;
+  color: #f3f4f6;
+}
+
+html[data-theme="night"] .commands-shortcuts-header {
+  border-bottom-color: #343b49;
+}
+
+html[data-theme="night"] .commands-shortcuts-close {
+  color: #aab2c0;
+}
+
+html[data-theme="night"] .commands-shortcuts-close:hover:not(:disabled) {
+  border-color: transparent;
+  background: #242936;
+  color: #f3f4f6;
+}
+
+html[data-theme="night"] .commands-shortcuts-group h3,
+html[data-theme="night"] .key-separator,
+html[data-theme="night"] .shortcut-separator {
+  color: #8a93a3;
+}
+
+html[data-theme="night"] .commands-shortcuts-row {
+  border-bottom-color: #2d3340;
+}
+
+html[data-theme="night"] .commands-shortcuts-list dt {
+  color: #e5e7eb;
+}
+
+html[data-theme="night"] .commands-shortcuts-list kbd {
+  background: #242936;
+  color: #aab2c0;
 }
 
 .workspace {

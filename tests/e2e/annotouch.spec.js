@@ -182,33 +182,33 @@ test.describe("Annotouch browser QA", () => {
 
     expect(groups).toEqual([
       {
-        label: "Tools",
+        label: "tools",
         rows: [
-          { command: "Draw", keys: ["Space"] },
-          { command: "Erase", keys: ["E"] },
+          { command: "draw", keys: ["space"] },
+          { command: "erase", keys: ["e"] },
         ],
       },
       {
-        label: "Colors",
+        label: "colors",
         rows: [
-          { command: "Black", keys: ["1"] },
-          { command: "Red", keys: ["2"] },
-          { command: "Green", keys: ["3"] },
-          { command: "Blue", keys: ["4"] },
-          { command: "White", keys: ["5"] },
+          { command: "black", keys: ["1"] },
+          { command: "red", keys: ["2"] },
+          { command: "green", keys: ["3"] },
+          { command: "blue", keys: ["4"] },
+          { command: "white", keys: ["5"] },
         ],
       },
       {
-        label: "Appearance",
-        rows: [{ command: "Toggle night mode", keys: ["N"] }],
+        label: "appearance",
+        rows: [{ command: "toggle night mode", keys: ["n"] }],
       },
       {
-        label: "History",
+        label: "history",
         rows: [
-          { command: "Undo", keys: ["⌘", "Z", "Ctrl", "Z"] },
+          { command: "undo", keys: ["⌘", "z", "ctrl", "z"] },
           {
-            command: "Redo",
-            keys: ["⌘", "Shift", "Z", "Ctrl", "Shift", "Z"],
+            command: "redo",
+            keys: ["⌘", "shift", "z", "ctrl", "shift", "z"],
           },
         ],
       },
@@ -251,6 +251,41 @@ test.describe("Annotouch browser QA", () => {
     await page.mouse.click(dialogBox.x - 5, dialogBox.y + 5);
     await expect(dialog).toBeHidden();
     await expect(settingsButton).toBeFocused();
+  });
+
+  test("uses lowercase borderless shortcuts and a dedicated night palette", async ({
+    page,
+  }) => {
+    await page.evaluate(() => {
+      localStorage.setItem("annotouch-theme", "night");
+    });
+    await page.reload();
+    await page.getByRole("button", { name: "settings" }).click();
+
+    const viewerButton = page.getByRole("button", {
+      name: "view commands & shortcuts",
+    });
+    await expect(viewerButton).toHaveCSS("border-top-style", "none");
+    await viewerButton.click();
+
+    const dialog = page.getByRole("dialog", { name: "commands & shortcuts" });
+    const shortcutKeys = dialog.locator("kbd");
+
+    await expect(dialog).toHaveCSS("background-color", "rgb(23, 25, 35)");
+    await expect(dialog).toHaveCSS("color", "rgb(243, 244, 246)");
+    await expect(shortcutKeys).toHaveCount(18);
+    await expect(shortcutKeys.first()).toHaveCSS("border-top-style", "none");
+    await expect(shortcutKeys.first()).toHaveCSS(
+      "color",
+      "rgb(170, 178, 192)"
+    );
+    await expect(
+      page.getByRole("button", { name: "close commands & shortcuts" })
+    ).toHaveCSS("border-top-style", "none");
+
+    const displayedText = await dialog.locator(".commands-shortcuts-content")
+      .innerText();
+    expect(displayedText).toBe(displayedText.toLowerCase());
   });
 
   test("suppresses application shortcuts while the viewer is open", async ({
@@ -318,7 +353,7 @@ test.describe("Annotouch browser QA", () => {
     await content.evaluate((element) => {
       element.scrollTop = element.scrollHeight;
     });
-    await expect(dialog.getByText("Redo", { exact: true })).toBeVisible();
+    await expect(dialog.getByText("redo", { exact: true })).toBeVisible();
   });
 
   test("adapts the toolbar title width at narrow widths", async ({
