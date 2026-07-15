@@ -145,7 +145,9 @@ app.innerHTML = `
         type="button"
         aria-haspopup="dialog"
         aria-controls="commands-shortcuts-dialog"
-      >view commands &amp; shortcuts</button>
+        aria-keyshortcuts="Meta+K"
+        title="view keyboard shortcuts (⌘ k)"
+      >view keyboard shortcuts</button>
     </div>
     <dialog
       id="commands-shortcuts-dialog"
@@ -153,12 +155,12 @@ app.innerHTML = `
       aria-labelledby="commands-shortcuts-title"
     >
       <div class="commands-shortcuts-header">
-        <h2 id="commands-shortcuts-title">commands &amp; shortcuts</h2>
+        <h2 id="commands-shortcuts-title">keyboard shortcuts</h2>
         <button
           id="commands-shortcuts-close"
           class="commands-shortcuts-close"
           type="button"
-          aria-label="close commands & shortcuts"
+          aria-label="close keyboard shortcuts"
           autofocus
         >&times;</button>
       </div>
@@ -247,9 +249,13 @@ settingsButton.addEventListener("click", () => {
 });
 
 commandsShortcutsButton.addEventListener("click", () => {
+  openKeyboardShortcutsDialog();
+});
+
+function openKeyboardShortcutsDialog() {
   setSettingsPanelOpen(false);
   commandsShortcutsDialog.showModal();
-});
+}
 
 commandsShortcutsClose.addEventListener("click", () => {
   commandsShortcutsDialog.close();
@@ -437,6 +443,13 @@ document.addEventListener("keydown", (event) => {
 
   event.preventDefault();
   toggleTheme();
+});
+
+document.addEventListener("keydown", (event) => {
+  if (!isKeyboardShortcutsShortcut(event)) return;
+
+  event.preventDefault();
+  openKeyboardShortcutsDialog();
 });
 
 document.addEventListener("keydown", (event) => {
@@ -1007,6 +1020,18 @@ function isNightModeShortcut(event) {
     !event.shiftKey &&
     !event.repeat &&
     event.key.toLowerCase() === "n" &&
+    !isEditableTarget(event.target)
+  );
+}
+
+function isKeyboardShortcutsShortcut(event) {
+  return (
+    event.metaKey &&
+    !event.ctrlKey &&
+    !event.altKey &&
+    !event.shiftKey &&
+    !event.repeat &&
+    event.key.toLowerCase() === "k" &&
     !isEditableTarget(event.target)
   );
 }

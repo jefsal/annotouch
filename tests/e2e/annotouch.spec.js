@@ -139,7 +139,7 @@ test.describe("Annotouch browser QA", () => {
     );
   });
 
-  test("lists all shortcut commands in their configured groups and order", async ({
+  test("lists all keyboard shortcuts in their configured groups and order", async ({
     page,
   }) => {
     const settingsButton = page.getByRole("button", { name: "settings" });
@@ -148,7 +148,7 @@ test.describe("Annotouch browser QA", () => {
     await settingsButton.click();
 
     const viewerButton = page.getByRole("button", {
-      name: "view commands & shortcuts",
+      name: "view keyboard shortcuts",
     });
     await expect(viewerButton).toBeVisible();
     await expect(viewerButton).toHaveAttribute("aria-haspopup", "dialog");
@@ -156,10 +156,15 @@ test.describe("Annotouch browser QA", () => {
       "aria-controls",
       "commands-shortcuts-dialog"
     );
+    await expect(viewerButton).toHaveAttribute("aria-keyshortcuts", "Meta+K");
+    await expect(viewerButton).toHaveAttribute(
+      "title",
+      "view keyboard shortcuts (⌘ k)"
+    );
 
     await viewerButton.click();
 
-    const dialog = page.getByRole("dialog", { name: "commands & shortcuts" });
+    const dialog = page.getByRole("dialog", { name: "keyboard shortcuts" });
     await expect(dialog).toBeVisible();
     await expect(settingsPanel).toBeHidden();
     await expect(settingsButton).toHaveAttribute("aria-expanded", "false");
@@ -217,19 +222,33 @@ test.describe("Annotouch browser QA", () => {
     await expect(dialog.locator(".commands-shortcuts-row button")).toHaveCount(0);
   });
 
+  test("opens keyboard shortcuts with command k", async ({ page }) => {
+    const settingsButton = page.getByRole("button", { name: "settings" });
+    const settingsPanel = page.getByRole("dialog", { name: "settings" });
+    const dialog = page.getByRole("dialog", { name: "keyboard shortcuts" });
+
+    await settingsButton.click();
+    await expect(settingsPanel).toBeVisible();
+    await page.keyboard.press("Meta+k");
+
+    await expect(dialog).toBeVisible();
+    await expect(settingsPanel).toBeHidden();
+    await expect(settingsButton).toHaveAttribute("aria-expanded", "false");
+  });
+
   test("closes the shortcuts viewer by button, Escape, and backdrop and restores settings focus", async ({
     page,
   }) => {
     const settingsButton = page.getByRole("button", { name: "settings" });
-    const dialog = page.getByRole("dialog", { name: "commands & shortcuts" });
+    const dialog = page.getByRole("dialog", { name: "keyboard shortcuts" });
     const closeButton = page.getByRole("button", {
-      name: "close commands & shortcuts",
+      name: "close keyboard shortcuts",
     });
 
     const openViewer = async () => {
       await settingsButton.click();
       await page
-        .getByRole("button", { name: "view commands & shortcuts" })
+        .getByRole("button", { name: "view keyboard shortcuts" })
         .click();
       await expect(dialog).toBeVisible();
     };
@@ -263,12 +282,12 @@ test.describe("Annotouch browser QA", () => {
     await page.getByRole("button", { name: "settings" }).click();
 
     const viewerButton = page.getByRole("button", {
-      name: "view commands & shortcuts",
+      name: "view keyboard shortcuts",
     });
     await expect(viewerButton).toHaveCSS("border-top-style", "none");
     await viewerButton.click();
 
-    const dialog = page.getByRole("dialog", { name: "commands & shortcuts" });
+    const dialog = page.getByRole("dialog", { name: "keyboard shortcuts" });
     const shortcutKeys = dialog.locator("kbd");
 
     await expect(dialog).toHaveCSS("background-color", "rgb(23, 25, 35)");
@@ -280,7 +299,7 @@ test.describe("Annotouch browser QA", () => {
       "rgb(170, 178, 192)"
     );
     await expect(
-      page.getByRole("button", { name: "close commands & shortcuts" })
+      page.getByRole("button", { name: "close keyboard shortcuts" })
     ).toHaveCSS("border-top-style", "none");
 
     const displayedText = await dialog.locator(".commands-shortcuts-content")
@@ -303,7 +322,7 @@ test.describe("Annotouch browser QA", () => {
 
     await page.getByRole("button", { name: "settings" }).click();
     await page
-      .getByRole("button", { name: "view commands & shortcuts" })
+      .getByRole("button", { name: "view keyboard shortcuts" })
       .click();
 
     const selectedColor = page.getByRole("button", { name: "red pen" });
@@ -333,10 +352,10 @@ test.describe("Annotouch browser QA", () => {
     await page.setViewportSize({ width: 320, height: 360 });
     await page.getByRole("button", { name: "settings" }).click();
     await page
-      .getByRole("button", { name: "view commands & shortcuts" })
+      .getByRole("button", { name: "view keyboard shortcuts" })
       .click();
 
-    const dialog = page.getByRole("dialog", { name: "commands & shortcuts" });
+    const dialog = page.getByRole("dialog", { name: "keyboard shortcuts" });
     const content = dialog.locator(".commands-shortcuts-content");
     const dialogBox = await dialog.boundingBox();
 
