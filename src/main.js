@@ -841,6 +841,10 @@ function renderColorControls() {
 function renderCommandsShortcuts() {
   const groups = [
     {
+      label: "general",
+      commands: [{ label: "view keyboard shortcuts", keys: ["⌘", "k"] }],
+    },
+    {
       label: "tools",
       commands: [
         { label: "draw", keys: ["space"] },

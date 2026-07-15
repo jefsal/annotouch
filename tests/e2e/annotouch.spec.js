@@ -187,6 +187,12 @@ test.describe("Annotouch browser QA", () => {
 
     expect(groups).toEqual([
       {
+        label: "general",
+        rows: [
+          { command: "view keyboard shortcuts", keys: ["⌘", "k"] },
+        ],
+      },
+      {
         label: "tools",
         rows: [
           { command: "draw", keys: ["space"] },
@@ -218,7 +224,7 @@ test.describe("Annotouch browser QA", () => {
         ],
       },
     ]);
-    await expect(dialog.locator(".commands-shortcuts-row")).toHaveCount(10);
+    await expect(dialog.locator(".commands-shortcuts-row")).toHaveCount(11);
     await expect(dialog.locator(".commands-shortcuts-row button")).toHaveCount(0);
   });
 
@@ -292,7 +298,7 @@ test.describe("Annotouch browser QA", () => {
 
     await expect(dialog).toHaveCSS("background-color", "rgb(23, 25, 35)");
     await expect(dialog).toHaveCSS("color", "rgb(243, 244, 246)");
-    await expect(shortcutKeys).toHaveCount(18);
+    await expect(shortcutKeys).toHaveCount(20);
     await expect(shortcutKeys.first()).toHaveCSS("border-top-style", "none");
     await expect(shortcutKeys.first()).toHaveCSS(
       "color",
