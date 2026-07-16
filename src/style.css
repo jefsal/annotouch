@@ -486,6 +486,28 @@ button:disabled,
   padding: 4px 18px 18px;
   overflow-y: auto;
   overscroll-behavior: contain;
+  scrollbar-color: rgba(104, 115, 134, 0.18) transparent;
+  scrollbar-width: thin;
+}
+
+.commands-shortcuts-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.commands-shortcuts-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.commands-shortcuts-content::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: rgba(104, 115, 134, 0.18);
+  background-clip: content-box;
+}
+
+.commands-shortcuts-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(104, 115, 134, 0.28);
+  background-clip: content-box;
 }
 
 .commands-shortcuts-group h3 {
@@ -593,6 +615,20 @@ html[data-theme="night"] .commands-shortcuts-list dt {
 html[data-theme="night"] .commands-shortcuts-list kbd {
   background: #242936;
   color: #aab2c0;
+}
+
+html[data-theme="night"] .commands-shortcuts-content {
+  scrollbar-color: rgba(170, 178, 192, 0.16) transparent;
+}
+
+html[data-theme="night"] .commands-shortcuts-content::-webkit-scrollbar-thumb {
+  background: rgba(170, 178, 192, 0.16);
+  background-clip: content-box;
+}
+
+html[data-theme="night"] .commands-shortcuts-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(170, 178, 192, 0.25);
+  background-clip: content-box;
 }
 
 .workspace {
