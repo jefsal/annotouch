@@ -313,6 +313,41 @@ test.describe("Annotouch browser QA", () => {
     expect(displayedText).toBe(displayedText.toLowerCase());
   });
 
+  test("uses faint shortcut viewer scrollbars in both themes", async ({
+    page,
+  }) => {
+    const openViewer = async () => {
+      await page.getByRole("button", { name: "settings" }).click();
+      await page
+        .getByRole("button", { name: "view keyboard shortcuts" })
+        .click();
+    };
+
+    await page.evaluate(() => {
+      localStorage.setItem("annotouch-theme", "light");
+    });
+    await page.reload();
+    await openViewer();
+
+    const content = page.locator(".commands-shortcuts-content");
+    await expect(content).toHaveCSS(
+      "scrollbar-color",
+      "rgba(104, 115, 134, 0.18) rgba(0, 0, 0, 0)"
+    );
+
+    await page.keyboard.press("Escape");
+    await page.evaluate(() => {
+      localStorage.setItem("annotouch-theme", "night");
+    });
+    await page.reload();
+    await openViewer();
+
+    await expect(page.locator(".commands-shortcuts-content")).toHaveCSS(
+      "scrollbar-color",
+      "rgba(170, 178, 192, 0.16) rgba(0, 0, 0, 0)"
+    );
+  });
+
   test("suppresses application shortcuts while the viewer is open", async ({
     page,
   }, testInfo) => {
