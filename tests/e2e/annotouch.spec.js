@@ -82,6 +82,31 @@ test.describe("Annotouch browser QA", () => {
     );
   });
 
+  test("toggles night mode with N outside editable controls", async ({
+    page,
+  }) => {
+    await page.evaluate(() => {
+      localStorage.setItem("annotouch-theme", "light");
+    });
+    await page.reload();
+
+    const themeToggle = page.locator("#theme-toggle");
+
+    await expect(themeToggle).toHaveAttribute("aria-keyshortcuts", "N");
+    await page.keyboard.press("n");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "night");
+    await expect(themeToggle).toHaveAttribute("aria-pressed", "true");
+
+    await page.locator("#pdf-input").focus();
+    await page.keyboard.press("n");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "night");
+
+    await page.evaluate(() => document.activeElement?.blur());
+    await page.keyboard.press("N");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+    await expect(themeToggle).toHaveAttribute("aria-pressed", "false");
+  });
+
   test("opens and closes the settings overlay", async ({ page }) => {
     const settingsButton = page.getByRole("button", { name: "settings" });
     const settingsPanel = page.getByRole("dialog", { name: "settings" });
@@ -210,11 +235,11 @@ test.describe("Annotouch browser QA", () => {
     await expect(page.getByRole("button", { name: "zoom in" })).toBeEnabled();
 
     const zoomControlsBox = await page.locator(".zoom-controls").boundingBox();
-    const widthSelectBox = await page.locator("#width-select").boundingBox();
+    const widthButtonBox = await page.locator("#width-button").boundingBox();
 
     expect(zoomControlsBox).not.toBeNull();
-    expect(widthSelectBox).not.toBeNull();
-    expect(zoomControlsBox.width).toBeCloseTo(widthSelectBox.width / 2, 0);
+    expect(widthButtonBox).not.toBeNull();
+    expect(zoomControlsBox.width).toBeCloseTo(widthButtonBox.width / 2, 0);
 
     await page.getByRole("button", { name: "zoom out" }).click();
 
@@ -656,8 +681,7 @@ test.describe("Annotouch browser QA", () => {
       await expect(colorButton).toHaveAttribute("aria-pressed", "true");
     }
 
-    const widthSelect = page.getByRole("combobox", { name: "stroke width" });
-    await widthSelect.focus();
+    await page.locator("#pdf-input").focus();
     await page.keyboard.press("1");
     await expect(
       page.getByRole("button", { name: "white pen" })
@@ -683,7 +707,7 @@ test.describe("Annotouch browser QA", () => {
     await expectCanvasHasColor(annotationCanvas, PEN_COLORS[1]);
     await expectCanvasHasColor(annotationCanvas, PEN_COLORS[2]);
 
-    await page.getByRole("combobox", { name: "stroke width" }).focus();
+    await page.locator("#pdf-input").focus();
     await moveWithEraserKey(page, annotationCanvas, PEN_COLORS[1].y, {
       expectActive: false,
     });
@@ -740,23 +764,33 @@ test.describe("Annotouch browser QA", () => {
 
     const annotationCanvas = page.locator(".annotation-canvas").first();
     const widthOptions = [
-      { label: "small", value: "2.5", y: 140 },
+      { label: "small", value: "2", y: 140 },
       { label: "med", value: "5", y: 180 },
       { label: "large", value: "10", y: 220 },
     ];
     const measuredInk = [];
-    const widthSelect = page.getByRole("combobox", { name: "stroke width" });
+    const widthButton = page.locator("#width-button");
 
-    await expect(widthSelect).toHaveValue("2.5");
+    await expect(widthButton).toHaveRole("button");
 
     for (const option of widthOptions) {
-      await widthSelect.selectOption({ label: option.label });
-      await expect(widthSelect).toHaveValue(option.value);
+      await expect(widthButton).toHaveText(option.label);
+      await expect(widthButton).toHaveAttribute(
+        "aria-label",
+        `stroke width: ${option.label}`
+      );
+      await expect(widthButton).toHaveAttribute(
+        "data-width-value",
+        option.value
+      );
       await drawStroke(page, annotationCanvas, option.y);
       measuredInk.push(await measureStrokeInk(annotationCanvas, option.y));
-      await page.getByRole("button", { name: "undo" }).click();
+      await page.keyboard.press("Control+Z");
       await expectCanvasToBeEmpty(annotationCanvas);
+      await widthButton.click();
     }
+
+    await expect(widthButton).toHaveText("small");
 
     expect(measuredInk[1]).toBeGreaterThan(measuredInk[0] * 1.6);
     expect(measuredInk[2]).toBeGreaterThan(measuredInk[1] * 1.6);

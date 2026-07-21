@@ -87,8 +87,7 @@ select {
 }
 
 .file-picker,
-button,
-.width-select {
+button {
   height: 36px;
   border: 1px solid #c8cfda;
   border-radius: 4px;
@@ -214,10 +213,9 @@ button {
   outline-offset: 2px;
 }
 
-.width-select {
+.width-button {
   min-width: 4rem;
   padding: 0 2px;
-  cursor: pointer;
   font-size: 11px;
 }
 
@@ -232,8 +230,7 @@ button {
 }
 
 button:hover:not(:disabled),
-.file-picker:hover,
-.width-select:hover {
+.file-picker:hover {
   border-color: #8a93a3;
   background: #f8fafc;
 }
@@ -250,7 +247,6 @@ button:hover:not(:disabled),
 
 button:focus-visible,
 .file-picker:focus-visible,
-.width-select:focus-visible,
 .file-input:focus-visible + .file-picker {
   outline: 3px solid rgba(31, 111, 235, 0.24);
   outline-offset: 2px;
@@ -580,7 +576,7 @@ button:disabled,
     outline-offset: 1px;
   }
 
-  .width-select {
+  .width-button {
     max-height: 2.5rem;
     height: 2.2rem;
     min-width: 3rem;

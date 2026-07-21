@@ -63,8 +63,9 @@ app.innerHTML = `
           role="button"
           tabindex="0"
           aria-label="toggle night mode"
+          aria-keyshortcuts="N"
           aria-pressed="${theme === THEMES.NIGHT}"
-          title="toggle night mode"
+          title="toggle night mode (N)"
         >annotouch</div>
       </div>
       <input id="pdf-input" class="file-input" type="file" accept="application/pdf" />
@@ -82,7 +83,7 @@ app.innerHTML = `
           aria-label="pen color"
         ></div>
       </div>
-        <select id="width-select" class="width-select" aria-label="stroke width"></select>
+        <button id="width-button" class="width-button" type="button"></button>
 
         <div class="history-controls" role="group" aria-label="history">
           <button id="undo-button" class="history-button" type="button" disabled title="undo">undo</button>
@@ -153,7 +154,7 @@ const emptyState = document.querySelector("#empty-state");
 const workspace = document.querySelector(".workspace");
 const pagesContainer = document.querySelector("#pages-container");
 const colorControls = document.querySelector("#color-controls");
-const widthSelect = document.querySelector("#width-select");
+const widthButton = document.querySelector("#width-button");
 const documentSummary = document.querySelector("#document-summary");
 const documentNameEl = document.querySelector("#document-name");
 const documentCountEl = document.querySelector("#document-count");
@@ -189,7 +190,7 @@ const annotator = createAnnotator({
 });
 
 renderColorControls();
-renderWidthControls();
+renderWidthControl();
 updateThemeToggle();
 updateNightCompensation();
 
@@ -370,6 +371,13 @@ document.addEventListener("keydown", (event) => {
   event.preventDefault();
   penSettings.color = color.value;
   updateSelectedColor();
+});
+
+document.addEventListener("keydown", (event) => {
+  if (!isNightModeShortcut(event)) return;
+
+  event.preventDefault();
+  toggleTheme();
 });
 
 document.addEventListener("keydown", (event) => {
@@ -759,20 +767,31 @@ function updateSelectedColor() {
   }
 }
 
-function renderWidthControls() {
-  for (const width of PEN_WIDTHS) {
-    const option = document.createElement("option");
+function renderWidthControl() {
+  updateWidthButton();
+  widthButton.addEventListener("click", () => {
+    const currentIndex = PEN_WIDTHS.findIndex(
+      (width) => width.value === penSettings.width
+    );
+    const nextIndex = (currentIndex + 1) % PEN_WIDTHS.length;
 
-    option.value = String(width.value);
-    option.textContent = width.label;
-    widthSelect.append(option);
-  }
-
-  widthSelect.value = String(penSettings.width);
-  widthSelect.addEventListener("change", () => {
-    penSettings.width = Number(widthSelect.value);
-    widthSelect.blur();
+    penSettings.width = PEN_WIDTHS[nextIndex].value;
+    updateWidthButton();
+    widthButton.blur();
   });
+}
+
+function updateWidthButton() {
+  const currentWidth =
+    PEN_WIDTHS.find((width) => width.value === penSettings.width) ??
+    PEN_WIDTHS[0];
+  const currentIndex = PEN_WIDTHS.indexOf(currentWidth);
+  const nextWidth = PEN_WIDTHS[(currentIndex + 1) % PEN_WIDTHS.length];
+
+  widthButton.textContent = currentWidth.label;
+  widthButton.dataset.widthValue = String(currentWidth.value);
+  widthButton.setAttribute("aria-label", `stroke width: ${currentWidth.label}`);
+  widthButton.title = `stroke width: ${currentWidth.label}; click for ${nextWidth.label}`;
 }
 
 function handleFileDrag(event) {
@@ -834,6 +853,18 @@ function getColorShortcut(event) {
   }
 
   return PEN_COLORS[shortcutIndex] ?? null;
+}
+
+function isNightModeShortcut(event) {
+  return (
+    !event.metaKey &&
+    !event.ctrlKey &&
+    !event.altKey &&
+    !event.shiftKey &&
+    !event.repeat &&
+    event.key.toLowerCase() === "n" &&
+    !isEditableTarget(event.target)
+  );
 }
 
 function isEditableTarget(target) {
@@ -940,7 +971,9 @@ function updateThemeToggle() {
   const isNight = theme === THEMES.NIGHT;
 
   themeToggle.setAttribute("aria-pressed", String(isNight));
-  themeToggle.title = isNight ? "switch to light mode" : "toggle night mode";
+  themeToggle.title = isNight
+    ? "switch to light mode (N)"
+    : "toggle night mode (N)";
 }
 
 function toggleTheme() {
