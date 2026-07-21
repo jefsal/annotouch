@@ -139,6 +139,18 @@ app.innerHTML = `
         />
         <span>show undo/redo</span>
       </label>
+      <section class="keyboard-shortcuts" aria-labelledby="keyboard-shortcuts-title">
+        <h2 id="keyboard-shortcuts-title">keyboard shortcuts</h2>
+        <dl>
+          <div><dt>draw</dt><dd><kbd>space</kbd></dd></div>
+          <div><dt>erase</dt><dd><kbd>E</kbd></dd></div>
+          <div><dt>pen colors</dt><dd><kbd>1–5</kbd></dd></div>
+          <div><dt>stroke width</dt><dd><kbd>W</kbd></dd></div>
+          <div><dt>night mode</dt><dd><kbd>N</kbd></dd></div>
+          <div><dt>undo</dt><dd><kbd>Ctrl/⌘ Z</kbd></dd></div>
+          <div><dt>redo</dt><dd><kbd>Ctrl/⌘ Shift Z</kbd></dd></div>
+        </dl>
+      </section>
     </div>
   </main>
 `;
@@ -371,6 +383,13 @@ document.addEventListener("keydown", (event) => {
   event.preventDefault();
   penSettings.color = color.value;
   updateSelectedColor();
+});
+
+document.addEventListener("keydown", (event) => {
+  if (!isWidthShortcut(event)) return;
+
+  event.preventDefault();
+  cyclePenWidth();
 });
 
 document.addEventListener("keydown", (event) => {
@@ -769,16 +788,19 @@ function updateSelectedColor() {
 
 function renderWidthControl() {
   updateWidthButton();
-  widthButton.addEventListener("click", () => {
-    const currentIndex = PEN_WIDTHS.findIndex(
-      (width) => width.value === penSettings.width
-    );
-    const nextIndex = (currentIndex + 1) % PEN_WIDTHS.length;
+  widthButton.setAttribute("aria-keyshortcuts", "W");
+  widthButton.addEventListener("click", cyclePenWidth);
+}
 
-    penSettings.width = PEN_WIDTHS[nextIndex].value;
-    updateWidthButton();
-    widthButton.blur();
-  });
+function cyclePenWidth() {
+  const currentIndex = PEN_WIDTHS.findIndex(
+    (width) => width.value === penSettings.width
+  );
+  const nextIndex = (currentIndex + 1) % PEN_WIDTHS.length;
+
+  penSettings.width = PEN_WIDTHS[nextIndex].value;
+  updateWidthButton();
+  widthButton.blur();
 }
 
 function updateWidthButton() {
@@ -791,7 +813,7 @@ function updateWidthButton() {
   widthButton.textContent = currentWidth.label;
   widthButton.dataset.widthValue = String(currentWidth.value);
   widthButton.setAttribute("aria-label", `stroke width: ${currentWidth.label}`);
-  widthButton.title = `stroke width: ${currentWidth.label}; click for ${nextWidth.label}`;
+  widthButton.title = `stroke width: ${currentWidth.label}; click or press W for ${nextWidth.label}`;
 }
 
 function handleFileDrag(event) {
@@ -863,6 +885,18 @@ function isNightModeShortcut(event) {
     !event.shiftKey &&
     !event.repeat &&
     event.key.toLowerCase() === "n" &&
+    !isEditableTarget(event.target)
+  );
+}
+
+function isWidthShortcut(event) {
+  return (
+    !event.metaKey &&
+    !event.ctrlKey &&
+    !event.altKey &&
+    !event.shiftKey &&
+    !event.repeat &&
+    event.key.toLowerCase() === "w" &&
     !isEditableTarget(event.target)
   );
 }

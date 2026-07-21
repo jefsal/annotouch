@@ -688,6 +688,35 @@ test.describe("Annotouch browser QA", () => {
     ).toHaveAttribute("aria-pressed", "true");
   });
 
+  test("cycles stroke width with W and lists the shortcut", async ({ page }) => {
+    const widthButton = page.locator("#width-button");
+
+    await expect(widthButton).toHaveAttribute("aria-keyshortcuts", "W");
+    await expect(widthButton).toHaveText("small");
+
+    await page.keyboard.press("w");
+    await expect(widthButton).toHaveText("med");
+    await page.keyboard.press("W");
+    await expect(widthButton).toHaveText("large");
+    await page.keyboard.press("w");
+    await expect(widthButton).toHaveText("small");
+
+    await page.locator("#pdf-input").focus();
+    await page.keyboard.press("w");
+    await expect(widthButton).toHaveText("small");
+
+    await page.getByRole("button", { name: "settings" }).click();
+    const shortcuts = page.locator(".keyboard-shortcuts");
+
+    await expect(shortcuts.getByRole("heading")).toHaveText(
+      "keyboard shortcuts"
+    );
+    await expect(
+      shortcuts.locator("dt", { hasText: "stroke width" })
+    ).toBeVisible();
+    await expect(shortcuts.locator("kbd", { hasText: "W" })).toBeVisible();
+  });
+
   test("erases whole strokes with E and supports undo, redo, and export", async ({
     page,
   }, testInfo) => {

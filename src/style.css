@@ -214,9 +214,8 @@ button {
 }
 
 .width-button {
-  min-width: 4rem;
-  padding: 0 2px;
-  font-size: 11px;
+  min-width: 3rem;
+  font-size: 12px;
 }
 
 .export-button {
@@ -407,6 +406,51 @@ button:disabled,
   accent-color: #1f6feb;
 }
 
+.keyboard-shortcuts {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #e3e7ee;
+  color: #242936;
+}
+
+.keyboard-shortcuts h2 {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.keyboard-shortcuts dl {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+
+.keyboard-shortcuts dl > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.keyboard-shortcuts dt,
+.keyboard-shortcuts dd {
+  margin: 0;
+  font-size: 12px;
+}
+
+.keyboard-shortcuts kbd {
+  display: inline-block;
+  padding: 1px 5px;
+  border: 1px solid #c8cfda;
+  border-radius: 3px;
+  background: #f8fafc;
+  box-shadow: 0 1px 0 #c8cfda;
+  color: #171923;
+  font-family: inherit;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
 .workspace {
   min-height: 0;
   overflow: auto;
@@ -574,14 +618,6 @@ button:disabled,
 
   .color-swatch.is-selected {
     outline-offset: 1px;
-  }
-
-  .width-button {
-    max-height: 2.5rem;
-    height: 2.2rem;
-    min-width: 3rem;
-    padding: 0 2px;
-    font-size: 11px;
   }
 
   .history-controls,
