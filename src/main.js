@@ -151,7 +151,33 @@ app.innerHTML = `
           <div><dt>redo</dt><dd><kbd>Ctrl/⌘ Shift Z</kbd></dd></div>
         </dl>
       </section>
+      <button
+        id="commands-shortcuts-button"
+        class="settings-reference-button"
+        type="button"
+        aria-haspopup="dialog"
+        aria-controls="commands-shortcuts-dialog"
+        aria-keyshortcuts="Meta+K"
+        title="view keyboard shortcuts (⌘ k)"
+      >view keyboard shortcuts</button>
     </div>
+    <dialog
+      id="commands-shortcuts-dialog"
+      class="commands-shortcuts-dialog"
+      aria-labelledby="commands-shortcuts-title"
+    >
+      <div class="commands-shortcuts-header">
+        <h2 id="commands-shortcuts-title">keyboard shortcuts</h2>
+        <button
+          id="commands-shortcuts-close"
+          class="commands-shortcuts-close"
+          type="button"
+          aria-label="close keyboard shortcuts"
+          autofocus
+        >&times;</button>
+      </div>
+      <div id="commands-shortcuts-content" class="commands-shortcuts-content"></div>
+    </dialog>
   </main>
 `;
 
@@ -175,6 +201,18 @@ const settingsButton = document.querySelector("#settings-button");
 const settingsPanel = document.querySelector("#settings-panel");
 const showHistoryControlsInput = document.querySelector(
   "#show-history-controls"
+);
+const commandsShortcutsButton = document.querySelector(
+  "#commands-shortcuts-button"
+);
+const commandsShortcutsDialog = document.querySelector(
+  "#commands-shortcuts-dialog"
+);
+const commandsShortcutsClose = document.querySelector(
+  "#commands-shortcuts-close"
+);
+const commandsShortcutsContent = document.querySelector(
+  "#commands-shortcuts-content"
 );
 
 let originalPdfBytes = null;
@@ -203,6 +241,7 @@ const annotator = createAnnotator({
 
 renderColorControls();
 renderWidthControl();
+renderCommandsShortcuts();
 updateThemeToggle();
 updateNightCompensation();
 
@@ -220,6 +259,32 @@ themeToggle.addEventListener("keydown", (event) => {
 settingsButton.addEventListener("click", () => {
   setSettingsPanelOpen(settingsPanel.hidden);
 });
+
+commandsShortcutsButton.addEventListener("click", () => {
+  openKeyboardShortcutsDialog();
+});
+
+function openKeyboardShortcutsDialog() {
+  setSettingsPanelOpen(false);
+  commandsShortcutsDialog.showModal();
+}
+
+commandsShortcutsClose.addEventListener("click", () => {
+  commandsShortcutsDialog.close();
+});
+
+commandsShortcutsDialog.addEventListener("click", (event) => {
+  if (event.target === commandsShortcutsDialog) {
+    commandsShortcutsDialog.close();
+  }
+});
+
+commandsShortcutsDialog.addEventListener("close", () => {
+  settingsButton.focus();
+});
+
+document.addEventListener("keydown", suppressShortcutsWhileDialogOpen, true);
+document.addEventListener("keyup", suppressShortcutsWhileDialogOpen, true);
 
 showHistoryControlsInput.addEventListener("change", () => {
   toolbarSettings = {
@@ -397,6 +462,13 @@ document.addEventListener("keydown", (event) => {
 
   event.preventDefault();
   toggleTheme();
+});
+
+document.addEventListener("keydown", (event) => {
+  if (!isKeyboardShortcutsShortcut(event)) return;
+
+  event.preventDefault();
+  openKeyboardShortcutsDialog();
 });
 
 document.addEventListener("keydown", (event) => {
@@ -733,6 +805,13 @@ function setSettingsPanelOpen(isOpen) {
   settingsButton.setAttribute("aria-expanded", String(isOpen));
 }
 
+function suppressShortcutsWhileDialogOpen(event) {
+  if (!commandsShortcutsDialog.open || event.key === "Escape") return;
+
+  event.preventDefault();
+  event.stopImmediatePropagation();
+}
+
 function isSettingsOutsideTarget(target) {
   if (!(target instanceof Node)) {
     return true;
@@ -775,6 +854,99 @@ function renderColorControls() {
     });
 
     colorControls.append(button);
+  });
+}
+
+function renderCommandsShortcuts() {
+  const groups = [
+    {
+      label: "general",
+      commands: [{ label: "view keyboard shortcuts", keys: ["⌘", "k"] }],
+    },
+    {
+      label: "tools",
+      commands: [
+        { label: "draw", keys: ["space"] },
+        { label: "erase", keys: ["e"] },
+      ],
+    },
+    {
+      label: "colors",
+      commands: PEN_COLORS.map((color, index) => ({
+        label: color.label,
+        keys: [String(index + 1)],
+      })),
+    },
+    {
+      label: "appearance",
+      commands: [{ label: "toggle night mode", keys: ["n"] }],
+    },
+    {
+      label: "history",
+      commands: [
+        { label: "undo", keys: ["⌘", "z"], alternateKeys: ["ctrl", "z"] },
+        {
+          label: "redo",
+          keys: ["⌘", "shift", "z"],
+          alternateKeys: ["ctrl", "shift", "z"],
+        },
+      ],
+    },
+  ];
+
+  const fragment = document.createDocumentFragment();
+
+  for (const group of groups) {
+    const section = document.createElement("section");
+    const heading = document.createElement("h3");
+    const list = document.createElement("dl");
+
+    section.className = "commands-shortcuts-group";
+    heading.textContent = group.label;
+    list.className = "commands-shortcuts-list";
+
+    for (const command of group.commands) {
+      const row = document.createElement("div");
+      const term = document.createElement("dt");
+      const details = document.createElement("dd");
+
+      row.className = "commands-shortcuts-row";
+      term.textContent = command.label;
+      appendShortcutKeys(details, command.keys);
+
+      if (command.alternateKeys) {
+        const separator = document.createElement("span");
+        separator.className = "shortcut-separator";
+        separator.textContent = "/";
+        separator.setAttribute("aria-hidden", "true");
+        details.append(separator);
+        appendShortcutKeys(details, command.alternateKeys);
+      }
+
+      row.append(term, details);
+      list.append(row);
+    }
+
+    section.append(heading, list);
+    fragment.append(section);
+  }
+
+  commandsShortcutsContent.append(fragment);
+}
+
+function appendShortcutKeys(container, keys) {
+  keys.forEach((key, index) => {
+    if (index > 0) {
+      const separator = document.createElement("span");
+      separator.className = "key-separator";
+      separator.textContent = "+";
+      separator.setAttribute("aria-hidden", "true");
+      container.append(separator);
+    }
+
+    const keyElement = document.createElement("kbd");
+    keyElement.textContent = key;
+    container.append(keyElement);
   });
 }
 
@@ -892,12 +1064,20 @@ function isNightModeShortcut(event) {
 function isWidthShortcut(event) {
   return (
     !event.metaKey &&
+    event.key.toLowerCase() === "w" &&
+    !isEditableTarget(event.target)
+  );
+}
+
+function isKeyboardShortcutsShortcut(event) {
+  return (
+    event.metaKey &&
     !event.ctrlKey &&
     !event.altKey &&
     !event.shiftKey &&
     !event.repeat &&
-    event.key.toLowerCase() === "w" &&
-    !isEditableTarget(event.target)
+    event.key.toLowerCase() === "k" &&
+    isEditableTarget(event.target)
   );
 }
 
