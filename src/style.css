@@ -406,6 +406,50 @@ button:disabled,
   accent-color: #1f6feb;
 }
 
+.keyboard-shortcuts {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #e3e7ee;
+  color: #242936;
+}
+
+.keyboard-shortcuts h2 {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.keyboard-shortcuts dl {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+}
+
+.keyboard-shortcuts dl > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.keyboard-shortcuts dt,
+.keyboard-shortcuts dd {
+  margin: 0;
+  font-size: 12px;
+}
+
+.keyboard-shortcuts kbd {
+  display: inline-block;
+  padding: 1px 5px;
+  border: 1px solid #c8cfda;
+  border-radius: 3px;
+  background: #f8fafc;
+  box-shadow: 0 1px 0 #c8cfda;
+  color: #171923;
+  font-family: inherit;
+  font-size: 11px;
+  white-space: nowrap;
+}
 .settings-reference-button {
   width: 100%;
   height: auto;
@@ -747,35 +791,6 @@ html[data-theme="night"] .commands-shortcuts-content::-webkit-scrollbar-thumb:ho
   z-index: 2;
   cursor: crosshair;
   touch-action: none;
-}
-
-.is-text-mode .annotation-canvas {
-  cursor: text;
-}
-
-.text-editor {
-  position: absolute;
-  z-index: 3;
-  min-width: 0;
-  min-height: 0;
-  margin: 0;
-  overflow: auto;
-  border: 1px solid rgba(29, 78, 216, 0.9);
-  border-radius: 3px;
-  outline: 2px solid rgba(29, 78, 216, 0.2);
-  outline-offset: 1px;
-  background: rgba(107, 114, 128, 0.22);
-  box-shadow: 0 1px 4px rgba(16, 24, 40, 0.18);
-  font-family: Helvetica, Arial, sans-serif;
-  font-weight: 400;
-  letter-spacing: normal;
-  white-space: pre;
-  resize: none;
-  tab-size: 2;
-}
-
-.text-editor::selection {
-  background: rgba(37, 99, 235, 0.28);
 }
 
 @media (max-width: 720px) {
