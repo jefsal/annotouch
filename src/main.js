@@ -1,12 +1,15 @@
 import "./style.css";
-import { exportAnnotatedPdf } from "./exporter.js";
+import {
+  exportAnnotatedPdf,
+  UnsupportedTextCharacterError,
+} from "./exporter.js";
 import { createAnnotator } from "./annotator.js";
 import {
   getPdfPageViewport,
   loadPdfDocument,
   renderPdfPage,
 } from "./pdfViewer.js";
-import { createStrokeStore } from "./strokeStore.js";
+import { createAnnotationStore } from "./annotationStore.js";
 
 const MAX_ANNOTATABLE_PAGES = 200;
 const DEFAULT_RENDER_SCALE = 1.5;
@@ -139,18 +142,6 @@ app.innerHTML = `
         />
         <span>show undo/redo</span>
       </label>
-      <section class="keyboard-shortcuts" aria-labelledby="keyboard-shortcuts-title">
-        <h2 id="keyboard-shortcuts-title">keyboard shortcuts</h2>
-        <dl>
-          <div><dt>draw</dt><dd><kbd>space</kbd></dd></div>
-          <div><dt>erase</dt><dd><kbd>E</kbd></dd></div>
-          <div><dt>pen colors</dt><dd><kbd>1–5</kbd></dd></div>
-          <div><dt>stroke width</dt><dd><kbd>W</kbd></dd></div>
-          <div><dt>night mode</dt><dd><kbd>N</kbd></dd></div>
-          <div><dt>undo</dt><dd><kbd>Ctrl/⌘ Z</kbd></dd></div>
-          <div><dt>redo</dt><dd><kbd>Ctrl/⌘ Shift Z</kbd></dd></div>
-        </dl>
-      </section>
       <button
         id="commands-shortcuts-button"
         class="settings-reference-button"
@@ -225,18 +216,21 @@ let annotatablePageCount = 0;
 let pageObserver = null;
 let documentVersion = 0;
 let hasBeforeUnloadHandler = false;
+let hasTextDraft = false;
 const pageViewports = new Map();
 const pageViews = new Map();
 const penSettings = { ...DEFAULT_PEN_SETTINGS };
 
-const strokeStore = createStrokeStore({
+const annotationStore = createAnnotationStore({
   onChange: updateControls,
 });
 
 const annotator = createAnnotator({
   getPenSettings,
-  strokeStore,
+  annotationStore,
   statusEl,
+  onTextDraftChange: updateTextDraftState,
+  onTextModeChange: updateTextModeControl,
 });
 
 renderColorControls();
@@ -389,11 +383,11 @@ async function openPdfFile(file) {
 }
 
 undoButton?.addEventListener("click", () => {
-  strokeStore.undo();
+  annotationStore.undo();
 });
 
 redoButton?.addEventListener("click", () => {
-  strokeStore.redo();
+  annotationStore.redo();
 });
 
 zoomOutButton.addEventListener("click", () => {
@@ -414,15 +408,19 @@ exportButton.addEventListener("click", async () => {
   try {
     await exportAnnotatedPdf({
       originalBytes: originalPdfBytes,
-      strokesByPage: strokeStore.getStrokesByPage(),
+      annotationsByPage: annotationStore.getAnnotationsByPage(),
       pageViewports,
       scale: renderScale,
       sourceFileName: loadedFileName,
     });
     setStatus("exported");
   } catch (error) {
-    console.error(error);
-    setStatus("export failed");
+    if (error instanceof UnsupportedTextCharacterError) {
+      setStatus(error.message);
+    } else {
+      console.error(error);
+      setStatus("export failed");
+    }
   } finally {
     setBusy(false);
     updateControls();
@@ -435,10 +433,17 @@ document.addEventListener("keydown", (event) => {
   event.preventDefault();
 
   if (event.shiftKey) {
-    strokeStore.redo();
+    annotationStore.redo();
   } else {
-    strokeStore.undo();
+    annotationStore.undo();
   }
+});
+
+document.addEventListener("keydown", (event) => {
+  if (!isTextShortcut(event) || !originalPdfBytes) return;
+
+  event.preventDefault();
+  annotator.toggleTextMode();
 });
 
 document.addEventListener("keydown", (event) => {
@@ -469,6 +474,12 @@ document.addEventListener("keydown", (event) => {
 
   event.preventDefault();
   openKeyboardShortcutsDialog();
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape" || !annotator.cancelTextMode()) return;
+
+  event.preventDefault();
 });
 
 document.addEventListener("keydown", (event) => {
@@ -628,12 +639,13 @@ async function renderPageView(pageView, version) {
     pageObserver?.unobserve(pageView.pageShell);
 
     pageViewports.set(pageView.pageNumber, result.viewport);
-    strokeStore.registerPage({
+    annotationStore.registerPage({
       pageNumber: pageView.pageNumber,
       canvas: annotationCanvas,
     });
     annotator.registerPage({
       pageNumber: pageView.pageNumber,
+      pageShell: pageView.pageShell,
       annotationCanvas,
     });
   } catch (error) {
@@ -711,7 +723,7 @@ function resetDocumentView() {
   const destroyPromise = pdfDocument?.destroy?.();
   destroyPromise?.catch?.(() => {});
   pdfDocument = null;
-  strokeStore.reset();
+  annotationStore.reset();
   viewScale = DEFAULT_VIEW_SCALE;
   pageViewports.clear();
   pageViews.clear();
@@ -740,8 +752,8 @@ function getReadyStatus() {
 function setBusy(isBusy, message) {
   app.classList.toggle("is-busy", isBusy);
   pdfInput.disabled = isBusy;
-  setControlDisabled(undoButton, isBusy || !strokeStore.canUndo());
-  setControlDisabled(redoButton, isBusy || !strokeStore.canRedo());
+  setControlDisabled(undoButton, isBusy || !annotationStore.canUndo());
+  setControlDisabled(redoButton, isBusy || !annotationStore.canRedo());
   updateZoomControls(isBusy);
   exportButton.disabled = isBusy || !originalPdfBytes;
 
@@ -752,16 +764,25 @@ function setBusy(isBusy, message) {
 
 function updateControls() {
   const isBusy = app.classList.contains("is-busy");
-  setControlDisabled(undoButton, isBusy || !strokeStore.canUndo());
-  setControlDisabled(redoButton, isBusy || !strokeStore.canRedo());
+  setControlDisabled(undoButton, isBusy || !annotationStore.canUndo());
+  setControlDisabled(redoButton, isBusy || !annotationStore.canRedo());
   updateZoomControls(isBusy);
   exportButton.disabled = isBusy || !originalPdfBytes;
   updateDocumentSummary();
   updateBeforeUnloadHandler();
 }
 
+function updateTextModeControl(isActive) {
+  app.classList.toggle("is-text-mode", isActive);
+}
+
+function updateTextDraftState(hasDraft) {
+  hasTextDraft = hasDraft;
+  updateBeforeUnloadHandler();
+}
+
 function hasAnnotationsToDiscard() {
-  return strokeStore.getStrokeCount() > 0;
+  return annotationStore.getAnnotationCount() > 0 || hasTextDraft;
 }
 
 function updateBeforeUnloadHandler() {
@@ -868,6 +889,8 @@ function renderCommandsShortcuts() {
       commands: [
         { label: "draw", keys: ["space"] },
         { label: "erase", keys: ["e"] },
+        { label: "text", keys: ["t"] },
+        { label: "stroke width", keys: ["w"] },
       ],
     },
     {
@@ -1009,12 +1032,12 @@ function updateDocumentSummary() {
     return;
   }
 
-  const strokeCount = strokeStore.getStrokeCount();
+  const annotationCount = annotationStore.getAnnotationCount();
 
   documentNameEl.textContent = loadedFileName;
   documentNameEl.title = loadedFileName;
-  documentCountEl.textContent = `${annotatablePageCount}/${totalPageCount} pages | ${strokeCount} stroke${
-    strokeCount === 1 ? "" : "s"
+  documentCountEl.textContent = `${annotatablePageCount}/${totalPageCount} pages | ${annotationCount} annotation${
+    annotationCount === 1 ? "" : "s"
   }`;
   documentSummary.hidden = false;
 }
@@ -1024,6 +1047,18 @@ function isUndoRedoShortcut(event) {
     (event.metaKey || event.ctrlKey) &&
     !event.altKey &&
     event.key.toLowerCase() === "z" &&
+    !isEditableTarget(event.target)
+  );
+}
+
+function isTextShortcut(event) {
+  return (
+    !event.metaKey &&
+    !event.ctrlKey &&
+    !event.altKey &&
+    !event.shiftKey &&
+    !event.repeat &&
+    event.key.toLowerCase() === "t" &&
     !isEditableTarget(event.target)
   );
 }
@@ -1077,7 +1112,7 @@ function isKeyboardShortcutsShortcut(event) {
     !event.shiftKey &&
     !event.repeat &&
     event.key.toLowerCase() === "k" &&
-    isEditableTarget(event.target)
+    !isEditableTarget(event.target)
   );
 }
 
