@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import { degrees, PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { getDocument as getPdfDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 
 const PEN_COLORS = [
@@ -1204,6 +1204,57 @@ test.describe("Annotouch browser QA", () => {
     );
   });
 
+  for (const rotation of [90, 180, 270]) {
+    test(`preserves text placement and orientation on a ${rotation}-degree page`, async ({
+      page,
+    }, testInfo) => {
+      const text = `Rotate ${rotation}`;
+      const fixturePath = await createPdfFixture(testInfo, 1, {
+        fileName: `fixture-rotated-${rotation}.pdf`,
+        rotation,
+      });
+
+      await uploadPdf(page, fixturePath, 1);
+      const annotationCanvas = page.locator(".annotation-canvas").first();
+      await page.getByRole("button", { name: "red pen" }).click();
+      await placeText(page, annotationCanvas, {
+        x: 120,
+        y: 180,
+        text,
+      });
+      const sourceBounds = await expectCanvasColorBounds(
+        annotationCanvas,
+        PEN_COLORS[1]
+      );
+
+      const [download] = await Promise.all([
+        page.waitForEvent("download"),
+        page.getByRole("button", { name: "export" }).click(),
+      ]);
+      const exportedPath = testInfo.outputPath(
+        `text-rotated-${rotation}-annotated.pdf`
+      );
+      await download.saveAs(exportedPath);
+      await expectPdfTextRotation(exportedPath, text, rotation);
+
+      page.once("dialog", (dialog) => dialog.accept());
+      await uploadPdf(page, exportedPath, 1);
+      const exportedCanvas = page.locator(".pdf-canvas").first();
+      const exportedBounds = await expectCanvasColorBounds(
+        exportedCanvas,
+        PEN_COLORS[1]
+      );
+
+      expect(exportedBounds.width).toBeGreaterThan(exportedBounds.height * 2);
+      expect(
+        Math.abs(exportedBounds.centerX - sourceBounds.centerX)
+      ).toBeLessThan(10);
+      expect(
+        Math.abs(exportedBounds.centerY - sourceBounds.centerY)
+      ).toBeLessThan(10);
+    });
+  }
+
   test("rejects unsupported text before export and allows correction", async ({
     page,
   }, testInfo) => {
@@ -1358,17 +1409,25 @@ test.describe("Annotouch browser QA", () => {
   });
 });
 
-async function createPdfFixture(testInfo, pageCount) {
+async function createPdfFixture(
+  testInfo,
+  pageCount,
+  { fileName = `fixture-${pageCount}-page.pdf`, rotation = 0 } = {}
+) {
   const fixtureDir = testInfo.outputPath("fixtures");
   await mkdir(fixtureDir, { recursive: true });
 
   const pdfDoc = await PDFDocument.create();
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-  const filePath = path.join(fixtureDir, `fixture-${pageCount}-page.pdf`);
+  const filePath = path.join(fixtureDir, fileName);
 
   for (let index = 0; index < pageCount; index += 1) {
     const page = pdfDoc.addPage([420, 560]);
     const { width, height } = page.getSize();
+
+    if (rotation !== 0) {
+      page.setRotation(degrees(rotation));
+    }
 
     page.drawRectangle({
       x: 0,
@@ -1394,7 +1453,7 @@ async function createPdfFixture(testInfo, pageCount) {
   }
 
   const bytes = await pdfDoc.save();
-  await testInfo.attach(`fixture-${pageCount}-page.pdf`, {
+  await testInfo.attach(fileName, {
     body: Buffer.from(bytes),
     contentType: "application/pdf",
   });
@@ -1668,6 +1727,96 @@ async function expectPdfContainsText(filePath, expectedLines) {
   } finally {
     await pdf.destroy();
   }
+}
+
+async function expectPdfTextRotation(filePath, expectedText, expectedRotation) {
+  const bytes = await readFile(filePath);
+  const loadingTask = getPdfDocument({
+    data: new Uint8Array(bytes),
+    disableWorker: true,
+    standardFontDataUrl:
+      path.resolve("node_modules/pdfjs-dist/standard_fonts") + path.sep,
+  });
+  const pdf = await loadingTask.promise;
+
+  try {
+    const pdfPage = await pdf.getPage(1);
+    const textContent = await pdfPage.getTextContent();
+    const item = textContent.items.find(
+      (candidate) => candidate.str === expectedText
+    );
+
+    expect(item).toBeDefined();
+
+    const rotation =
+      (Math.atan2(item.transform[1], item.transform[0]) * 180) / Math.PI;
+    const normalizedRotation = (rotation + 360) % 360;
+
+    expect(normalizedRotation).toBeCloseTo(expectedRotation, 0);
+  } finally {
+    await pdf.destroy();
+  }
+}
+
+async function expectCanvasColorBounds(canvas, color) {
+  await expect
+    .poll(async () => Boolean(await getCanvasColorBounds(canvas, color)), {
+      message: `${color.label} pixel bounds should be present`,
+    })
+    .toBe(true);
+
+  return getCanvasColorBounds(canvas, color);
+}
+
+async function getCanvasColorBounds(canvas, color) {
+  const expected = hexToRgb(color.hex);
+
+  return canvas.evaluate((element, expected) => {
+    const context = element.getContext("2d");
+    const { width, height } = element;
+    const data = context.getImageData(0, 0, width, height).data;
+    let minX = width;
+    let minY = height;
+    let maxX = -1;
+    let maxY = -1;
+
+    for (let y = 0; y < height; y += 1) {
+      for (let x = 0; x < width; x += 1) {
+        const index = (y * width + x) * 4;
+        const alpha = data[index + 3];
+
+        if (
+          alpha < 80 ||
+          Math.abs(data[index] - expected.r) > 40 ||
+          Math.abs(data[index + 1] - expected.g) > 40 ||
+          Math.abs(data[index + 2] - expected.b) > 40
+        ) {
+          continue;
+        }
+
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x);
+        maxY = Math.max(maxY, y);
+      }
+    }
+
+    if (maxX === -1) return null;
+
+    const boundsWidth = maxX - minX + 1;
+    const boundsHeight = maxY - minY + 1;
+
+    return {
+      minX,
+      minY,
+      maxX,
+      maxY,
+      width: boundsWidth,
+      height: boundsHeight,
+      centerX: minX + boundsWidth / 2,
+      centerY: minY + boundsHeight / 2,
+    };
+  }, expected);
 }
 
 async function expectCanvasHasColor(canvas, color) {

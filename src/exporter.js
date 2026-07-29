@@ -1,4 +1,4 @@
-import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import { degrees, PDFDocument, StandardFonts, rgb } from "pdf-lib";
 
 export class UnsupportedTextCharacterError extends Error {
   constructor({ character, pageNumber }) {
@@ -120,18 +120,24 @@ function drawTextAnnotation({
   viewport,
 }) {
   const fontSize = annotation.fontSize / scale;
-  const lineHeight = annotation.lineHeight / scale;
-  const [x, topY] = viewport.convertToPdfPoint(annotation.x, annotation.y);
+  const rotation = degrees(viewport.rotation);
 
   annotation.text.split("\n").forEach((line, index) => {
     if (line.length === 0) return;
 
+    const baselineY =
+      annotation.y +
+      annotation.fontSize +
+      index * annotation.lineHeight;
+    const [x, y] = viewport.convertToPdfPoint(annotation.x, baselineY);
+
     page.drawText(line, {
       x,
-      y: topY - fontSize - index * lineHeight,
+      y,
       size: fontSize,
       font,
       color: rgb(color.r, color.g, color.b),
+      rotate: rotation,
     });
   });
 }
