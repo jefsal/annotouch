@@ -1,5 +1,36 @@
 import "./style.css";
 import { h, render } from "preact";
+import {
+  DEFAULT_PEN_SETTINGS,
+  DEFAULT_RENDER_SCALE,
+  DEFAULT_VIEW_SCALE,
+  DISCARD_ANNOTATIONS_MESSAGE,
+  MAX_ANNOTATABLE_PAGES,
+  MAX_VIEW_SCALE,
+  MIN_VIEW_SCALE,
+  NIGHT_BODY_BACKGROUND,
+  NIGHT_FILTER,
+  NIGHT_FILTER_SOURCE_BACKGROUND,
+  PAGE_RENDER_ROOT_MARGIN,
+  PEN_COLORS,
+  PEN_WIDTHS,
+  THEMES,
+  VIEW_SCALE_STEP,
+} from "./app/config";
+import {
+  getInitialTheme,
+  getInitialToolbarSettings,
+  persistTheme,
+  persistToolbarSettings,
+} from "./app/preferences";
+import {
+  getColorShortcut,
+  isKeyboardShortcutsShortcut,
+  isNightModeShortcut,
+  isTextShortcut,
+  isUndoRedoShortcut,
+  isWidthShortcut,
+} from "./app/shortcuts";
 import { AppShell } from "./components/AppShell";
 import {
   exportAnnotatedPdf,
@@ -12,44 +43,6 @@ import {
   renderPdfPage,
 } from "./pdfViewer";
 import { createAnnotationStore } from "./annotationStore";
-
-const MAX_ANNOTATABLE_PAGES = 200;
-const DEFAULT_RENDER_SCALE = 1.5;
-const DEFAULT_VIEW_SCALE = 1;
-const MIN_VIEW_SCALE = 0.1;
-const MAX_VIEW_SCALE = 2;
-const VIEW_SCALE_STEP = 0.1;
-const PAGE_RENDER_ROOT_MARGIN = "1200px 0px";
-const PEN_COLORS = [
-  { label: "black", value: "#111827" },
-  { label: "red", value: "#e11d48" },
-  { label: "green", value: "#16a34a" },
-  { label: "blue", value: "#2563eb" },
-  { label: "white", value: "#ffffff" },
-];
-const PEN_WIDTHS = [
-  { label: "small", value: 2 },
-  { label: "med", value: 5 },
-  { label: "large", value: 10 },
-];
-const DEFAULT_PEN_SETTINGS = {
-  color: "#e11d48",
-  width: PEN_WIDTHS[0].value,
-};
-const THEME_STORAGE_KEY = "annotouch-theme";
-const TOOLBAR_SETTINGS_STORAGE_KEY = "annotouch-toolbar-settings";
-const DEFAULT_TOOLBAR_SETTINGS = {
-  showHistoryControls: false,
-};
-const THEMES = {
-  LIGHT: "light",
-  NIGHT: "night",
-};
-const NIGHT_FILTER = "invert(1) hue-rotate(180deg)";
-const NIGHT_BODY_BACKGROUND = "#111827";
-const NIGHT_FILTER_SOURCE_BACKGROUND = "#eef1f5";
-const DISCARD_ANNOTATIONS_MESSAGE =
-  "discard unsaved annotations and open another PDF?";
 
 const app = document.querySelector("#app");
 let theme = getInitialTheme();
@@ -934,161 +927,6 @@ function updateDocumentSummary() {
     annotationCount === 1 ? "" : "s"
   }`;
   documentSummary.hidden = false;
-}
-
-function isUndoRedoShortcut(event) {
-  return (
-    (event.metaKey || event.ctrlKey) &&
-    !event.altKey &&
-    event.key.toLowerCase() === "z" &&
-    !isEditableTarget(event.target)
-  );
-}
-
-function isTextShortcut(event) {
-  return (
-    !event.metaKey &&
-    !event.ctrlKey &&
-    !event.altKey &&
-    !event.shiftKey &&
-    !event.repeat &&
-    event.key.toLowerCase() === "t" &&
-    !isEditableTarget(event.target)
-  );
-}
-
-function getColorShortcut(event) {
-  if (
-    event.metaKey ||
-    event.ctrlKey ||
-    event.altKey ||
-    event.shiftKey ||
-    event.repeat ||
-    isEditableTarget(event.target)
-  ) {
-    return null;
-  }
-
-  const shortcutIndex = Number(event.key) - 1;
-
-  if (!Number.isInteger(shortcutIndex)) {
-    return null;
-  }
-
-  return PEN_COLORS[shortcutIndex] ?? null;
-}
-
-function isNightModeShortcut(event) {
-  return (
-    !event.metaKey &&
-    !event.ctrlKey &&
-    !event.altKey &&
-    !event.shiftKey &&
-    !event.repeat &&
-    event.key.toLowerCase() === "n" &&
-    !isEditableTarget(event.target)
-  );
-}
-
-function isWidthShortcut(event) {
-  return (
-    !event.metaKey &&
-    event.key.toLowerCase() === "w" &&
-    !isEditableTarget(event.target)
-  );
-}
-
-function isKeyboardShortcutsShortcut(event) {
-  return (
-    event.metaKey &&
-    !event.ctrlKey &&
-    !event.altKey &&
-    !event.shiftKey &&
-    !event.repeat &&
-    event.key.toLowerCase() === "k" &&
-    !isEditableTarget(event.target)
-  );
-}
-
-function isEditableTarget(target) {
-  if (!(target instanceof Element)) {
-    return false;
-  }
-
-  return Boolean(
-    target.closest("input, textarea, select, [contenteditable='true']")
-  );
-}
-
-function getInitialTheme() {
-  const savedTheme = readStoredTheme();
-
-  if (savedTheme) {
-    return savedTheme;
-  }
-
-  if (window.matchMedia?.("(prefers-color-scheme: dark)").matches) {
-    return THEMES.NIGHT;
-  }
-
-  return THEMES.LIGHT;
-}
-
-function readStoredTheme() {
-  try {
-    const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
-
-    if (storedTheme === THEMES.LIGHT || storedTheme === THEMES.NIGHT) {
-      return storedTheme;
-    }
-  } catch {
-    return null;
-  }
-
-  return null;
-}
-
-function persistTheme(nextTheme) {
-  try {
-    window.localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
-  } catch {
-    // The selected theme still applies for this page load if storage is blocked.
-  }
-}
-
-function getInitialToolbarSettings() {
-  try {
-    const storedSettings = window.localStorage.getItem(
-      TOOLBAR_SETTINGS_STORAGE_KEY
-    );
-
-    if (!storedSettings) {
-      return { ...DEFAULT_TOOLBAR_SETTINGS };
-    }
-
-    const parsedSettings = JSON.parse(storedSettings);
-
-    if (typeof parsedSettings?.showHistoryControls === "boolean") {
-      return {
-        showHistoryControls: parsedSettings.showHistoryControls,
-      };
-    }
-  } catch {
-    return { ...DEFAULT_TOOLBAR_SETTINGS };
-  }
-
-  return { ...DEFAULT_TOOLBAR_SETTINGS };
-}
-
-function persistToolbarSettings(nextSettings) {
-  try {
-    window.localStorage.setItem(
-      TOOLBAR_SETTINGS_STORAGE_KEY,
-      JSON.stringify(nextSettings)
-    );
-  } catch {
-    // The selected setting still applies for this page load if storage is blocked.
-  }
 }
 
 function applyToolbarSettings(nextSettings) {
