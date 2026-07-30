@@ -562,6 +562,7 @@ test.describe("Annotouch browser QA", () => {
     const exportedPath = testInfo.outputPath("fixture-1-page-zoomed-annotated.pdf");
     await download.saveAs(exportedPath);
 
+    page.once("dialog", (dialog) => dialog.accept());
     await uploadPdf(page, exportedPath, 1);
     await expectCanvasHasColor(
       page.locator(".pdf-canvas").first(),
@@ -826,6 +827,7 @@ test.describe("Annotouch browser QA", () => {
     await download.saveAs(exportedPath);
     await expectPdfPageCount(exportedPath, 30);
 
+    page.once("dialog", (dialog) => dialog.accept());
     await uploadPdf(page, exportedPath, 30);
     const exportedPage30Shell = await scrollToRenderedPageShell(page, 30);
     await expectCanvasHasColor(
@@ -889,6 +891,9 @@ test.describe("Annotouch browser QA", () => {
     const fixturePath = await createPdfFixture(testInfo, 1);
 
     await uploadPdf(page, fixturePath, 1);
+    await page.getByRole("button", { name: "settings" }).click();
+    await page.getByLabel("show undo/redo").check();
+    await page.keyboard.press("Escape");
     await expect(page.getByRole("button", { name: "undo" })).toBeDisabled();
     await expect(page.getByRole("button", { name: "redo" })).toBeDisabled();
     await expect(page.getByRole("button", { name: "export" })).toBeEnabled();
@@ -952,6 +957,7 @@ test.describe("Annotouch browser QA", () => {
     await download.saveAs(exportedPath);
     await expectPdfPageCount(exportedPath, 1);
 
+    page.once("dialog", (dialog) => dialog.accept());
     await uploadPdf(page, exportedPath, 1);
     const pdfCanvas = page.locator(".pdf-canvas").first();
 
@@ -1362,6 +1368,7 @@ test.describe("Annotouch browser QA", () => {
     await download.saveAs(exportedPath);
     await expectPdfPageCount(exportedPath, 1);
 
+    page.once("dialog", (dialog) => dialog.accept());
     await uploadPdf(page, exportedPath, 1);
     const pdfCanvas = page.locator(".pdf-canvas").first();
 

@@ -214,7 +214,8 @@ button {
 }
 
 .width-button {
-  min-width: 3rem;
+  width: 64px;
+  min-width: 64px;
   font-size: 12px;
 }
 
