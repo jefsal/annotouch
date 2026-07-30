@@ -33,10 +33,7 @@ import {
   isWidthShortcut,
 } from "./app/shortcuts";
 import { AppShell } from "./components/AppShell";
-import {
-  exportAnnotatedPdf,
-  UnsupportedTextCharacterError,
-} from "./exporter";
+import { UnsupportedTextCharacterError } from "./domain/errors";
 import { createAnnotator } from "./annotator.js";
 import {
   getPdfPageViewport,
@@ -294,6 +291,7 @@ exportButton.addEventListener("click", async () => {
   setBusy(true, "exporting");
 
   try {
+    const { exportAnnotatedPdf } = await import("./exporter");
     await exportAnnotatedPdf({
       originalBytes: originalPdfBytes,
       annotationsByPage: annotationStore.getAnnotationsByPage(),
