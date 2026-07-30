@@ -1,3 +1,8 @@
+import {
+  isPointInAnnotation,
+  isPointInText,
+} from "./domain/geometry.ts";
+
 export function createAnnotationStore({ onChange }) {
   const pages = new Map();
   const undoStack = [];
@@ -471,71 +476,4 @@ function cloneAnnotation(annotation) {
   return annotation.type === "text"
     ? cloneText(annotation)
     : cloneStroke(annotation);
-}
-
-function isPointInAnnotation(point, annotation, tolerance) {
-  if (annotation.type === "text") {
-    return isPointInText(point, annotation, Math.min(tolerance, 4));
-  }
-
-  const hitRadius = annotation.width / 2 + tolerance;
-  return isPointNearStroke(point, annotation, hitRadius);
-}
-
-function isPointInText(point, annotation, tolerance) {
-  return (
-    point.x >= annotation.x - tolerance &&
-    point.x <= annotation.x + annotation.width + tolerance &&
-    point.y >= annotation.y - tolerance &&
-    point.y <= annotation.y + annotation.height + tolerance
-  );
-}
-
-function isPointNearStroke(point, stroke, hitRadius) {
-  if (stroke.points.length === 0) {
-    return false;
-  }
-
-  if (stroke.points.length === 1) {
-    return distance(point, stroke.points[0]) <= hitRadius;
-  }
-
-  for (let index = 1; index < stroke.points.length; index += 1) {
-    const start = stroke.points[index - 1];
-    const end = stroke.points[index];
-
-    if (pointToSegmentDistance(point, start, end) <= hitRadius) {
-      return true;
-    }
-  }
-
-  return false;
-}
-
-function pointToSegmentDistance(point, start, end) {
-  const dx = end.x - start.x;
-  const dy = end.y - start.y;
-  const lengthSquared = dx * dx + dy * dy;
-
-  if (lengthSquared === 0) {
-    return distance(point, start);
-  }
-
-  const t = Math.max(
-    0,
-    Math.min(
-      1,
-      ((point.x - start.x) * dx + (point.y - start.y) * dy) / lengthSquared
-    )
-  );
-  const projection = {
-    x: start.x + t * dx,
-    y: start.y + t * dy,
-  };
-
-  return distance(point, projection);
-}
-
-function distance(a, b) {
-  return Math.hypot(a.x - b.x, a.y - b.y);
 }
