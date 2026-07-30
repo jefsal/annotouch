@@ -1,22 +1,109 @@
+import { drawAnnotation, drawStroke } from "./domain/annotationRenderer";
 import {
   isPointInAnnotation,
   isPointInText,
-} from "./domain/geometry.ts";
+} from "./domain/geometry";
+import type {
+  Annotation,
+  AnnotationHistoryAction,
+  AnnotationId,
+  Point,
+  StrokeAnnotation,
+  StrokeDraft,
+  TextAnnotation,
+  TextAnnotationDraft,
+} from "./domain/types";
 
-export function createAnnotationStore({ onChange }) {
-  const pages = new Map();
-  const undoStack = [];
-  const redoStack = [];
+interface PageState {
+  canvas: HTMLCanvasElement | null;
+  context: CanvasRenderingContext2D | null;
+  annotations: Annotation[];
+}
+
+interface AnnotationStoreOptions {
+  onChange?: () => void;
+}
+
+interface RegisterPageInput {
+  pageNumber: number;
+  canvas: HTMLCanvasElement;
+}
+
+type TextAnnotationUpdates = Partial<
+  Pick<
+    TextAnnotation,
+    "text" | "x" | "y" | "width" | "height" | "color" | "fontSize" | "lineHeight"
+  >
+>;
+
+export interface AnnotationStore {
+  registerPage(input: RegisterPageInput): void;
+  unregisterPage(pageNumber: number): void;
+  unregisterAllPages(): void;
+  reset(): void;
+  addStroke(pageNumber: number, stroke: StrokeDraft): StrokeAnnotation;
+  addText(
+    pageNumber: number,
+    annotation: TextAnnotationDraft
+  ): TextAnnotation;
+  updateText(
+    pageNumber: number,
+    annotationId: AnnotationId,
+    updates: TextAnnotationUpdates
+  ): TextAnnotation | null;
+  eraseAnnotationAt(
+    pageNumber: number,
+    point: Point,
+    tolerance?: number
+  ): boolean;
+  getTextAt(
+    pageNumber: number,
+    point: Point,
+    tolerance?: number
+  ): TextAnnotation | null;
+  removeAnnotation(
+    pageNumber: number,
+    annotationId: AnnotationId
+  ): boolean;
+  undo(): void;
+  redo(): void;
+  redrawPage(
+    pageNumber: number,
+    draftStroke?: StrokeDraft | null,
+    excludedAnnotationId?: AnnotationId | null
+  ): void;
+  redrawAll(): void;
+  getAnnotationsByPage(): Map<number, Annotation[]>;
+  canUndo(): boolean;
+  canRedo(): boolean;
+  getAnnotationCount(): number;
+}
+
+export function createAnnotationStore(
+  { onChange }: AnnotationStoreOptions = {}
+): AnnotationStore {
+  const pages = new Map<number, PageState>();
+  const undoStack: AnnotationHistoryAction[] = [];
+  const redoStack: AnnotationHistoryAction[] = [];
   let nextAnnotationId = 1;
 
-  return {
+  const notifyChange = (): void => {
+    onChange?.();
+  };
+
+  const clearHistory = (): void => {
+    undoStack.length = 0;
+    redoStack.length = 0;
+  };
+
+  const store: AnnotationStore = {
     registerPage({ pageNumber, canvas }) {
       const pageState = getOrCreatePageState(pages, pageNumber);
 
       pageState.canvas = canvas;
       pageState.context = canvas.getContext("2d");
-      this.redrawPage(pageNumber);
-      onChange?.();
+      store.redrawPage(pageNumber);
+      notifyChange();
     },
 
     unregisterPage(pageNumber) {
@@ -25,30 +112,30 @@ export function createAnnotationStore({ onChange }) {
 
       pageState.canvas = null;
       pageState.context = null;
-      onChange?.();
+      notifyChange();
     },
 
     unregisterAllPages() {
       pages.clear();
-      undoStack.length = 0;
-      redoStack.length = 0;
-      onChange?.();
+      clearHistory();
+      notifyChange();
     },
 
     reset() {
       pages.clear();
-      undoStack.length = 0;
-      redoStack.length = 0;
+      clearHistory();
       nextAnnotationId = 1;
-      onChange?.();
+      notifyChange();
     },
 
     addStroke(pageNumber, stroke) {
       const pageState = getOrCreatePageState(pages, pageNumber);
-      const annotation = {
-        ...cloneStroke(stroke),
+      const annotation: StrokeAnnotation = {
         id: stroke.id ?? `annotation-${nextAnnotationId++}`,
         type: "stroke",
+        color: stroke.color,
+        width: stroke.width,
+        points: stroke.points.map((point) => ({ ...point })),
       };
       const index = pageState.annotations.length;
 
@@ -60,17 +147,24 @@ export function createAnnotationStore({ onChange }) {
         index,
       });
       redoStack.length = 0;
-      this.redrawPage(pageNumber);
-      onChange?.();
-      return cloneAnnotation(annotation);
+      store.redrawPage(pageNumber);
+      notifyChange();
+      return cloneStroke(annotation);
     },
 
     addText(pageNumber, textAnnotation) {
       const pageState = getOrCreatePageState(pages, pageNumber);
-      const annotation = {
-        ...cloneText(textAnnotation),
+      const annotation: TextAnnotation = {
         id: textAnnotation.id ?? `annotation-${nextAnnotationId++}`,
         type: "text",
+        text: textAnnotation.text,
+        x: textAnnotation.x,
+        y: textAnnotation.y,
+        width: textAnnotation.width,
+        height: textAnnotation.height,
+        color: textAnnotation.color,
+        fontSize: textAnnotation.fontSize,
+        lineHeight: textAnnotation.lineHeight,
       };
       const index = pageState.annotations.length;
 
@@ -82,9 +176,9 @@ export function createAnnotationStore({ onChange }) {
         index,
       });
       redoStack.length = 0;
-      this.redrawPage(pageNumber);
-      onChange?.();
-      return cloneAnnotation(annotation);
+      store.redrawPage(pageNumber);
+      notifyChange();
+      return cloneText(annotation);
     },
 
     updateText(pageNumber, annotationId, updates) {
@@ -95,12 +189,12 @@ export function createAnnotationStore({ onChange }) {
         (annotation) =>
           annotation.id === annotationId && annotation.type === "text"
       );
-      if (index === -1) return null;
-
       const before = pageState.annotations[index];
-      const after = {
+      if (!before || before.type !== "text") return null;
+
+      const after: TextAnnotation = {
         ...before,
-        ...cloneText({ ...before, ...updates }),
+        ...updates,
         id: before.id,
         type: "text",
       };
@@ -114,9 +208,9 @@ export function createAnnotationStore({ onChange }) {
         index,
       });
       redoStack.length = 0;
-      this.redrawPage(pageNumber);
-      onChange?.();
-      return cloneAnnotation(after);
+      store.redrawPage(pageNumber);
+      notifyChange();
+      return cloneText(after);
     },
 
     eraseAnnotationAt(pageNumber, point, tolerance = 8) {
@@ -129,6 +223,7 @@ export function createAnnotationStore({ onChange }) {
         index -= 1
       ) {
         const annotation = pageState.annotations[index];
+        if (!annotation) continue;
 
         if (!isPointInAnnotation(point, annotation, tolerance)) {
           continue;
@@ -142,8 +237,8 @@ export function createAnnotationStore({ onChange }) {
           index,
         });
         redoStack.length = 0;
-        this.redrawPage(pageNumber);
-        onChange?.();
+        store.redrawPage(pageNumber);
+        notifyChange();
         return true;
       }
 
@@ -162,10 +257,10 @@ export function createAnnotationStore({ onChange }) {
         const annotation = pageState.annotations[index];
 
         if (
-          annotation.type === "text" &&
+          annotation?.type === "text" &&
           isPointInText(point, annotation, tolerance)
         ) {
-          return cloneAnnotation(annotation);
+          return cloneText(annotation);
         }
       }
 
@@ -181,7 +276,10 @@ export function createAnnotationStore({ onChange }) {
       );
       if (index === -1) return false;
 
-      const [annotation] = pageState.annotations.splice(index, 1);
+      const annotation = pageState.annotations[index];
+      if (!annotation) return false;
+
+      pageState.annotations.splice(index, 1);
       undoStack.push({
         type: "remove",
         pageNumber,
@@ -189,8 +287,8 @@ export function createAnnotationStore({ onChange }) {
         index,
       });
       redoStack.length = 0;
-      this.redrawPage(pageNumber);
-      onChange?.();
+      store.redrawPage(pageNumber);
+      notifyChange();
       return true;
     },
 
@@ -199,11 +297,11 @@ export function createAnnotationStore({ onChange }) {
       if (!action) return;
 
       if (undoAction(pages, action)) {
-        this.redrawPage(action.pageNumber);
+        store.redrawPage(action.pageNumber);
       }
 
       redoStack.push(action);
-      onChange?.();
+      notifyChange();
     },
 
     redo() {
@@ -211,11 +309,11 @@ export function createAnnotationStore({ onChange }) {
       if (!action) return;
 
       if (redoAction(pages, action)) {
-        this.redrawPage(action.pageNumber);
+        store.redrawPage(action.pageNumber);
       }
 
       undoStack.push(action);
-      onChange?.();
+      notifyChange();
     },
 
     redrawPage(
@@ -244,12 +342,12 @@ export function createAnnotationStore({ onChange }) {
 
     redrawAll() {
       for (const pageNumber of pages.keys()) {
-        this.redrawPage(pageNumber);
+        store.redrawPage(pageNumber);
       }
     },
 
     getAnnotationsByPage() {
-      const annotationsByPage = new Map();
+      const annotationsByPage = new Map<number, Annotation[]>();
 
       for (const [pageNumber, pageState] of pages) {
         if (pageState.annotations.length > 0) {
@@ -281,75 +379,92 @@ export function createAnnotationStore({ onChange }) {
       return count;
     },
   };
+
+  return store;
 }
 
-function getOrCreatePageState(pages, pageNumber) {
-  if (!pages.has(pageNumber)) {
-    pages.set(pageNumber, {
-      canvas: null,
-      context: null,
-      annotations: [],
-    });
+function getOrCreatePageState(
+  pages: Map<number, PageState>,
+  pageNumber: number
+): PageState {
+  const existingPage = pages.get(pageNumber);
+  if (existingPage) {
+    return existingPage;
   }
 
-  return pages.get(pageNumber);
+  const pageState: PageState = {
+    canvas: null,
+    context: null,
+    annotations: [],
+  };
+  pages.set(pageNumber, pageState);
+  return pageState;
 }
 
-function undoAction(pages, action) {
-  if (action.type === "add") {
-    return removeAnnotation(pages, action.pageNumber, action.annotation);
+function undoAction(
+  pages: Map<number, PageState>,
+  action: AnnotationHistoryAction
+): boolean {
+  switch (action.type) {
+    case "add":
+      return removeStoredAnnotation(
+        pages,
+        action.pageNumber,
+        action.annotation
+      );
+    case "remove":
+      return insertAnnotation(
+        pages,
+        action.pageNumber,
+        action.annotation,
+        action.index
+      );
+    case "update":
+      return replaceAnnotation(
+        pages,
+        action.pageNumber,
+        action.after,
+        action.before,
+        action.index
+      );
   }
-
-  if (action.type === "remove") {
-    return insertAnnotation(
-      pages,
-      action.pageNumber,
-      action.annotation,
-      action.index
-    );
-  }
-
-  if (action.type === "update") {
-    return replaceAnnotation(
-      pages,
-      action.pageNumber,
-      action.after,
-      action.before,
-      action.index
-    );
-  }
-
-  return false;
 }
 
-function redoAction(pages, action) {
-  if (action.type === "add") {
-    return insertAnnotation(
-      pages,
-      action.pageNumber,
-      action.annotation,
-      action.index
-    );
+function redoAction(
+  pages: Map<number, PageState>,
+  action: AnnotationHistoryAction
+): boolean {
+  switch (action.type) {
+    case "add":
+      return insertAnnotation(
+        pages,
+        action.pageNumber,
+        action.annotation,
+        action.index
+      );
+    case "remove":
+      return removeStoredAnnotation(
+        pages,
+        action.pageNumber,
+        action.annotation
+      );
+    case "update":
+      return replaceAnnotation(
+        pages,
+        action.pageNumber,
+        action.before,
+        action.after,
+        action.index
+      );
   }
-
-  if (action.type === "remove") {
-    return removeAnnotation(pages, action.pageNumber, action.annotation);
-  }
-
-  if (action.type === "update") {
-    return replaceAnnotation(
-      pages,
-      action.pageNumber,
-      action.before,
-      action.after,
-      action.index
-    );
-  }
-
-  return false;
 }
 
-function insertAnnotation(pages, pageNumber, annotation, index) {
+function insertAnnotation(
+  pages: Map<number, PageState>,
+  pageNumber: number,
+  annotation: Annotation,
+  index: number
+): boolean {
   const pageState = getOrCreatePageState(pages, pageNumber);
   const insertionIndex = Math.min(
     Math.max(index, 0),
@@ -360,7 +475,11 @@ function insertAnnotation(pages, pageNumber, annotation, index) {
   return true;
 }
 
-function removeAnnotation(pages, pageNumber, annotation) {
+function removeStoredAnnotation(
+  pages: Map<number, PageState>,
+  pageNumber: number,
+  annotation: Annotation
+): boolean {
   const pageState = pages.get(pageNumber);
   if (!pageState) return false;
 
@@ -374,12 +493,12 @@ function removeAnnotation(pages, pageNumber, annotation) {
 }
 
 function replaceAnnotation(
-  pages,
-  pageNumber,
-  expected,
-  replacement,
-  fallbackIndex
-) {
+  pages: Map<number, PageState>,
+  pageNumber: number,
+  expected: TextAnnotation,
+  replacement: TextAnnotation,
+  fallbackIndex: number
+): boolean {
   const pageState = pages.get(pageNumber);
   if (!pageState) return false;
 
@@ -399,80 +518,18 @@ function replaceAnnotation(
   return true;
 }
 
-function drawAnnotation(context, annotation) {
-  if (annotation.type === "text") {
-    drawText(context, annotation);
-    return;
-  }
-
-  drawStroke(context, annotation);
-}
-
-function drawStroke(context, stroke) {
-  if (stroke.points.length < 2) return;
-
-  context.save();
-  context.strokeStyle = stroke.color;
-  context.lineWidth = stroke.width;
-  context.lineCap = "round";
-  context.lineJoin = "round";
-
-  context.beginPath();
-  context.moveTo(stroke.points[0].x, stroke.points[0].y);
-
-  for (const point of stroke.points.slice(1)) {
-    context.lineTo(point.x, point.y);
-  }
-
-  context.stroke();
-  context.restore();
-}
-
-function drawText(context, annotation) {
-  const lines = annotation.text.split("\n");
-
-  context.save();
-  context.fillStyle = annotation.color;
-  context.font = `${annotation.fontSize}px Helvetica, Arial, sans-serif`;
-  context.textBaseline = "top";
-
-  lines.forEach((line, index) => {
-    context.fillText(
-      line,
-      annotation.x,
-      annotation.y + index * annotation.lineHeight
-    );
-  });
-
-  context.restore();
-}
-
-function cloneStroke(stroke) {
+function cloneStroke(annotation: StrokeAnnotation): StrokeAnnotation {
   return {
-    id: stroke.id,
-    type: "stroke",
-    color: stroke.color,
-    width: stroke.width,
-    points: stroke.points.map((point) => ({ ...point })),
+    ...annotation,
+    points: annotation.points.map((point) => ({ ...point })),
   };
 }
 
-function cloneText(annotation) {
-  return {
-    id: annotation.id,
-    type: "text",
-    text: annotation.text,
-    x: annotation.x,
-    y: annotation.y,
-    width: annotation.width,
-    height: annotation.height,
-    color: annotation.color,
-    fontSize: annotation.fontSize,
-    lineHeight: annotation.lineHeight,
-  };
+function cloneText(annotation: TextAnnotation): TextAnnotation {
+  return { ...annotation };
 }
 
-function cloneAnnotation(annotation) {
+function cloneAnnotation(annotation: Annotation): Annotation {
   return annotation.type === "text"
     ? cloneText(annotation)
     : cloneStroke(annotation);

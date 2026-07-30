@@ -2,14 +2,14 @@ import "./style.css";
 import {
   exportAnnotatedPdf,
   UnsupportedTextCharacterError,
-} from "./exporter.js";
+} from "./exporter";
 import { createAnnotator } from "./annotator.js";
 import {
   getPdfPageViewport,
   loadPdfDocument,
   renderPdfPage,
-} from "./pdfViewer.js";
-import { createAnnotationStore } from "./annotationStore.js";
+} from "./pdfViewer";
+import { createAnnotationStore } from "./annotationStore";
 
 const MAX_ANNOTATABLE_PAGES = 200;
 const DEFAULT_RENDER_SCALE = 1.5;
