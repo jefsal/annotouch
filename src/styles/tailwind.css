@@ -1,0 +1,15 @@
+@layer theme, base, components, utilities;
+
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+@theme {
+  --color-app-background: #eef1f5;
+  --color-surface: #ffffff;
+  --color-text-primary: #171923;
+  --color-text-secondary: #687386;
+  --color-text-strong: #242936;
+  --color-border-default: #c8cfda;
+  --color-border-subtle: #d7dde6;
+  --color-action: #1f6feb;
+}

@@ -32,13 +32,6 @@ select {
   -webkit-tap-highlight-color: transparent;
 }
 
-.app-shell {
-  min-height: 100vh;
-  height: 100vh;
-  display: grid;
-  grid-template-rows: auto 1fr;
-}
-
 .toolbar {
   position: sticky;
   top: 0;
@@ -627,31 +620,8 @@ html[data-theme="night"] .commands-shortcuts-content::-webkit-scrollbar-thumb:ho
   background-clip: content-box;
 }
 
-.workspace {
-  min-height: 0;
-  overflow: auto;
-  padding: 28px;
-  transition: background 160ms ease;
-}
-
 .workspace.is-dragging {
   background: #e8f0fe;
-}
-
-.empty-state {
-  display: grid;
-  width: min(520px, 100%);
-  min-height: 220px;
-  margin: 16vh auto 0;
-  place-items: center;
-  align-content: center;
-  gap: 10px;
-  border: 1px dashed #b9c2d0;
-  border-radius: 4px;
-  background: rgba(255, 255, 255, 0.72);
-  color: #687386;
-  cursor: pointer;
-  text-align: center;
 }
 
 .empty-state[hidden],
@@ -665,33 +635,6 @@ html[data-theme="night"] .commands-shortcuts-content::-webkit-scrollbar-thumb:ho
   box-shadow:
     0 0 0 4px rgba(31, 111, 235, 0.14),
     0 18px 48px rgba(16, 24, 40, 0.16);
-}
-
-.empty-title {
-  color: #242936;
-  font-size: 20px;
-  font-weight: 700;
-}
-
-.empty-copy {
-  font-size: 14px;
-  opacity: .45; 
-}
-
-.empty-action {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 36px;
-  margin-top: 6px;
-  padding: 0 12px;
-  border: 1px solid #c8cfda;
-  border-radius: 4px;
-  background: #ffffff;
-  color: #171923;
-  font-size: 13px;
-  font-weight: 650;
-  white-space: nowrap;
 }
 
 .pages-container {
@@ -862,14 +805,6 @@ html[data-theme="night"] .commands-shortcuts-content::-webkit-scrollbar-thumb:ho
     font-size: 13px;
   }
 
-  .workspace {
-    padding: 14px;
-  }
-
-  .empty-state {
-    min-height: 200px;
-    margin-top: 10vh;
-  }
 }
 
 @media (min-width: 560px) and (max-width: 720px) {

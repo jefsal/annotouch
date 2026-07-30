@@ -10,7 +10,7 @@ export function AppShell({
   showHistoryControls,
 }: AppShellProps) {
   return (
-    <main class="app-shell">
+    <main class="app-shell grid h-screen min-h-screen grid-rows-[auto_1fr]">
       <Toolbar theme={theme} />
       <Workspace />
       <Settings showHistoryControls={showHistoryControls} />
@@ -108,11 +108,24 @@ function Toolbar({ theme }: Pick<AppShellProps, "theme">) {
 
 function Workspace() {
   return (
-    <section class="workspace" aria-label="pdf annotation workspace">
-      <label id="empty-state" class="empty-state" for="pdf-input">
-        <span class="empty-title">drop a PDF </span>
-        <span class="empty-copy">or choose a local file</span>
-        <span class="empty-action">choose PDF</span>
+    <section
+      class="workspace min-h-0 overflow-auto p-7 transition-[background] duration-150 max-[720px]:p-3.5"
+      aria-label="pdf annotation workspace"
+    >
+      <label
+        id="empty-state"
+        class="empty-state text-text-secondary mx-auto mt-[16vh] grid min-h-[220px] w-[min(520px,100%)] cursor-pointer content-center place-items-center gap-2.5 rounded border border-dashed border-[#b9c2d0] bg-white/70 text-center max-[720px]:mt-[10vh] max-[720px]:min-h-[200px]"
+        for="pdf-input"
+      >
+        <span class="empty-title text-text-strong text-xl font-bold">
+          drop a PDF{" "}
+        </span>
+        <span class="empty-copy text-sm opacity-45">
+          or choose a local file
+        </span>
+        <span class="empty-action text-text-primary border-border-default bg-surface mt-1.5 inline-flex h-9 items-center justify-center whitespace-nowrap rounded border px-3 text-[13px] font-semibold">
+          choose PDF
+        </span>
       </label>
       <div id="pages-container" class="pages-container" hidden />
     </section>

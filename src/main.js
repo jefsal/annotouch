@@ -1,3 +1,4 @@
+import "./styles/tailwind.css";
 import "./style.css";
 import { h, render } from "preact";
 import {
