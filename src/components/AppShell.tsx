@@ -1,22 +1,90 @@
-import type { Theme } from "../domain/types";
+import type { Ref } from "preact";
+import { NIGHT_FILTER, PEN_COLORS, PEN_WIDTHS, THEMES } from "../app/config";
+import {
+  canExport,
+  canRedo,
+  canUndo,
+  canZoomIn,
+  canZoomOut,
+  hasDocument,
+  type AppState,
+} from "../app/state";
+import { DocumentViewport } from "./DocumentViewport";
+import { SettingsPanel } from "./SettingsPanel";
+import { ShortcutDialog } from "./ShortcutDialog";
 
-interface AppShellProps {
-  theme: Theme;
-  showHistoryControls: boolean;
+export interface AppShellProps {
+  state: AppState;
+  workspaceRef: Ref<HTMLElement>;
+  pagesRef: Ref<HTMLDivElement>;
+  settingsButtonRef: Ref<HTMLButtonElement>;
+  settingsPanelRef: Ref<HTMLDivElement>;
+  onOpenFile: (file: File | undefined) => void;
+  onDropFile: (file: File | undefined) => void;
+  onToggleTheme: () => void;
+  onSelectColor: (color: string) => void;
+  onCycleWidth: () => void;
+  onUndo: () => void;
+  onRedo: () => void;
+  onZoomIn: () => void;
+  onZoomOut: () => void;
+  onExport: () => void;
+  onToggleSettings: () => void;
+  onShowHistoryControlsChange: (showHistoryControls: boolean) => void;
+  onOpenShortcuts: () => void;
+  onCloseShortcuts: () => void;
 }
 
-export function AppShell({ theme, showHistoryControls }: AppShellProps) {
+export function AppShell(props: AppShellProps) {
+  const { state } = props;
+
   return (
     <main class="app-shell grid h-screen min-h-screen grid-rows-[auto_1fr]">
-      <Toolbar theme={theme} />
-      <Workspace />
-      <Settings showHistoryControls={showHistoryControls} />
-      <ShortcutsDialog />
+      <Toolbar {...props} />
+      <DocumentViewport
+        workspaceRef={props.workspaceRef}
+        pagesRef={props.pagesRef}
+        hasDocument={hasDocument(state)}
+        isBusy={state.isBusy}
+        onDropFile={props.onDropFile}
+      />
+      <SettingsPanel
+        buttonRef={props.settingsButtonRef}
+        panelRef={props.settingsPanelRef}
+        isOpen={state.isSettingsOpen}
+        showHistoryControls={state.toolbar.showHistoryControls}
+        onToggle={props.onToggleSettings}
+        onShowHistoryControlsChange={props.onShowHistoryControlsChange}
+        onOpenShortcuts={props.onOpenShortcuts}
+      />
+      <ShortcutDialog
+        isOpen={state.isShortcutDialogOpen}
+        onClose={props.onCloseShortcuts}
+      />
     </main>
   );
 }
 
-function Toolbar({ theme }: Pick<AppShellProps, "theme">) {
+function Toolbar({
+  state,
+  onOpenFile,
+  onToggleTheme,
+  onSelectColor,
+  onCycleWidth,
+  onUndo,
+  onRedo,
+  onZoomIn,
+  onZoomOut,
+  onExport,
+}: AppShellProps) {
+  const isNight = state.theme === THEMES.NIGHT;
+  const currentWidth =
+    PEN_WIDTHS.find((width) => width.value === state.pen.width) ??
+    PEN_WIDTHS[0];
+  const nextWidth =
+    PEN_WIDTHS[(PEN_WIDTHS.indexOf(currentWidth) + 1) % PEN_WIDTHS.length] ??
+    currentWidth;
+
   return (
     <header class="toolbar">
       <div class="brand-block">
@@ -27,8 +95,15 @@ function Toolbar({ theme }: Pick<AppShellProps, "theme">) {
           tabIndex={0}
           aria-label="toggle night mode"
           aria-keyshortcuts="N"
-          aria-pressed={theme === "night"}
-          title="toggle night mode (N)"
+          aria-pressed={isNight}
+          title={isNight ? "switch to light mode (N)" : "toggle night mode (N)"}
+          onClick={onToggleTheme}
+          onKeyDown={(event) => {
+            if (event.key !== "Enter" && event.key !== " ") return;
+
+            event.preventDefault();
+            onToggleTheme();
+          }}
         >
           annotouch
         </div>
@@ -38,6 +113,13 @@ function Toolbar({ theme }: Pick<AppShellProps, "theme">) {
         class="file-input"
         type="file"
         accept="application/pdf"
+        disabled={state.isBusy}
+        onClick={(event) => {
+          event.currentTarget.value = "";
+        }}
+        onChange={(event) => {
+          onOpenFile(event.currentTarget.files?.[0]);
+        }}
       />
       <div class="toolbar-section">
         <div
@@ -45,14 +127,67 @@ function Toolbar({ theme }: Pick<AppShellProps, "theme">) {
           class="pen-color-group"
           role="group"
           aria-label="pen color"
-        />
+        >
+          {PEN_COLORS.map((color, index) => {
+            const isSelected = color.value === state.pen.color;
+
+            return (
+              <button
+                key={color.value}
+                type="button"
+                class={`color-swatch${
+                  color.value === "#ffffff" ? " color-swatch-white" : ""
+                }${isSelected ? " is-selected" : ""}`}
+                data-color-value={color.value}
+                title={`${color.label} (${index + 1})`}
+                aria-label={`${color.label} pen`}
+                aria-keyshortcuts={String(index + 1)}
+                aria-pressed={isSelected}
+                style={{
+                  "--swatch-color": color.value,
+                  filter: isNight ? NIGHT_FILTER : "",
+                }}
+                onClick={(event) => {
+                  onSelectColor(color.value);
+                  event.currentTarget.blur();
+                }}
+              />
+            );
+          })}
+        </div>
       </div>
-      <button id="width-button" class="width-button" type="button" />
+      <button
+        id="width-button"
+        class="width-button"
+        type="button"
+        data-width-value={String(currentWidth.value)}
+        aria-label={`stroke width: ${currentWidth.label}`}
+        aria-keyshortcuts="W"
+        title={`stroke width: ${currentWidth.label}; click or press W for ${nextWidth.label}`}
+        onClick={(event) => {
+          onCycleWidth();
+          event.currentTarget.blur();
+        }}
+      >
+        {currentWidth.label}
+      </button>
       <div class="history-controls" role="group" aria-label="history">
-        <button id="undo-button" class="history-button" type="button" disabled>
+        <button
+          id="undo-button"
+          class="history-button"
+          type="button"
+          disabled={!canUndo(state)}
+          onClick={onUndo}
+        >
           undo
         </button>
-        <button id="redo-button" class="history-button" type="button" disabled>
+        <button
+          id="redo-button"
+          class="history-button"
+          type="button"
+          disabled={!canRedo(state)}
+          onClick={onRedo}
+        >
           redo
         </button>
       </div>
@@ -61,9 +196,13 @@ function Toolbar({ theme }: Pick<AppShellProps, "theme">) {
           id="zoom-out-button"
           class="zoom-button"
           type="button"
-          disabled
+          disabled={!canZoomOut(state)}
           title="zoom out"
           aria-label="zoom out"
+          onClick={(event) => {
+            onZoomOut();
+            event.currentTarget.blur();
+          }}
         >
           -
         </button>
@@ -71,26 +210,33 @@ function Toolbar({ theme }: Pick<AppShellProps, "theme">) {
           id="zoom-in-button"
           class="zoom-button"
           type="button"
-          disabled
+          disabled={!canZoomIn(state)}
           title="zoom in"
           aria-label="zoom in"
+          onClick={(event) => {
+            onZoomIn();
+            event.currentTarget.blur();
+          }}
         >
           +
         </button>
       </div>
-      <div id="document-summary" class="document-summary" hidden>
-        <span id="document-name" class="document-name" />
-        <span id="document-count" class="document-count" />
-      </div>
-      <div id="status" class="status is-muted" role="status" aria-live="polite">
-        no PDF loaded
+      <DocumentSummary state={state} />
+      <div
+        id="status"
+        class={`status${state.status.isMuted ? " is-muted" : ""}`}
+        role="status"
+        aria-live="polite"
+      >
+        {state.status.message}
       </div>
       <button
         id="export-button"
         class="export-button"
         type="button"
-        disabled
+        disabled={!canExport(state)}
         title="export PDF"
+        onClick={onExport}
       >
         export
       </button>
@@ -98,102 +244,26 @@ function Toolbar({ theme }: Pick<AppShellProps, "theme">) {
   );
 }
 
-function Workspace() {
-  return (
-    <section
-      class="workspace min-h-0 overflow-auto p-7 transition-[background] duration-150 max-[720px]:p-3.5"
-      aria-label="pdf annotation workspace"
-    >
-      <label
-        id="empty-state"
-        class="empty-state text-text-secondary mx-auto mt-[16vh] grid min-h-[220px] w-[min(520px,100%)] cursor-pointer content-center place-items-center gap-2.5 rounded border border-dashed border-[#b9c2d0] bg-white/70 text-center max-[720px]:mt-[10vh] max-[720px]:min-h-[200px]"
-        for="pdf-input"
-      >
-        <span class="empty-title text-text-strong text-xl font-bold">
-          drop a PDF{" "}
-        </span>
-        <span class="empty-copy text-sm opacity-45">
-          or choose a local file
-        </span>
-        <span class="empty-action text-text-primary border-border-default bg-surface mt-1.5 inline-flex h-9 items-center justify-center whitespace-nowrap rounded border px-3 text-[13px] font-semibold">
-          choose PDF
-        </span>
-      </label>
-      <div id="pages-container" class="pages-container" hidden />
-    </section>
-  );
-}
+function DocumentSummary({ state }: Pick<AppShellProps, "state">) {
+  const { document } = state;
 
-function Settings({
-  showHistoryControls,
-}: Pick<AppShellProps, "showHistoryControls">) {
-  return (
-    <>
-      <button
-        id="settings-button"
-        class="settings-button"
-        type="button"
-        aria-label="settings"
-        aria-controls="settings-panel"
-        aria-expanded="false"
-        title="settings"
-      >
-        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-          <circle cx="12" cy="12" r="3" />
-          <path d="M19.4 15a1.8 1.8 0 0 0 .36 1.98l.04.04a2 2 0 1 1-2.82 2.82l-.04-.04a1.8 1.8 0 0 0-1.98-.36 1.8 1.8 0 0 0-1.08 1.65V21a2 2 0 1 1-4 0v-.06a1.8 1.8 0 0 0-1.08-1.65 1.8 1.8 0 0 0-1.98.36l-.04.04a2 2 0 1 1-2.82-2.82l.04-.04A1.8 1.8 0 0 0 4.6 15a1.8 1.8 0 0 0-1.65-1.08H3a2 2 0 1 1 0-4h.06A1.8 1.8 0 0 0 4.71 8.8a1.8 1.8 0 0 0-.36-1.98l-.04-.04a2 2 0 1 1 2.82-2.82l.04.04a1.8 1.8 0 0 0 1.98.36h.01a1.8 1.8 0 0 0 1.08-1.65V3a2 2 0 1 1 4 0v.06a1.8 1.8 0 0 0 1.08 1.65 1.8 1.8 0 0 0 1.98-.36l.04-.04a2 2 0 1 1 2.82 2.82l-.04.04a1.8 1.8 0 0 0-.36 1.98v.01a1.8 1.8 0 0 0 1.65 1.08H21a2 2 0 1 1 0 4h-.06A1.8 1.8 0 0 0 19.4 15z" />
-        </svg>
-      </button>
-      <div
-        id="settings-panel"
-        class="settings-panel"
-        role="dialog"
-        aria-label="settings"
-        hidden
-      >
-        <label class="settings-checkbox">
-          <input
-            id="show-history-controls"
-            type="checkbox"
-            checked={showHistoryControls}
-          />
-          <span>show undo/redo</span>
-        </label>
-        <button
-          id="commands-shortcuts-button"
-          class="settings-reference-button"
-          type="button"
-          aria-haspopup="dialog"
-          aria-controls="commands-shortcuts-dialog"
-          aria-keyshortcuts="Meta+K"
-          title="view keyboard shortcuts (⌘ k)"
-        >
-          view keyboard shortcuts
-        </button>
-      </div>
-    </>
-  );
-}
+  if (document.status !== "ready") {
+    return <div id="document-summary" class="document-summary" hidden />;
+  }
 
-function ShortcutsDialog() {
+  const { annotationCount } = state.history;
+  const countLabel = `${document.annotatablePageCount}/${document.totalPageCount} pages | ${annotationCount} annotation${
+    annotationCount === 1 ? "" : "s"
+  }`;
+
   return (
-    <dialog
-      id="commands-shortcuts-dialog"
-      class="commands-shortcuts-dialog"
-      aria-labelledby="commands-shortcuts-title"
-    >
-      <div class="commands-shortcuts-header">
-        <h2 id="commands-shortcuts-title">keyboard shortcuts</h2>
-        <button
-          id="commands-shortcuts-close"
-          class="commands-shortcuts-close"
-          type="button"
-          aria-label="close keyboard shortcuts"
-          autoFocus
-        >
-          &times;
-        </button>
-      </div>
-      <div id="commands-shortcuts-content" class="commands-shortcuts-content" />
-    </dialog>
+    <div id="document-summary" class="document-summary">
+      <span id="document-name" class="document-name" title={document.fileName}>
+        {document.fileName}
+      </span>
+      <span id="document-count" class="document-count">
+        {countLabel}
+      </span>
+    </div>
   );
 }

@@ -72,34 +72,42 @@ the generated-fixture regression tests. Playwright's generated
 
 ## Architecture
 
-The TypeScript/Preact refactor is intentionally incremental. The application
-shell and core annotation/PDF services are typed, while `src/main.js` remains
-the orchestration entry point during the controller migration. Legacy
-interaction CSS is also being moved gradually into Tailwind utilities.
+The TypeScript/Preact refactor is intentionally incremental. Preact now owns
+the UI lifecycle and renders from typed application state; `src/annotator.js`
+remains the last JavaScript module while the interaction layer is migrated.
+Legacy interaction CSS is also being moved gradually into Tailwind utilities.
 
-- `src/components/AppShell.tsx` renders the typed Preact application shell.
+- `src/main.tsx` mounts the application and imports global styles.
+- `src/components/App.tsx` owns application state and connects it to the
+  document controller, keyboard shortcuts, theme, and preferences.
+- `src/components/` also holds the shell, document viewport, settings panel, and
+  keyboard-shortcut dialog.
+- `src/app/state.ts` defines the typed state, actions, and reducer that drive
+  every UI transition.
+- `src/app/documentController.ts` owns the PDF lifecycle, lazy page rendering,
+  and export; it holds everything that cannot live in serializable state.
+- `src/app/` also contains typed configuration, preference, and shortcut
+  policies plus the keyboard-shortcut hook.
 - `src/domain/` contains shared annotation types, geometry, rendering helpers,
   and application errors.
 - `src/annotationStore.ts` owns page annotations and undo/redo history.
 - `src/pdfViewer.ts` loads PDFs and renders pages with PDF.js.
 - `src/exporter.ts` writes annotations into the exported PDF and is loaded only
   when an export is requested.
-- `src/app/` contains typed configuration, preference, and shortcut policies.
 - `src/annotator.js` handles pointer drawing, erasing, and text editing while
   that interaction layer is migrated.
 - `src/styles/tailwind.css` contains the Tailwind entry point and shell styles;
   `src/style.css` still contains interaction and document-viewer styles being
   migrated.
-- `src/main.js` currently connects the shell, interaction layer, PDF lifecycle,
-  and export flow.
-- `tests/unit/` covers typed policies and domain behavior.
+- `tests/unit/` covers typed policies, application state, and domain behavior.
 - `tests/e2e/annotouch.spec.js` covers upload, lazy rendering, drawing, text,
   colors, undo/redo, page limits, themes, and PDF export.
 
 ## Refactor Status
 
 Completed foundations include the TypeScript toolchain, typed domain and PDF
-services, the Preact application shell, Tailwind shell layout, unit tests, and
-lazy loading of the export pipeline. The next phase is to split the remaining
-imperative controller into typed state and feature modules, then finish moving
-the legacy CSS into component-scoped Tailwind styles.
+services, the Preact application shell, Tailwind shell layout, unit tests, lazy
+loading of the export pipeline, typed application state, and the split between
+the Preact UI and the document controller. The next phases migrate the
+annotation interaction layer to TypeScript and move the legacy CSS into
+component-scoped Tailwind styles.

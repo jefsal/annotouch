@@ -8,17 +8,22 @@ const TEXT_EDITOR_PADDING = 8;
 export function createAnnotator({
   getPenSettings,
   annotationStore,
-  statusEl,
+  onStatusChange,
   onTextDraftChange,
   onTextModeChange,
 }) {
   const pages = new Map();
+
   let isSpaceHeld = false;
   let isEraserHeld = false;
   let isTextModeActive = false;
   let currentStroke = null;
   let lastPointer = null;
   let activeEditor = null;
+
+  function setStatus(message) {
+    onStatusChange?.(message);
+  }
 
   document.addEventListener("pointerdown", handlePointerDown);
   document.addEventListener("pointermove", handlePointerMove);
@@ -83,7 +88,7 @@ export function createAnnotator({
     onTextModeChange?.(isActive);
 
     if (updateStatus && !activeEditor) {
-      statusEl.textContent = isActive ? "click a page to add text" : "ready";
+      setStatus(isActive ? "click a page to add text" : "ready");
     }
   }
 
@@ -197,7 +202,7 @@ export function createAnnotator({
     }
 
     isSpaceHeld = true;
-    statusEl.textContent = "drawing";
+    setStatus("drawing");
 
     if (lastPointer && !currentStroke) {
       startStroke(lastPointer);
@@ -219,7 +224,7 @@ export function createAnnotator({
 
     isSpaceHeld = false;
     isEraserHeld = true;
-    statusEl.textContent = "erasing";
+    setStatus("erasing");
 
     if (lastPointer && !hadCurrentStroke) {
       eraseAtPointer(lastPointer);
@@ -243,7 +248,7 @@ export function createAnnotator({
     finishStroke();
 
     if (!isEraserHeld) {
-      statusEl.textContent = "ready";
+      setStatus("ready");
     }
   }
 
@@ -254,7 +259,7 @@ export function createAnnotator({
 
     event.preventDefault();
     isEraserHeld = false;
-    statusEl.textContent = "ready";
+    setStatus("ready");
   }
 
   function startStroke(pointer) {
@@ -345,7 +350,7 @@ export function createAnnotator({
     }
 
     resizeTextEditor();
-    statusEl.textContent = isEditing ? "editing text" : "adding text";
+    setStatus(isEditing ? "editing text" : "adding text");
     editor.focus();
     editor.setSelectionRange(editor.value.length, editor.value.length);
   }
@@ -498,7 +503,7 @@ export function createAnnotator({
     annotationStore.redrawAll();
 
     if (!activeEditor && !isTextModeActive) {
-      statusEl.textContent = "ready";
+      setStatus("ready");
     }
   }
 

@@ -1,5 +1,54 @@
 import { PEN_COLORS, type PenColor } from "./config";
 
+export interface ShortcutCommand {
+  label: string;
+  keys: string[];
+  alternateKeys?: string[];
+}
+
+export interface ShortcutGroup {
+  label: string;
+  commands: ShortcutCommand[];
+}
+
+export const SHORTCUT_GROUPS: ShortcutGroup[] = [
+  {
+    label: "general",
+    commands: [{ label: "view keyboard shortcuts", keys: ["⌘", "k"] }],
+  },
+  {
+    label: "tools",
+    commands: [
+      { label: "draw", keys: ["space"] },
+      { label: "erase", keys: ["e"] },
+      { label: "text", keys: ["t"] },
+      { label: "stroke width", keys: ["w"] },
+    ],
+  },
+  {
+    label: "colors",
+    commands: PEN_COLORS.map((color, index) => ({
+      label: color.label,
+      keys: [String(index + 1)],
+    })),
+  },
+  {
+    label: "appearance",
+    commands: [{ label: "toggle night mode", keys: ["n"] }],
+  },
+  {
+    label: "history",
+    commands: [
+      { label: "undo", keys: ["⌘", "z"], alternateKeys: ["ctrl", "z"] },
+      {
+        label: "redo",
+        keys: ["⌘", "shift", "z"],
+        alternateKeys: ["ctrl", "shift", "z"],
+      },
+    ],
+  },
+];
+
 export function isUndoRedoShortcut(event: KeyboardEvent): boolean {
   return (
     (event.metaKey || event.ctrlKey) &&
