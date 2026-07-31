@@ -19,5 +19,6 @@ Thumbs.db
 .vscode/
 *.swp
 
-# Local planning scratch file
+# Local agent guidance and planning
+CLAUDE.md
 plan.md
