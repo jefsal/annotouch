@@ -744,6 +744,49 @@ test.describe("Annotouch browser QA", () => {
     );
   });
 
+  test("replaces a PDF that is still preparing pages", async ({
+    page,
+  }, testInfo) => {
+    const slowFixturePath = await createPdfFixture(testInfo, 205);
+    const replacementPath = await createNamedPdfFixture(
+      testInfo,
+      "replacement.pdf"
+    );
+
+    // Throttle the CPU so page preparation is still running when the
+    // replacement arrives.
+    const session = await page.context().newCDPSession(page);
+    await session.send("Emulation.setCPUThrottlingRate", { rate: 20 });
+
+    const slowUpload = page
+      .locator("#pdf-input")
+      .setInputFiles(slowFixturePath);
+    await expect(page.locator("#status")).toContainText("preparing page");
+
+    await dropPdf(page, replacementPath);
+    await slowUpload;
+    await session.send("Emulation.setCPUThrottlingRate", { rate: 1 });
+    await session.detach();
+    await expectPdfReady(page, 1);
+
+    await expect(page.locator("#document-name")).toHaveText("replacement.pdf");
+    await expect(page.locator(".page-shell")).toHaveCount(1);
+    await expect(page.locator("#document-count")).toHaveText(
+      "1/1 pages | 0 annotations"
+    );
+
+    const [download] = await Promise.all([
+      page.waitForEvent("download"),
+      page.getByRole("button", { name: "export" }).click(),
+    ]);
+
+    expect(download.suggestedFilename()).toBe("replacement-annotated.pdf");
+
+    const exportedPath = testInfo.outputPath("replacement-annotated.pdf");
+    await download.saveAs(exportedPath);
+    await expectPdfPageCount(exportedPath, 1);
+  });
+
   for (const pageCount of [1, 3, 25, 30]) {
     test(`uploads and exports a ${pageCount}-page fixture`, async ({
       page,

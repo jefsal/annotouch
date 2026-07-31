@@ -126,23 +126,34 @@ export function createDocumentController({
   }
 
   async function open(file: File): Promise<void> {
+    close();
+
+    // Every await below can resolve after another document replaced this one,
+    // so nothing may be published without re-checking the version token.
+    const version = documentVersion;
+
+    dispatch({ type: "document/loading", fileName: file.name });
+
     try {
-      close();
-      dispatch({ type: "document/loading", fileName: file.name });
+      const bytes = await file.arrayBuffer();
+      if (version !== documentVersion) return;
 
-      originalPdfBytes = await file.arrayBuffer();
+      const pdf = await loadPdfDocument({ bytes });
+      if (version !== documentVersion) {
+        pdf.destroy().catch(() => {});
+        return;
+      }
+
+      originalPdfBytes = bytes;
       loadedFileName = file.name;
-
-      pdfDocument = await loadPdfDocument({ bytes: originalPdfBytes });
-
-      totalPageCount = pdfDocument.numPages;
+      pdfDocument = pdf;
+      totalPageCount = pdf.numPages;
       annotatablePageCount = Math.min(totalPageCount, MAX_ANNOTATABLE_PAGES);
       renderScale = DEFAULT_RENDER_SCALE;
       viewScale = DEFAULT_VIEW_SCALE;
 
-      const version = documentVersion;
       const didPrepare = await preparePageViews({
-        pdf: pdfDocument,
+        pdf,
         pageCount: annotatablePageCount,
         version,
       });
@@ -157,14 +168,18 @@ export function createDocumentController({
       observePageViews(version);
       await renderPageView(pageViews.get(1), version);
     } catch (error) {
+      if (version !== documentVersion) return;
+
       console.error(error);
       close();
       originalPdfBytes = null;
       loadedFileName = DEFAULT_EXPORT_FILE_NAME;
       dispatch({ type: "document/failed", message: "could not load PDF" });
     } finally {
-      dispatch({ type: "busy/set", isBusy: false });
-      syncHistory();
+      if (version === documentVersion) {
+        dispatch({ type: "busy/set", isBusy: false });
+        syncHistory();
+      }
     }
   }
 
