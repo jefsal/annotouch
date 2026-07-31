@@ -4,6 +4,57 @@
 @import "tailwindcss/utilities.css" layer(utilities);
 
 /*
+ * Base resets live in @layer base so utilities win. Anything left unlayered
+ * (style.css) outranks every Tailwind utility regardless of source order.
+ */
+@layer base {
+  *,
+  ::before,
+  ::after {
+    box-sizing: border-box;
+  }
+
+  :root {
+    color-scheme: light;
+    font-family:
+      Inter,
+      ui-sans-serif,
+      system-ui,
+      -apple-system,
+      BlinkMacSystemFont,
+      "Segoe UI",
+      sans-serif;
+    background: var(--color-app-background);
+    color: var(--color-text-primary);
+  }
+
+  body {
+    margin: 0;
+    min-width: 320px;
+    min-height: 100vh;
+    background:
+      linear-gradient(
+        180deg,
+        var(--color-surface-muted) 0,
+        var(--color-app-background) 360px
+      ),
+      var(--color-app-background);
+  }
+
+  button,
+  input,
+  select {
+    font: inherit;
+  }
+
+  button,
+  label,
+  select {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/*
  * The single source of design values. Every color, radius, and shadow in the
  * application resolves to one of these tokens, so the night theme can become a
  * token swap rather than a filter applied over the rendered UI.

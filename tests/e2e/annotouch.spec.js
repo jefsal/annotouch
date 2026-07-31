@@ -537,6 +537,17 @@ test.describe("Annotouch browser QA", () => {
     expect(widthButtonBox).not.toBeNull();
     expect(zoomControlsBox.width).toBeCloseTo(widthButtonBox.width / 2, 0);
 
+    for (const name of ["zoom out", "zoom in"]) {
+      const buttonBox = await page.getByRole("button", { name }).boundingBox();
+
+      expect(buttonBox).not.toBeNull();
+      expect(buttonBox.width).toBeGreaterThan(8);
+      expect(buttonBox.x).toBeGreaterThanOrEqual(zoomControlsBox.x - 1);
+      expect(buttonBox.x + buttonBox.width).toBeLessThanOrEqual(
+        zoomControlsBox.x + zoomControlsBox.width + 1
+      );
+    }
+
     await page.getByRole("button", { name: "zoom out" }).click();
 
     const zoomedShellBox = await pageShell.boundingBox();
