@@ -3,13 +3,60 @@
 @import "tailwindcss/theme.css" layer(theme);
 @import "tailwindcss/utilities.css" layer(utilities);
 
+/*
+ * The single source of design values. Every color, radius, and shadow in the
+ * application resolves to one of these tokens, so the night theme can become a
+ * token swap rather than a filter applied over the rendered UI.
+ */
 @theme {
+  /* Surfaces */
   --color-app-background: #eef1f5;
   --color-surface: #ffffff;
+  --color-surface-raised: #fafbfe;
+  --color-surface-muted: #f8fafc;
+  --color-surface-drop: #e8f0fe;
+
+  /* Text */
   --color-text-primary: #171923;
-  --color-text-secondary: #687386;
   --color-text-strong: #242936;
+  --color-text-muted: #4f5969;
+  --color-text-secondary: #687386;
+  --color-text-faint: #8a93a3;
+
+  /* Borders */
   --color-border-default: #c8cfda;
   --color-border-subtle: #d7dde6;
+  --color-border-section: #e3e7ee;
+  --color-border-toolbar: #d9dee7;
+  --color-border-status: #e0e5ec;
+  --color-border-strong: #8a93a3;
+  --color-border-placeholder: #d8dde5;
+
+  /* Accent */
   --color-action: #1f6feb;
+  --color-action-hover: #164ea6;
+  --color-action-ring: rgba(31, 111, 235, 0.24);
+  --color-selection-ring: #1d4ed8;
+
+  /* Radii */
+  --radius-control: 4px;
+  --radius-panel: 6px;
+  --radius-dialog: 8px;
+  --radius-pill: 999px;
+
+  /* Elevation */
+  --shadow-control: 0 1px 1px rgba(16, 24, 40, 0.03);
+  --shadow-toolbar: 0 1px 2px rgba(16, 24, 40, 0.04);
+  --shadow-swatch:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.36), 0 1px 2px rgba(16, 24, 40, 0.08);
+  --shadow-floating: 0 2px 8px rgba(16, 24, 40, 0.08);
+  --shadow-panel:
+    0 4px 12px rgba(16, 24, 40, 0.12), 0 1px 2px rgba(16, 24, 40, 0.08);
+  --shadow-dialog:
+    0 24px 64px rgba(16, 24, 40, 0.24), 0 4px 12px rgba(16, 24, 40, 0.12);
+  --shadow-page:
+    0 1px 2px rgba(16, 24, 40, 0.08), 0 18px 48px rgba(16, 24, 40, 0.14);
+  --shadow-page-drop:
+    0 0 0 4px rgba(31, 111, 235, 0.14), 0 18px 48px rgba(16, 24, 40, 0.16);
+  --shadow-editor: 0 1px 4px rgba(16, 24, 40, 0.18);
 }
