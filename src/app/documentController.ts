@@ -8,7 +8,7 @@ import {
 } from "./config";
 import type { AppAction } from "./state";
 import { createAnnotationStore } from "../annotationStore";
-import { createAnnotator } from "../annotator.js";
+import { createAnnotator } from "../annotator";
 import { UnsupportedTextCharacterError } from "../domain/errors";
 import type { PenSettings, Theme } from "../domain/types";
 import {
@@ -434,6 +434,7 @@ export function createDocumentController({
     },
 
     destroy() {
+      annotator.destroy();
       close();
       originalPdfBytes = null;
       loadedFileName = DEFAULT_EXPORT_FILE_NAME;
