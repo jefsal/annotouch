@@ -20,11 +20,7 @@ export default tseslint.config(
     },
   },
   {
-    files: [
-      "tests/**/*.{js,ts,tsx}",
-      "playwright.config.js",
-      "vite.config.ts",
-    ],
+    files: ["tests/**/*.{js,ts,tsx}", "playwright.config.js", "vite.config.ts"],
     languageOptions: {
       globals: {
         ...globals.browser,

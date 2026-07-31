@@ -6,10 +6,7 @@ import {
   isPointNearStroke,
   pointToSegmentDistance,
 } from "../../src/domain/geometry";
-import type {
-  StrokeAnnotation,
-  TextAnnotation,
-} from "../../src/domain/types";
+import type { StrokeAnnotation, TextAnnotation } from "../../src/domain/types";
 
 describe("annotation geometry", () => {
   const stroke: StrokeAnnotation = {
@@ -56,9 +53,9 @@ describe("annotation geometry", () => {
   it("hits strokes using their effective radius", () => {
     expect(isPointNearStroke({ x: 20, y: 14 }, stroke, 4)).toBe(true);
     expect(isPointNearStroke({ x: 20, y: 14.01 }, stroke, 4)).toBe(false);
-    expect(isPointNearStroke({ x: 10, y: 10 }, { ...stroke, points: [] }, 4)).toBe(
-      false
-    );
+    expect(
+      isPointNearStroke({ x: 10, y: 10 }, { ...stroke, points: [] }, 4)
+    ).toBe(false);
   });
 
   it("hits text bounds with tolerance", () => {

@@ -5,10 +5,7 @@ interface AppShellProps {
   showHistoryControls: boolean;
 }
 
-export function AppShell({
-  theme,
-  showHistoryControls,
-}: AppShellProps) {
+export function AppShell({ theme, showHistoryControls }: AppShellProps) {
   return (
     <main class="app-shell grid h-screen min-h-screen grid-rows-[auto_1fr]">
       <Toolbar theme={theme} />
@@ -85,12 +82,7 @@ function Toolbar({ theme }: Pick<AppShellProps, "theme">) {
         <span id="document-name" class="document-name" />
         <span id="document-count" class="document-count" />
       </div>
-      <div
-        id="status"
-        class="status is-muted"
-        role="status"
-        aria-live="polite"
-      >
+      <div id="status" class="status is-muted" role="status" aria-live="polite">
         no PDF loaded
       </div>
       <button
@@ -201,10 +193,7 @@ function ShortcutsDialog() {
           &times;
         </button>
       </div>
-      <div
-        id="commands-shortcuts-content"
-        class="commands-shortcuts-content"
-      />
+      <div id="commands-shortcuts-content" class="commands-shortcuts-content" />
     </dialog>
   );
 }

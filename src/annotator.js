@@ -406,10 +406,7 @@ export function createAnnotator({
       activeEditor.y = clamp(activeEditor.y, 0, canvas.height);
     }
 
-    const availableWidth = Math.max(
-      fontSize,
-      canvas.width - activeEditor.x
-    );
+    const availableWidth = Math.max(fontSize, canvas.width - activeEditor.x);
     const availableHeight = Math.max(
       lineHeight,
       canvas.height - activeEditor.y

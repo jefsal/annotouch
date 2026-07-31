@@ -61,7 +61,10 @@ test.describe("Annotouch browser QA", () => {
 
     await page.keyboard.press("n");
     await expect(page.locator("html")).toHaveAttribute("data-theme", "night");
-    await expect(themeToggle).toHaveAttribute("title", "switch to light mode (N)");
+    await expect(themeToggle).toHaveAttribute(
+      "title",
+      "switch to light mode (N)"
+    );
 
     await page.keyboard.press("n");
     await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
@@ -220,9 +223,7 @@ test.describe("Annotouch browser QA", () => {
     expect(groups).toEqual([
       {
         label: "general",
-        rows: [
-          { command: "view keyboard shortcuts", keys: ["⌘", "k"] },
-        ],
+        rows: [{ command: "view keyboard shortcuts", keys: ["⌘", "k"] }],
       },
       {
         label: "tools",
@@ -259,7 +260,9 @@ test.describe("Annotouch browser QA", () => {
       },
     ]);
     await expect(dialog.locator(".commands-shortcuts-row")).toHaveCount(13);
-    await expect(dialog.locator(".commands-shortcuts-row button")).toHaveCount(0);
+    await expect(dialog.locator(".commands-shortcuts-row button")).toHaveCount(
+      0
+    );
   });
 
   test("opens keyboard shortcuts with command k", async ({ page }) => {
@@ -334,15 +337,13 @@ test.describe("Annotouch browser QA", () => {
     await expect(dialog).toHaveCSS("color", "rgb(243, 244, 246)");
     await expect(shortcutKeys).toHaveCount(22);
     await expect(shortcutKeys.first()).toHaveCSS("border-top-style", "none");
-    await expect(shortcutKeys.first()).toHaveCSS(
-      "color",
-      "rgb(170, 178, 192)"
-    );
+    await expect(shortcutKeys.first()).toHaveCSS("color", "rgb(170, 178, 192)");
     await expect(
       page.getByRole("button", { name: "close keyboard shortcuts" })
     ).toHaveCSS("border-top-style", "none");
 
-    const displayedText = await dialog.locator(".commands-shortcuts-content")
+    const displayedText = await dialog
+      .locator(".commands-shortcuts-content")
       .innerText();
     expect(displayedText).toBe(displayedText.toLowerCase());
   });
@@ -396,9 +397,7 @@ test.describe("Annotouch browser QA", () => {
     );
 
     await page.getByRole("button", { name: "settings" }).click();
-    await page
-      .getByRole("button", { name: "view keyboard shortcuts" })
-      .click();
+    await page.getByRole("button", { name: "view keyboard shortcuts" }).click();
 
     const selectedColor = page.getByRole("button", { name: "red pen" });
     const initialTheme = await page.locator("html").getAttribute("data-theme");
@@ -426,9 +425,7 @@ test.describe("Annotouch browser QA", () => {
   }) => {
     await page.setViewportSize({ width: 320, height: 360 });
     await page.getByRole("button", { name: "settings" }).click();
-    await page
-      .getByRole("button", { name: "view keyboard shortcuts" })
-      .click();
+    await page.getByRole("button", { name: "view keyboard shortcuts" }).click();
 
     const dialog = page.getByRole("dialog", { name: "keyboard shortcuts" });
     const content = dialog.locator(".commands-shortcuts-content");
@@ -441,7 +438,9 @@ test.describe("Annotouch browser QA", () => {
     expect(dialogBox.y + dialogBox.height).toBeLessThanOrEqual(360);
     await expect(content).toHaveCSS("overflow-y", "auto");
     expect(
-      await content.evaluate((element) => element.scrollHeight > element.clientHeight)
+      await content.evaluate(
+        (element) => element.scrollHeight > element.clientHeight
+      )
     ).toBe(true);
 
     await content.evaluate((element) => {
@@ -491,7 +490,9 @@ test.describe("Annotouch browser QA", () => {
     await page.setViewportSize({ width: 600, height: 720 });
 
     const widerToolbarBox = await toolbar.boundingBox();
-    const widerSummaryBox = await page.locator("#document-summary").boundingBox();
+    const widerSummaryBox = await page
+      .locator("#document-summary")
+      .boundingBox();
 
     expect(widerToolbarBox).not.toBeNull();
     expect(widerSummaryBox).not.toBeNull();
@@ -559,7 +560,9 @@ test.describe("Annotouch browser QA", () => {
       page.getByRole("button", { name: "export" }).click(),
     ]);
 
-    const exportedPath = testInfo.outputPath("fixture-1-page-zoomed-annotated.pdf");
+    const exportedPath = testInfo.outputPath(
+      "fixture-1-page-zoomed-annotated.pdf"
+    );
     await download.saveAs(exportedPath);
 
     page.once("dialog", (dialog) => dialog.accept());
@@ -585,9 +588,7 @@ test.describe("Annotouch browser QA", () => {
     const refreshDialogs = await reloadAndCollectDialogs(page, {
       accept: false,
     });
-    expect(refreshDialogs).toEqual([
-      { type: "beforeunload", message: "" },
-    ]);
+    expect(refreshDialogs).toEqual([{ type: "beforeunload", message: "" }]);
     await expectCanvasHasColor(annotationCanvas, PEN_COLORS[1]);
     await expect(page.locator("#document-count")).toHaveText(
       "1/1 pages | 1 annotation"
@@ -623,9 +624,9 @@ test.describe("Annotouch browser QA", () => {
     ]);
     await expect(page.getByRole("status")).toHaveText("exported");
 
-    expect(
-      await reloadAndCollectDialogs(page, { accept: false })
-    ).toEqual([{ type: "beforeunload", message: "" }]);
+    expect(await reloadAndCollectDialogs(page, { accept: false })).toEqual([
+      { type: "beforeunload", message: "" },
+    ]);
     await expectCanvasHasColor(annotationCanvas, PEN_COLORS[1]);
     await page.close();
   });
@@ -648,9 +649,9 @@ test.describe("Annotouch browser QA", () => {
     await expect(page.getByRole("status")).toHaveText("export failed");
     errorsByPage.get(page).consoleErrors.length = 0;
 
-    expect(
-      await reloadAndCollectDialogs(page, { accept: false })
-    ).toEqual([{ type: "beforeunload", message: "" }]);
+    expect(await reloadAndCollectDialogs(page, { accept: false })).toEqual([
+      { type: "beforeunload", message: "" },
+    ]);
     await expectCanvasHasColor(annotationCanvas, PEN_COLORS[1]);
     await page.close();
   });
@@ -658,10 +659,7 @@ test.describe("Annotouch browser QA", () => {
   test("keeps unsaved work when picker replacement is canceled and replaces it when confirmed", async ({
     page,
   }, testInfo) => {
-    const firstFixturePath = await createNamedPdfFixture(
-      testInfo,
-      "first.pdf"
-    );
+    const firstFixturePath = await createNamedPdfFixture(testInfo, "first.pdf");
     const secondFixturePath = await createNamedPdfFixture(
       testInfo,
       "second.pdf"
@@ -781,9 +779,15 @@ test.describe("Annotouch browser QA", () => {
 
     await uploadPdf(page, fixturePath, 205);
 
-    await expect(page.locator(".page-shell")).toHaveCount(MAX_ANNOTATABLE_PAGES);
-    await expect(page.locator(".page-shell[data-page-number='200']")).toHaveCount(1);
-    await expect(page.locator(".page-shell[data-page-number='201']")).toHaveCount(0);
+    await expect(page.locator(".page-shell")).toHaveCount(
+      MAX_ANNOTATABLE_PAGES
+    );
+    await expect(
+      page.locator(".page-shell[data-page-number='200']")
+    ).toHaveCount(1);
+    await expect(
+      page.locator(".page-shell[data-page-number='201']")
+    ).toHaveCount(0);
 
     const [download] = await Promise.all([
       page.waitForEvent("download"),
@@ -989,7 +993,9 @@ test.describe("Annotouch browser QA", () => {
     ).toHaveAttribute("aria-pressed", "true");
   });
 
-  test("cycles stroke width with W and lists the shortcut", async ({ page }) => {
+  test("cycles stroke width with W and lists the shortcut", async ({
+    page,
+  }) => {
     const widthButton = page.locator("#width-button");
 
     await expect(widthButton).toHaveAttribute("aria-keyshortcuts", "W");
@@ -1007,9 +1013,7 @@ test.describe("Annotouch browser QA", () => {
     await expect(widthButton).toHaveText("small");
 
     await page.getByRole("button", { name: "settings" }).click();
-    await page
-      .getByRole("button", { name: "view keyboard shortcuts" })
-      .click();
+    await page.getByRole("button", { name: "view keyboard shortcuts" }).click();
     const shortcuts = page.getByRole("dialog", {
       name: "keyboard shortcuts",
     });
@@ -1025,9 +1029,7 @@ test.describe("Annotouch browser QA", () => {
   }, testInfo) => {
     const fixturePath = await createPdfFixture(testInfo, 1);
 
-    await expect(
-      page.getByRole("button", { name: "add text" })
-    ).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "add text" })).toHaveCount(0);
     await page.keyboard.press("Meta+k");
     const shortcutsDialog = page.getByRole("dialog", {
       name: "keyboard shortcuts",
@@ -1134,9 +1136,7 @@ test.describe("Annotouch browser QA", () => {
     );
 
     await doubleClickCanvasAt(page, annotationCanvas, { x: 140, y: 190 });
-    await page
-      .getByRole("textbox", { name: "edit text annotation" })
-      .fill("");
+    await page.getByRole("textbox", { name: "edit text annotation" }).fill("");
     await page.keyboard.press("Escape");
     await expect(page.locator("#document-count")).toHaveText(
       "1/1 pages | 0 annotations"
@@ -1196,10 +1196,7 @@ test.describe("Annotouch browser QA", () => {
     const exportedPath = testInfo.outputPath("text-annotated.pdf");
     await download.saveAs(exportedPath);
 
-    await expectPdfContainsText(exportedPath, [
-      "Vector café",
-      "Vector second",
-    ]);
+    await expectPdfContainsText(exportedPath, ["Vector café", "Vector second"]);
     await expectPdfPageCount(exportedPath, 1);
 
     page.once("dialog", (dialog) => dialog.accept());
@@ -1535,9 +1532,7 @@ async function reloadAndCollectDialogs(page, { accept = true } = {}) {
     });
 
     const dialog = await dialogPromise;
-    const dialogs = [
-      { type: dialog.type(), message: dialog.message() },
-    ];
+    const dialogs = [{ type: dialog.type(), message: dialog.message() }];
 
     await dialog.dismiss();
     const session = await page.context().newCDPSession(page);
@@ -1572,7 +1567,9 @@ async function scrollToRenderedAnnotationCanvas(page, pageNumber) {
 }
 
 async function scrollToRenderedPageShell(page, pageNumber) {
-  const pageShell = page.locator(`.page-shell[data-page-number='${pageNumber}']`);
+  const pageShell = page.locator(
+    `.page-shell[data-page-number='${pageNumber}']`
+  );
 
   await expect(pageShell).toHaveCount(1);
   await pageShell.scrollIntoViewIfNeeded();
@@ -1606,7 +1603,11 @@ async function drawStroke(page, canvas, y) {
   await expect(page.getByRole("status")).toHaveText("ready");
 }
 
-async function drawStrokeAtCanvasCoordinates(page, canvas, { startX, endX, y }) {
+async function drawStrokeAtCanvasCoordinates(
+  page,
+  canvas,
+  { startX, endX, y }
+) {
   await canvas.scrollIntoViewIfNeeded();
   const metrics = await canvas.evaluate((element) => {
     const rect = element.getBoundingClientRect();
@@ -1720,9 +1721,7 @@ async function expectPdfContainsText(filePath, expectedLines) {
   try {
     const pdfPage = await pdf.getPage(1);
     const textContent = await pdfPage.getTextContent();
-    const extractedText = textContent.items
-      .map((item) => item.str)
-      .join(" ");
+    const extractedText = textContent.items.map((item) => item.str).join(" ");
 
     for (const line of expectedLines) {
       expect(extractedText).toContain(line);

@@ -151,8 +151,7 @@ function drawStrokeAnnotation({
   }
 }
 
-interface DrawTextAnnotationInput
-  extends DrawAnnotationInput<TextAnnotation> {
+interface DrawTextAnnotationInput extends DrawAnnotationInput<TextAnnotation> {
   font: PDFFont;
 }
 

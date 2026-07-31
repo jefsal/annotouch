@@ -1,8 +1,5 @@
 import { drawAnnotation, drawStroke } from "./domain/annotationRenderer";
-import {
-  isPointInAnnotation,
-  isPointInText,
-} from "./domain/geometry";
+import { isPointInAnnotation, isPointInText } from "./domain/geometry";
 import type {
   Annotation,
   AnnotationHistoryAction,
@@ -32,7 +29,14 @@ interface RegisterPageInput {
 type TextAnnotationUpdates = Partial<
   Pick<
     TextAnnotation,
-    "text" | "x" | "y" | "width" | "height" | "color" | "fontSize" | "lineHeight"
+    | "text"
+    | "x"
+    | "y"
+    | "width"
+    | "height"
+    | "color"
+    | "fontSize"
+    | "lineHeight"
   >
 >;
 
@@ -42,10 +46,7 @@ export interface AnnotationStore {
   unregisterAllPages(): void;
   reset(): void;
   addStroke(pageNumber: number, stroke: StrokeDraft): StrokeAnnotation;
-  addText(
-    pageNumber: number,
-    annotation: TextAnnotationDraft
-  ): TextAnnotation;
+  addText(pageNumber: number, annotation: TextAnnotationDraft): TextAnnotation;
   updateText(
     pageNumber: number,
     annotationId: AnnotationId,
@@ -61,10 +62,7 @@ export interface AnnotationStore {
     point: Point,
     tolerance?: number
   ): TextAnnotation | null;
-  removeAnnotation(
-    pageNumber: number,
-    annotationId: AnnotationId
-  ): boolean;
+  removeAnnotation(pageNumber: number, annotationId: AnnotationId): boolean;
   undo(): void;
   redo(): void;
   redrawPage(
@@ -79,9 +77,9 @@ export interface AnnotationStore {
   getAnnotationCount(): number;
 }
 
-export function createAnnotationStore(
-  { onChange }: AnnotationStoreOptions = {}
-): AnnotationStore {
+export function createAnnotationStore({
+  onChange,
+}: AnnotationStoreOptions = {}): AnnotationStore {
   const pages = new Map<number, PageState>();
   const undoStack: AnnotationHistoryAction[] = [];
   const redoStack: AnnotationHistoryAction[] = [];
@@ -316,11 +314,7 @@ export function createAnnotationStore(
       notifyChange();
     },
 
-    redrawPage(
-      pageNumber,
-      draftStroke = null,
-      excludedAnnotationId = null
-    ) {
+    redrawPage(pageNumber, draftStroke = null, excludedAnnotationId = null) {
       const pageState = pages.get(pageNumber);
       if (!pageState?.canvas || !pageState.context) return;
 

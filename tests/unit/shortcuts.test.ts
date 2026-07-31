@@ -40,9 +40,7 @@ describe("keyboard shortcuts", () => {
       value: "#e11d48",
     });
     expect(getColorShortcut(keyboardEvent("9"))).toBeNull();
-    expect(
-      getColorShortcut(keyboardEvent("2", { shiftKey: true }))
-    ).toBeNull();
+    expect(getColorShortcut(keyboardEvent("2", { shiftKey: true }))).toBeNull();
   });
 
   it("suppresses commands in editable controls", () => {

@@ -8,10 +8,7 @@ export class UnsupportedTextCharacterError extends Error {
   readonly codePoint: number;
   readonly pageNumber: number;
 
-  constructor({
-    character,
-    pageNumber,
-  }: UnsupportedTextCharacterErrorInput) {
+  constructor({ character, pageNumber }: UnsupportedTextCharacterErrorInput) {
     const codePoint = character.codePointAt(0);
     if (codePoint === undefined) {
       throw new TypeError("character must contain at least one code point");

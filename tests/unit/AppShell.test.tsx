@@ -12,9 +12,7 @@ describe("AppShell", () => {
       screen.getByRole("region", { name: "pdf annotation workspace" })
     ).toBeInTheDocument();
     expect(screen.getByLabelText("show undo/redo")).not.toBeChecked();
-    expect(
-      screen.getByRole("button", { name: "export" })
-    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "export" })).toBeDisabled();
   });
 
   it("reflects persisted theme and toolbar preferences", () => {

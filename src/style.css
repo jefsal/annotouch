@@ -1,7 +1,12 @@
 :root {
   color-scheme: light;
   font-family:
-    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
     sans-serif;
   background: #eef1f5;
   color: #171923;
@@ -15,9 +20,7 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background:
-    linear-gradient(180deg, #f8fafc 0, #eef1f5 360px),
-    #eef1f5;
+  background: linear-gradient(180deg, #f8fafc 0, #eef1f5 360px), #eef1f5;
 }
 
 button,
@@ -275,7 +278,11 @@ button:disabled,
   font-size: 13px;
   font-weight: 650;
   white-space: nowrap;
-  -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 44px), transparent);
+  -webkit-mask-image: linear-gradient(
+    90deg,
+    #000 calc(100% - 44px),
+    transparent
+  );
   mask-image: linear-gradient(90deg, #000 calc(100% - 44px), transparent);
 }
 
@@ -615,7 +622,8 @@ html[data-theme="night"] .commands-shortcuts-content::-webkit-scrollbar-thumb {
   background-clip: content-box;
 }
 
-html[data-theme="night"] .commands-shortcuts-content::-webkit-scrollbar-thumb:hover {
+html[data-theme="night"]
+  .commands-shortcuts-content::-webkit-scrollbar-thumb:hover {
   background: rgba(170, 178, 192, 0.25);
   background-clip: content-box;
 }
@@ -664,8 +672,7 @@ html[data-theme="night"] .commands-shortcuts-content::-webkit-scrollbar-thumb:ho
   z-index: 0;
   border: 1px solid #d8dde5;
   background:
-    linear-gradient(135deg, rgba(216, 221, 229, 0.28), transparent 42%),
-    #ffffff;
+    linear-gradient(135deg, rgba(216, 221, 229, 0.28), transparent 42%), #ffffff;
   color: #687386;
   font-size: 13px;
 }
@@ -804,7 +811,6 @@ html[data-theme="night"] .commands-shortcuts-content::-webkit-scrollbar-thumb:ho
     padding-inline: 8px;
     font-size: 13px;
   }
-
 }
 
 @media (min-width: 560px) and (max-width: 720px) {

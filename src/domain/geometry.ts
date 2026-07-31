@@ -17,11 +17,7 @@ export function isPointInAnnotation(
     return isPointInText(point, annotation, Math.min(tolerance, 4));
   }
 
-  return isPointNearStroke(
-    point,
-    annotation,
-    annotation.width / 2 + tolerance
-  );
+  return isPointNearStroke(point, annotation, annotation.width / 2 + tolerance);
 }
 
 export function isPointInText(

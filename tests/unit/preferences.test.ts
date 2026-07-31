@@ -10,10 +10,7 @@ import {
 describe("preferences", () => {
   beforeEach(() => {
     localStorage.clear();
-    vi.stubGlobal(
-      "matchMedia",
-      vi.fn().mockReturnValue({ matches: false })
-    );
+    vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({ matches: false }));
   });
 
   it("uses a saved theme before the system preference", () => {
@@ -22,10 +19,7 @@ describe("preferences", () => {
   });
 
   it("falls back to the system theme", () => {
-    vi.stubGlobal(
-      "matchMedia",
-      vi.fn().mockReturnValue({ matches: true })
-    );
+    vi.stubGlobal("matchMedia", vi.fn().mockReturnValue({ matches: true }));
     expect(getInitialTheme()).toBe("night");
   });
 

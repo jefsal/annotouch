@@ -196,9 +196,7 @@ workspace.addEventListener("drop", (event) => {
   event.preventDefault();
   workspace.classList.remove("is-dragging");
 
-  const file = [...event.dataTransfer.files].find((item) =>
-    isPdfFile(item)
-  );
+  const file = [...event.dataTransfer.files].find((item) => isPdfFile(item));
 
   if (file) {
     requestOpenPdfFile(file);
