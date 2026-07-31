@@ -72,10 +72,10 @@ the generated-fixture regression tests. Playwright's generated
 
 ## Architecture
 
-The TypeScript/Preact refactor is intentionally incremental. Preact now owns
-the UI lifecycle and renders from typed application state; `src/annotator.js`
-remains the last JavaScript module while the interaction layer is migrated.
-Legacy interaction CSS is also being moved gradually into Tailwind utilities.
+The TypeScript/Preact refactor is intentionally incremental. Preact owns the UI
+lifecycle and renders from typed application state, and all application source
+is TypeScript. Legacy interaction CSS is still being moved gradually into
+Tailwind utilities.
 
 - `src/main.tsx` mounts the application and imports global styles.
 - `src/components/App.tsx` owns application state and connects it to the
@@ -94,8 +94,11 @@ Legacy interaction CSS is also being moved gradually into Tailwind utilities.
 - `src/pdfViewer.ts` loads PDFs and renders pages with PDF.js.
 - `src/exporter.ts` writes annotations into the exported PDF and is loaded only
   when an export is requested.
-- `src/annotator.js` handles pointer drawing, erasing, and text editing while
-  that interaction layer is migrated.
+- `src/annotator.ts` handles pointer drawing, erasing, and text placement as a
+  single exclusive interaction mode, and detaches its listeners on teardown.
+- `src/textEditor.ts` owns one text-annotation editing session.
+- `src/domain/canvasCoordinates.ts` converts pointer positions into
+  canvas-pixel space so stored coordinates stay independent of zoom.
 - `src/styles/tailwind.css` contains the Tailwind entry point and shell styles;
   `src/style.css` still contains interaction and document-viewer styles being
   migrated.
@@ -107,7 +110,6 @@ Legacy interaction CSS is also being moved gradually into Tailwind utilities.
 
 Completed foundations include the TypeScript toolchain, typed domain and PDF
 services, the Preact application shell, Tailwind shell layout, unit tests, lazy
-loading of the export pipeline, typed application state, and the split between
-the Preact UI and the document controller. The next phases migrate the
-annotation interaction layer to TypeScript and move the legacy CSS into
-component-scoped Tailwind styles.
+loading of the export pipeline, typed application state, the split between the
+Preact UI and the document controller, and the TypeScript interaction layer.
+The next phase moves the legacy CSS into component-scoped Tailwind styles.
