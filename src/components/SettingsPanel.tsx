@@ -1,5 +1,5 @@
 import type { Ref } from "preact";
-import { cx } from "./classNames";
+import { cx, FOCUS_RING } from "./classNames";
 
 interface SettingsPanelProps {
   buttonRef: Ref<HTMLButtonElement>;
@@ -25,17 +25,22 @@ export function SettingsPanel({
       <button
         ref={buttonRef}
         id="settings-button"
-        class="fixed right-3.5 bottom-3.5 z-30 grid size-8 cursor-pointer
-          place-items-center rounded-pill border border-[rgba(104,115,134,0.35)]
-          bg-(--color-overlay-surface) p-0 text-text-muted opacity-[0.42] shadow-floating
-          transition-[background,border-color,color,opacity] duration-[140ms] ease-[ease]
-          hover:border-border-strong hover:bg-(--color-overlay-surface-strong) hover:text-text-primary
-          hover:opacity-100 focus-visible:border-border-strong
-          focus-visible:bg-(--color-overlay-surface-strong) focus-visible:text-text-primary
-          focus-visible:opacity-100 aria-expanded:border-border-strong
-          aria-expanded:bg-(--color-overlay-surface-strong) aria-expanded:text-text-primary
-          aria-expanded:opacity-100 max-tight:right-4 max-tight:bottom-2.5
-          max-tight:size-[30px]"
+        class={cx(
+          "fixed right-3.5 bottom-3.5 z-30 grid size-8 cursor-pointer",
+          "place-items-center rounded-pill border border-[rgba(104,115,134,0.35)]",
+          "bg-(--color-overlay-surface) p-0 text-text-muted opacity-[0.42]",
+          "shadow-floating transition-[background,border-color,color,opacity]",
+          "duration-[140ms] ease-[ease] hover:border-border-strong",
+          "hover:bg-(--color-overlay-surface-strong) hover:text-text-primary",
+          "hover:opacity-100 focus-visible:border-border-strong",
+          "focus-visible:bg-(--color-overlay-surface-strong)",
+          "focus-visible:text-text-primary focus-visible:opacity-100",
+          "aria-expanded:border-border-strong aria-expanded:text-text-primary",
+          "aria-expanded:bg-(--color-overlay-surface-strong)",
+          "aria-expanded:opacity-100 max-tight:right-4 max-tight:bottom-2.5",
+          "max-tight:size-[30px]",
+          FOCUS_RING
+        )}
         type="button"
         aria-label="settings"
         aria-controls="settings-panel"
@@ -89,9 +94,12 @@ export function SettingsPanel({
         </label>
         <button
           id="commands-shortcuts-button"
-          class="text-text-muted mt-2.5 h-auto w-full cursor-pointer rounded-none
-            border-none bg-transparent p-0 text-left text-[13px]/[1.3] shadow-none
-            hover:text-text-primary"
+          class={cx(
+            "text-text-muted mt-2.5 h-auto w-full cursor-pointer rounded-none",
+            "border-none bg-transparent p-0 text-left text-[13px]/[1.3]",
+            "shadow-none hover:text-text-primary",
+            FOCUS_RING
+          )}
           type="button"
           aria-haspopup="dialog"
           aria-controls="commands-shortcuts-dialog"

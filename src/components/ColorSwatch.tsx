@@ -1,5 +1,5 @@
 import type { PenColor } from "../app/config";
-import { cx } from "./classNames";
+import { cx, FOCUS_RING } from "./classNames";
 
 interface ColorSwatchProps {
   color: PenColor;
@@ -22,8 +22,7 @@ export function ColorSwatch({
         "max-compact:size-6 max-tight:size-5",
         "rounded-pill border p-0 bg-(--swatch-color) shadow-swatch",
         "enabled:hover:border-border-strong",
-        "focus-visible:outline-3 focus-visible:outline-offset-2",
-        "focus-visible:outline-action-ring",
+        FOCUS_RING,
         // One border-color class only: competing arbitrary values in the same
         // utility family resolve by Tailwind's sort order, not by class order.
         color.value === "#ffffff"

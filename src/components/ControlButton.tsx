@@ -1,5 +1,5 @@
 import type { JSX } from "preact";
-import { cx } from "./classNames";
+import { cx, FOCUS_RING } from "./classNames";
 
 type NativeButtonProps = Omit<JSX.IntrinsicElements["button"], "class">;
 
@@ -20,8 +20,7 @@ export interface ControlButtonProps extends NativeButtonProps {
 const BASE =
   "inline-flex h-9 cursor-pointer items-center justify-center whitespace-nowrap " +
   "rounded-control border p-0 text-text-primary " +
-  "focus-visible:outline-3 focus-visible:outline-offset-2 " +
-  "focus-visible:outline-action-ring " +
+  `${FOCUS_RING} ` +
   "disabled:cursor-default disabled:opacity-[0.48]";
 
 const VARIANTS: Record<ControlButtonVariant, string> = {

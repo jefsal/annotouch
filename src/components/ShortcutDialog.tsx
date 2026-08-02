@@ -1,6 +1,7 @@
 import { Fragment } from "preact";
 import { useLayoutEffect, useRef } from "preact/hooks";
 import { SHORTCUT_GROUPS } from "../app/shortcuts";
+import { cx, FOCUS_RING } from "./classNames";
 
 interface ShortcutDialogProps {
   isOpen: boolean;
@@ -50,11 +51,14 @@ export function ShortcutDialog({ isOpen, onClose }: ShortcutDialogProps) {
         </h2>
         <button
           id="commands-shortcuts-close"
-          class="commands-shortcuts-close text-text-secondary size-8 flex-none
-            cursor-pointer rounded-pill border-none bg-transparent p-0 text-2xl/none
-            shadow-none in-data-[theme=night]:text-[#aab2c0]
-            in-data-[theme=night]:hover:bg-[#242936]
-            in-data-[theme=night]:hover:text-[#f3f4f6]"
+          class={cx(
+            "commands-shortcuts-close text-text-secondary size-8 flex-none",
+            "cursor-pointer rounded-pill border-none bg-transparent p-0",
+            "text-2xl/none shadow-none in-data-[theme=night]:text-[#aab2c0]",
+            "in-data-[theme=night]:hover:bg-[#242936]",
+            "in-data-[theme=night]:hover:text-[#f3f4f6]",
+            FOCUS_RING
+          )}
           type="button"
           aria-label="close keyboard shortcuts"
           autoFocus

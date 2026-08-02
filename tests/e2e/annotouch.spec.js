@@ -152,6 +152,33 @@ test.describe("Annotouch browser QA", () => {
     await expect(settingsButton).toHaveAttribute("aria-expanded", "false");
   });
 
+  test("gives every control a visible focus ring", async ({ page }) => {
+    const controls = [
+      "#width-button",
+      "#settings-button",
+      ".color-swatch",
+      "#commands-shortcuts-button",
+    ];
+
+    await page.getByRole("button", { name: "settings" }).click();
+
+    for (const selector of controls) {
+      const control = page.locator(selector).first();
+
+      // Establish keyboard modality so programmatic focus matches
+      // :focus-visible, then focus the control directly.
+      await page.keyboard.press("Tab");
+      await control.evaluate((element) => element.focus());
+
+      await expect(control).toHaveCSS("outline-style", "solid");
+      await expect(control).toHaveCSS("outline-width", "3px");
+      await expect(control).toHaveCSS(
+        "outline-color",
+        "rgba(31, 111, 235, 0.24)"
+      );
+    }
+  });
+
   test("keeps the settings button visible at narrow widths", async ({
     page,
   }) => {
