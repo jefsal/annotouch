@@ -99,9 +99,10 @@ Tailwind utilities.
 - `src/textEditor.ts` owns one text-annotation editing session.
 - `src/domain/canvasCoordinates.ts` converts pointer positions into
   canvas-pixel space so stored coordinates stay independent of zoom.
-- `src/styles/tailwind.css` contains the Tailwind entry point and shell styles;
-  `src/style.css` still contains interaction and document-viewer styles being
-  migrated.
+- `src/styles/tailwind.css` holds the design tokens, base layer, named
+  breakpoints, and the night-theme token swap.
+- `src/style.css` is the small remainder: styling for DOM the component tree
+  does not own, plus scrollbar pseudo-elements.
 - `tests/unit/` covers typed policies, application state, and domain behavior.
 - `tests/e2e/annotouch.spec.js` covers upload, lazy rendering, drawing, text,
   colors, undo/redo, page limits, themes, and PDF export.
@@ -111,5 +112,7 @@ Tailwind utilities.
 Completed foundations include the TypeScript toolchain, typed domain and PDF
 services, the Preact application shell, Tailwind shell layout, unit tests, lazy
 loading of the export pipeline, typed application state, the split between the
-Preact UI and the document controller, and the TypeScript interaction layer.
-The next phase moves the legacy CSS into component-scoped Tailwind styles.
+Preact UI and the document controller, the TypeScript interaction layer, and
+component-owned Tailwind styling with a token-driven night theme. The next
+phase is hardening: component tests, malformed-PDF handling, accessibility,
+and performance review.
