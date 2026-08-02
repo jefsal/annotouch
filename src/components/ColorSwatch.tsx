@@ -21,6 +21,7 @@ export function ColorSwatch({
       type="button"
       class={cx(
         "color-swatch text-text-primary size-[26px] cursor-pointer",
+        "max-compact:size-6 max-tight:size-5",
         "rounded-pill border p-0 bg-(--swatch-color) shadow-swatch",
         "enabled:hover:border-border-strong",
         "focus-visible:outline-3 focus-visible:outline-offset-2",
@@ -31,7 +32,7 @@ export function ColorSwatch({
           ? "border-[#c6ccd6]"
           : "border-[rgba(17,24,39,0.12)]",
         isSelected &&
-          "is-selected outline-2 outline-offset-2 outline-selection-ring"
+          "is-selected outline-2 outline-offset-2 outline-selection-ring max-compact:outline-offset-1"
       )}
       data-color-value={color.value}
       title={`${color.label} (${shortcut})`}

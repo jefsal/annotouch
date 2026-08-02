@@ -92,12 +92,22 @@ function Toolbar({
     <header
       class="toolbar border-border-toolbar bg-surface/94 shadow-toolbar sticky
         top-0 z-10 flex min-h-16 items-center gap-2.5 border-b px-4 py-2.5
-        backdrop-blur-[16px]"
+        backdrop-blur-[16px] max-compact:min-h-14 max-compact:gap-1.5
+        max-compact:px-2 max-compact:py-2 max-tight:min-h-12
+        max-tight:gap-[5px] max-tight:px-1.5 max-tight:py-1.5"
     >
-      <div class="brand-block mr-1 grid min-w-[118px] gap-px">
+      <div
+        class={cx(
+          "brand-block mr-1 grid min-w-[118px] gap-px max-compact:mr-0",
+          "max-compact:flex-[0_0_92px] max-compact:min-w-23",
+          "max-tight:basis-[78px] max-tight:min-w-[78px] max-micro:hidden",
+          hasDocument(state) && "max-compact:hidden"
+        )}
+      >
         <div
           id="theme-toggle"
-          class="brand cursor-pointer text-base leading-[1.1] font-bold"
+          class="brand cursor-pointer text-base leading-[1.1] font-bold
+            max-compact:text-[15px] max-tight:text-[14px]"
           role="button"
           tabIndex={0}
           aria-label="toggle night mode"
@@ -131,11 +141,14 @@ function Toolbar({
       <div
         class="toolbar-section border-border-section bg-surface-raised inline-flex
           h-11 flex-none items-center gap-2 rounded-control border px-[5px]
-          py-[3px]"
+          py-[3px] max-compact:h-[38px] max-compact:gap-1.5 max-compact:px-1
+          max-compact:py-0.5 max-tight:h-[34px] max-tight:px-[3px]
+          max-tight:py-0.5"
       >
         <div
           id="color-controls"
-          class="pen-color-group inline-flex items-center gap-2"
+          class="pen-color-group inline-flex items-center gap-2
+            max-compact:gap-1.5 max-tight:gap-[5px]"
           role="group"
           aria-label="pen color"
         >
@@ -166,7 +179,7 @@ function Toolbar({
         {currentWidth.label}
       </ControlButton>
       <div
-        class="history-controls inline-flex w-22 items-stretch"
+        class="history-controls inline-flex w-22 items-stretch max-compact:hidden"
         role="group"
         aria-label="history"
       >
@@ -194,7 +207,7 @@ function Toolbar({
       <div
         class="zoom-controls border-border-default bg-surface shadow-control
           inline-flex h-9 w-8 flex-none items-stretch overflow-hidden
-          rounded-control border"
+          rounded-control border max-compact:hidden"
         role="group"
         aria-label="zoom"
       >
@@ -219,7 +232,10 @@ function Toolbar({
       <StatusMessage state={state} />
       <ControlButton
         id="export-button"
-        class="export-button ml-auto min-w-23 flex-none px-3"
+        class="export-button ml-auto min-w-23 flex-none px-3
+          max-compact:h-[38px] max-compact:min-w-[70px] max-compact:px-2
+          max-compact:text-[13px] max-tight:h-[34px] max-tight:min-w-[58px]
+          max-tight:px-1.5 max-tight:text-[12px]"
         variant="accent"
         disabled={!canExport(state)}
         title="export PDF"
@@ -273,6 +289,7 @@ function StatusMessage({ state }: Pick<AppShellProps, "state">) {
       id="status"
       class={cx(
         "status",
+        "max-compact:hidden",
         isDocumentOpen
           ? "sr-only"
           : "border-border-status bg-surface-muted text-text-muted rounded-control border px-[9px] py-[7px] text-xs leading-none whitespace-nowrap",
@@ -301,14 +318,18 @@ function DocumentSummary({ state }: Pick<AppShellProps, "state">) {
   return (
     <div
       class="document-summary ml-auto grid min-w-0 max-w-[min(320px,24vw)] gap-0.5
-        leading-[1.2]"
+        leading-[1.2] max-compact:ml-0 max-compact:flex-[1_1_72px]
+        max-compact:max-w-24 summary:max-compact:basis-40
+        summary:max-compact:max-w-45 max-tight:basis-14 max-tight:max-w-[70px]"
       id="document-summary"
     >
       <span
         id="document-name"
         class="document-name text-text-primary block overflow-hidden text-[13px]
           font-[650] whitespace-nowrap
-          [mask-image:linear-gradient(90deg,#000_calc(100%-44px),transparent)]"
+          [mask-image:linear-gradient(90deg,#000_calc(100%-44px),transparent)]
+          max-compact:text-[12px] max-compact:text-ellipsis
+          max-compact:[mask-image:none] summary:max-compact:text-[13px]"
         title={document.fileName}
       >
         {document.fileName}
@@ -316,7 +337,8 @@ function DocumentSummary({ state }: Pick<AppShellProps, "state">) {
       <span
         id="document-count"
         class="document-count text-text-secondary block overflow-hidden
-          text-[12px]/[1.2] text-ellipsis whitespace-nowrap opacity-50"
+          text-[12px]/[1.2] text-ellipsis whitespace-nowrap opacity-50
+          max-compact:hidden summary:max-compact:block"
       >
         {countLabel}
       </span>
