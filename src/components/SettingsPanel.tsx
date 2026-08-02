@@ -27,13 +27,13 @@ export function SettingsPanel({
         id="settings-button"
         class="fixed right-3.5 bottom-3.5 z-30 grid size-8 cursor-pointer
           place-items-center rounded-pill border border-[rgba(104,115,134,0.35)]
-          bg-white/[0.72] p-0 text-text-muted opacity-[0.42] shadow-floating
-          transition-[background,border-color,color,opacity] duration-150
-          hover:border-border-strong hover:bg-white/[0.96] hover:text-text-primary
+          bg-[rgba(255,255,255,0.72)] p-0 text-text-muted opacity-[0.42] shadow-floating
+          transition-[background,border-color,color,opacity] duration-[140ms] ease-[ease]
+          hover:border-border-strong hover:bg-[rgba(255,255,255,0.96)] hover:text-text-primary
           hover:opacity-100 focus-visible:border-border-strong
-          focus-visible:bg-white/[0.96] focus-visible:text-text-primary
+          focus-visible:bg-[rgba(255,255,255,0.96)] focus-visible:text-text-primary
           focus-visible:opacity-100 aria-expanded:border-border-strong
-          aria-expanded:bg-white/[0.96] aria-expanded:text-text-primary
+          aria-expanded:bg-[rgba(255,255,255,0.96)] aria-expanded:text-text-primary
           aria-expanded:opacity-100 max-[480px]:right-4 max-[480px]:bottom-2.5
           max-[480px]:size-[30px]"
         type="button"
@@ -43,14 +43,15 @@ export function SettingsPanel({
         title="settings"
         onClick={onToggle}
       >
+        {/*
+          Stroke styling goes through utilities, not JSX props: Preact emits
+          camelCase SVG attributes verbatim, so `strokeWidth` lands in the DOM
+          as an attribute SVG ignores.
+        */}
         <svg
-          class="size-4"
+          class="size-4 fill-none stroke-current stroke-[1.8]
+            [stroke-linecap:round] [stroke-linejoin:round]"
           viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth="1.8"
           aria-hidden="true"
           focusable="false"
         >
@@ -63,7 +64,7 @@ export function SettingsPanel({
         id="settings-panel"
         class={cx(
           "fixed right-3.5 bottom-[54px] z-31 min-w-[164px] rounded-panel",
-          "border border-border-subtle bg-white/[0.96] px-3 py-2.5 shadow-panel",
+          "border border-border-subtle bg-[rgba(255,255,255,0.96)] px-3 py-2.5 shadow-panel",
           "backdrop-blur-[12px] max-[480px]:right-4 max-[480px]:bottom-12",
           !isOpen && "hidden"
         )}
