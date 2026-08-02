@@ -87,13 +87,10 @@ export function App({ root }: AppProps) {
   }, [state.viewScale]);
 
   useLayoutEffect(() => {
-    root.classList.toggle("has-document", hasDocument(state));
-    root.classList.toggle("is-busy", state.isBusy);
+    // The only state the component tree cannot express: the annotation canvases
+    // are created by the document controller, so their text-mode cursor has to
+    // be reached through a class on the mount container.
     root.classList.toggle("is-text-mode", state.isTextMode);
-    root.classList.toggle(
-      "hide-history-controls",
-      !state.toolbar.showHistoryControls
-    );
   });
 
   const hasUnsavedAnnotations = hasUnsavedWork(state);

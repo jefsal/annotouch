@@ -1,154 +1,148 @@
-.hide-history-controls .history-controls {
-  display: none;
-}
+/*
+ * What is left of the legacy stylesheet: rules for DOM the component tree does
+ * not own (page shells, canvases, and the text editor are created by the
+ * document controller) plus browser-specific scrollbar pseudo-elements.
+ *
+ * Everything sits in @layer components so Tailwind utilities in the layer above
+ * can still override it.
+ */
+@layer components {
+  .commands-shortcuts-dialog::backdrop {
+    background: rgba(23, 25, 35, 0.42);
+    backdrop-filter: blur(2px);
+  }
 
-.document-summary[hidden] {
-  display: none;
-}
+  .commands-shortcuts-content {
+    scrollbar-color: rgba(104, 115, 134, 0.18) transparent;
+    scrollbar-width: thin;
+  }
 
-.document-summary[hidden] ~ .status {
-  margin-left: auto;
-}
+  .commands-shortcuts-content::-webkit-scrollbar {
+    width: 8px;
+  }
 
-.commands-shortcuts-dialog::backdrop {
-  background: rgba(23, 25, 35, 0.42);
-  backdrop-filter: blur(2px);
-}
+  .commands-shortcuts-content::-webkit-scrollbar-track {
+    background: transparent;
+  }
 
-.commands-shortcuts-content {
-  scrollbar-color: rgba(104, 115, 134, 0.18) transparent;
-  scrollbar-width: thin;
-}
+  .commands-shortcuts-content::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: 999px;
+    background: rgba(104, 115, 134, 0.18);
+    background-clip: content-box;
+  }
 
-.commands-shortcuts-content::-webkit-scrollbar {
-  width: 8px;
-}
-
-.commands-shortcuts-content::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.commands-shortcuts-content::-webkit-scrollbar-thumb {
-  border: 2px solid transparent;
-  border-radius: 999px;
-  background: rgba(104, 115, 134, 0.18);
-  background-clip: content-box;
-}
-
-.commands-shortcuts-content::-webkit-scrollbar-thumb:hover {
-  background: rgba(104, 115, 134, 0.28);
-  background-clip: content-box;
-}
-
-html[data-theme="night"] .commands-shortcuts-content {
-  scrollbar-color: rgba(170, 178, 192, 0.16) transparent;
-}
-
-html[data-theme="night"] .commands-shortcuts-content::-webkit-scrollbar-thumb {
-  background: rgba(170, 178, 192, 0.16);
-  background-clip: content-box;
-}
-
-html[data-theme="night"]
   .commands-shortcuts-content::-webkit-scrollbar-thumb:hover {
-  background: rgba(170, 178, 192, 0.25);
-  background-clip: content-box;
-}
+    background: rgba(104, 115, 134, 0.28);
+    background-clip: content-box;
+  }
 
-.workspace.is-dragging {
-  background: var(--color-surface-drop);
-}
+  html[data-theme="night"] .commands-shortcuts-content {
+    scrollbar-color: rgba(170, 178, 192, 0.16) transparent;
+  }
 
-.empty-state[hidden],
-.pages-container[hidden] {
-  display: none;
-}
+  html[data-theme="night"]
+    .commands-shortcuts-content::-webkit-scrollbar-thumb {
+    background: rgba(170, 178, 192, 0.16);
+    background-clip: content-box;
+  }
 
-.workspace.is-dragging .empty-state,
-.workspace.is-dragging .page-shell {
-  border-color: var(--color-action);
-  box-shadow: var(--shadow-page-drop);
-}
+  html[data-theme="night"]
+    .commands-shortcuts-content::-webkit-scrollbar-thumb:hover {
+    background: rgba(170, 178, 192, 0.25);
+    background-clip: content-box;
+  }
 
-.pages-container {
-  display: grid;
-  justify-items: center;
-  gap: 28px;
-  width: max-content;
-  min-width: 100%;
-}
+  .pages-container[hidden] {
+    display: none;
+  }
 
-.page-shell {
-  position: relative;
-  overflow: hidden;
-  border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-control);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-page);
-}
+  .workspace.is-dragging .empty-state,
+  .workspace.is-dragging .page-shell {
+    border-color: var(--color-action);
+    box-shadow: var(--shadow-page-drop);
+  }
 
-.page-placeholder {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  z-index: 0;
-  border: 1px solid var(--color-border-placeholder);
-  background:
-    linear-gradient(135deg, rgba(216, 221, 229, 0.28), transparent 42%),
-    var(--color-surface);
-  color: var(--color-text-secondary);
-  font-size: 13px;
-}
+  .pages-container {
+    display: grid;
+    justify-items: center;
+    gap: 28px;
+    width: max-content;
+    min-width: 100%;
+  }
 
-.page-shell.is-loading .page-placeholder {
-  color: #4b5563;
-}
+  .page-shell {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-control);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-page);
+  }
 
-.pdf-canvas,
-.annotation-canvas {
-  position: absolute;
-  inset: 0;
-  display: block;
-  width: 100%;
-  height: 100%;
-}
+  .page-placeholder {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    z-index: 0;
+    border: 1px solid var(--color-border-placeholder);
+    background:
+      linear-gradient(135deg, rgba(216, 221, 229, 0.28), transparent 42%),
+      var(--color-surface);
+    color: var(--color-text-secondary);
+    font-size: 13px;
+  }
 
-.pdf-canvas {
-  z-index: 1;
-}
+  .page-shell.is-loading .page-placeholder {
+    color: #4b5563;
+  }
 
-.annotation-canvas {
-  z-index: 2;
-  cursor: crosshair;
-  touch-action: none;
-}
+  .pdf-canvas,
+  .annotation-canvas {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
 
-.is-text-mode .annotation-canvas {
-  cursor: text;
-}
+  .pdf-canvas {
+    z-index: 1;
+  }
 
-.text-editor {
-  position: absolute;
-  z-index: 3;
-  min-width: 0;
-  min-height: 0;
-  margin: 0;
-  overflow: auto;
-  border: 1px solid rgba(29, 78, 216, 0.9);
-  border-radius: 3px;
-  outline: 2px solid rgba(29, 78, 216, 0.2);
-  outline-offset: 1px;
-  background: rgba(107, 114, 128, 0.22);
-  box-shadow: var(--shadow-editor);
-  font-family: Helvetica, Arial, sans-serif;
-  font-weight: 400;
-  letter-spacing: normal;
-  white-space: pre;
-  resize: none;
-  tab-size: 2;
-}
+  .annotation-canvas {
+    z-index: 2;
+    cursor: crosshair;
+    touch-action: none;
+  }
 
-.text-editor::selection {
-  background: rgba(37, 99, 235, 0.28);
+  .is-text-mode .annotation-canvas {
+    cursor: text;
+  }
+
+  .text-editor {
+    position: absolute;
+    z-index: 3;
+    min-width: 0;
+    min-height: 0;
+    margin: 0;
+    overflow: auto;
+    border: 1px solid rgba(29, 78, 216, 0.9);
+    border-radius: 3px;
+    outline: 2px solid rgba(29, 78, 216, 0.2);
+    outline-offset: 1px;
+    background: rgba(107, 114, 128, 0.22);
+    box-shadow: var(--shadow-editor);
+    font-family: Helvetica, Arial, sans-serif;
+    font-weight: 400;
+    letter-spacing: normal;
+    white-space: pre;
+    resize: none;
+    tab-size: 2;
+  }
+
+  .text-editor::selection {
+    background: rgba(37, 99, 235, 0.28);
+  }
 }

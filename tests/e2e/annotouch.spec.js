@@ -921,7 +921,6 @@ test.describe("Annotouch browser QA", () => {
     await showHistoryControls.uncheck();
 
     await expect(historyControls).toBeHidden();
-    await expect(page.locator("#app")).toHaveClass(/hide-history-controls/);
 
     await page.keyboard.press("Escape");
     await expect(settingsPanel).toBeHidden();
@@ -937,7 +936,6 @@ test.describe("Annotouch browser QA", () => {
     ]);
 
     await expect(page.locator(".history-controls")).toBeHidden();
-    await expect(page.locator("#app")).toHaveClass(/hide-history-controls/);
 
     await page.getByRole("button", { name: "settings" }).click();
     await expect(page.getByLabel("show undo/redo")).not.toBeChecked();

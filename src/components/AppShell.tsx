@@ -179,7 +179,12 @@ function Toolbar({
         {currentWidth.label}
       </ControlButton>
       <div
-        class="history-controls inline-flex w-22 items-stretch max-compact:hidden"
+        class={cx(
+          "history-controls w-22 items-stretch max-compact:hidden",
+          // One display utility only: `hidden` and `inline-flex` are the same
+          // family, so Tailwind's sort order would decide the winner.
+          state.toolbar.showHistoryControls ? "inline-flex" : "hidden"
+        )}
         role="group"
         aria-label="history"
       >
@@ -288,11 +293,12 @@ function StatusMessage({ state }: Pick<AppShellProps, "state">) {
     <div
       id="status"
       class={cx(
-        "status",
-        "max-compact:hidden",
+        "status max-compact:hidden",
+        // With a document open the toolbar shows the summary instead, and the
+        // status stays for screen readers only.
         isDocumentOpen
           ? "sr-only"
-          : "border-border-status bg-surface-muted text-text-muted rounded-control border px-[9px] py-[7px] text-xs leading-none whitespace-nowrap",
+          : "border-border-status bg-surface-muted text-text-muted ml-auto rounded-control border px-[9px] py-[7px] text-xs leading-none whitespace-nowrap",
         !isDocumentOpen && state.status.isMuted && "opacity-36"
       )}
       role="status"
@@ -307,7 +313,7 @@ function DocumentSummary({ state }: Pick<AppShellProps, "state">) {
   const { document } = state;
 
   if (document.status !== "ready") {
-    return <div id="document-summary" class="document-summary" hidden />;
+    return null;
   }
 
   const { annotationCount } = state.history;

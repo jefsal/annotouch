@@ -52,7 +52,7 @@ export function DocumentViewport({
       class={cx(
         "workspace min-h-0 overflow-auto p-7 transition-[background]",
         "duration-[160ms] ease-[ease] max-compact:p-3.5",
-        isDragging && "is-dragging"
+        isDragging && "is-dragging bg-surface-drop"
       )}
       aria-label="pdf annotation workspace"
       onDragEnter={handleDragOver}
@@ -62,7 +62,12 @@ export function DocumentViewport({
     >
       <label
         id="empty-state"
-        class="empty-state text-text-secondary mx-auto mt-[16vh] grid min-h-[220px] w-[min(520px,100%)] cursor-pointer content-center place-items-center gap-2.5 rounded-control border border-dashed border-[#b9c2d0] bg-[rgba(255,255,255,0.72)] text-center max-compact:mt-[10vh] max-compact:min-h-[200px]"
+        class={cx(
+          "empty-state text-text-secondary mx-auto mt-[16vh] min-h-[220px] w-[min(520px,100%)] cursor-pointer content-center place-items-center gap-2.5 rounded-control border border-dashed border-[#b9c2d0] bg-[rgba(255,255,255,0.72)] text-center max-compact:mt-[10vh] max-compact:min-h-[200px]",
+          // Utilities outrank the layered stylesheet, so [hidden] cannot win
+          // against a display utility; drive display from state instead.
+          hasDocument ? "hidden" : "grid"
+        )}
         for="pdf-input"
         hidden={hasDocument}
       >
