@@ -3,7 +3,5 @@ dist/
 playwright-report/
 test-results/
 
-# Local agent guidance and planning
+# Local agent settings
 .claude/
-CLAUDE.md
-plan.md

@@ -18,7 +18,3 @@ Thumbs.db
 .idea/
 .vscode/
 *.swp
-
-# Local agent guidance and planning
-CLAUDE.md
-plan.md
