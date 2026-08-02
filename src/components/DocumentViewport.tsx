@@ -1,6 +1,7 @@
 import { useState } from "preact/hooks";
 import type { Ref } from "preact";
 import { isPdfFile } from "../app/documentController";
+import { cx } from "./classNames";
 
 interface DocumentViewportProps {
   workspaceRef: Ref<HTMLElement>;
@@ -48,9 +49,11 @@ export function DocumentViewport({
   return (
     <section
       ref={workspaceRef}
-      class={`workspace min-h-0 overflow-auto p-7 transition-[background] duration-150 max-[720px]:p-3.5${
-        isDragging ? " is-dragging" : ""
-      }`}
+      class={cx(
+        "workspace min-h-0 overflow-auto p-7 transition-[background]",
+        "duration-[160ms] ease-[ease] max-compact:p-3.5",
+        isDragging && "is-dragging"
+      )}
       aria-label="pdf annotation workspace"
       onDragEnter={handleDragOver}
       onDragOver={handleDragOver}
@@ -59,17 +62,17 @@ export function DocumentViewport({
     >
       <label
         id="empty-state"
-        class="empty-state text-text-secondary mx-auto mt-[16vh] grid min-h-[220px] w-[min(520px,100%)] cursor-pointer content-center place-items-center gap-2.5 rounded border border-dashed border-[#b9c2d0] bg-white/70 text-center max-[720px]:mt-[10vh] max-[720px]:min-h-[200px]"
+        class="empty-state text-text-secondary mx-auto mt-[16vh] grid min-h-[220px] w-[min(520px,100%)] cursor-pointer content-center place-items-center gap-2.5 rounded-control border border-dashed border-[#b9c2d0] bg-[rgba(255,255,255,0.72)] text-center max-compact:mt-[10vh] max-compact:min-h-[200px]"
         for="pdf-input"
         hidden={hasDocument}
       >
-        <span class="empty-title text-text-strong text-xl font-bold">
+        <span class="empty-title text-text-strong text-[20px] font-bold">
           drop a PDF{" "}
         </span>
-        <span class="empty-copy text-sm opacity-45">
+        <span class="empty-copy text-[14px] opacity-45">
           or choose a local file
         </span>
-        <span class="empty-action text-text-primary border-border-default bg-surface mt-1.5 inline-flex h-9 items-center justify-center whitespace-nowrap rounded border px-3 text-[13px] font-semibold">
+        <span class="empty-action text-text-primary border-border-default bg-surface mt-1.5 inline-flex h-9 items-center justify-center whitespace-nowrap rounded-control border px-3 text-[13px] font-[650]">
           choose PDF
         </span>
       </label>

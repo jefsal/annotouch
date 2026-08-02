@@ -34,8 +34,8 @@ export function SettingsPanel({
           focus-visible:bg-[rgba(255,255,255,0.96)] focus-visible:text-text-primary
           focus-visible:opacity-100 aria-expanded:border-border-strong
           aria-expanded:bg-[rgba(255,255,255,0.96)] aria-expanded:text-text-primary
-          aria-expanded:opacity-100 max-[480px]:right-4 max-[480px]:bottom-2.5
-          max-[480px]:size-[30px]"
+          aria-expanded:opacity-100 max-tight:right-4 max-tight:bottom-2.5
+          max-tight:size-[30px]"
         type="button"
         aria-label="settings"
         aria-controls="settings-panel"
@@ -65,7 +65,7 @@ export function SettingsPanel({
         class={cx(
           "fixed right-3.5 bottom-[54px] z-31 min-w-[164px] rounded-panel",
           "border border-border-subtle bg-[rgba(255,255,255,0.96)] px-3 py-2.5 shadow-panel",
-          "backdrop-blur-[12px] max-[480px]:right-4 max-[480px]:bottom-12",
+          "backdrop-blur-[12px] max-tight:right-4 max-tight:bottom-12",
           !isOpen && "hidden"
         )}
         role="dialog"

@@ -29,8 +29,8 @@ export function ShortcutDialog({ isOpen, onClose }: ShortcutDialogProps) {
         w-[min(460px,calc(100vw-32px))] overflow-hidden rounded-dialog border
         border-border-subtle bg-white p-0 text-text-primary shadow-dialog
         in-data-[theme=night]:border-[#343b49] in-data-[theme=night]:bg-[#171923]
-        in-data-[theme=night]:text-[#f3f4f6] max-[480px]:max-h-[calc(100dvh-20px)]
-        max-[480px]:w-[calc(100vw-20px)]"
+        in-data-[theme=night]:text-[#f3f4f6] max-tight:max-h-[calc(100dvh-20px)]
+        max-tight:w-[calc(100vw-20px)]"
       aria-labelledby="commands-shortcuts-title"
       onClose={onClose}
       onClick={(event) => {
@@ -42,8 +42,8 @@ export function ShortcutDialog({ isOpen, onClose }: ShortcutDialogProps) {
       <div
         class="commands-shortcuts-header flex items-center justify-between gap-4
           border-b border-border-section px-[18px] py-4
-          in-data-[theme=night]:border-[#343b49] max-[480px]:px-3.5
-          max-[480px]:py-[13px]"
+          in-data-[theme=night]:border-[#343b49] max-tight:px-3.5
+          max-tight:py-[13px]"
       >
         <h2 id="commands-shortcuts-title" class="m-0 text-lg/[1.25]">
           keyboard shortcuts
@@ -67,8 +67,8 @@ export function ShortcutDialog({ isOpen, onClose }: ShortcutDialogProps) {
         id="commands-shortcuts-content"
         class="commands-shortcuts-content max-h-[min(583px,calc(100dvh-97px))]
           overflow-y-auto overscroll-contain px-[18px] pt-1 pb-[18px]
-          max-[480px]:max-h-[calc(100dvh-79px)] max-[480px]:px-3.5
-          max-[480px]:pt-0.5 max-[480px]:pb-3.5"
+          max-tight:max-h-[calc(100dvh-79px)] max-tight:px-3.5
+          max-tight:pt-0.5 max-tight:pb-3.5"
       >
         {SHORTCUT_GROUPS.map((group) => (
           <section key={group.label} class="commands-shortcuts-group">
@@ -84,18 +84,18 @@ export function ShortcutDialog({ isOpen, onClose }: ShortcutDialogProps) {
                   key={command.label}
                   class="commands-shortcuts-row grid grid-cols-[minmax(0,42%)_minmax(0,1fr)]
                     border-b border-[#eef1f5] in-data-[theme=night]:border-[#2d3340]
-                    max-[480px]:grid-cols-[minmax(0,38%)_minmax(0,1fr)]"
+                    max-tight:grid-cols-[minmax(0,38%)_minmax(0,1fr)]"
                 >
                   <dt
                     class="text-text-strong m-0 flex min-h-[37px] items-center py-[7px]
                       pr-2 text-[13px] in-data-[theme=night]:text-[#e5e7eb]
-                      max-[480px]:pr-1"
+                      max-tight:pr-1"
                   >
                     {command.label}
                   </dt>
                   <dd
                     class="m-0 flex min-h-[37px] items-center justify-end gap-1 py-1.5
-                      pl-2 max-[480px]:gap-[3px]"
+                      pl-2 max-tight:gap-[3px]"
                   >
                     <ShortcutKeys keys={command.keys} />
                     {command.alternateKeys ? (
@@ -140,8 +140,8 @@ function ShortcutKeys({ keys }: { keys: string[] }) {
               justify-center rounded-control border-none bg-surface-muted px-[7px]
               text-[11px] font-[650] whitespace-nowrap [font-family:inherit]
               in-data-[theme=night]:bg-[#242936] in-data-[theme=night]:text-[#aab2c0]
-              max-[480px]:min-w-[23px] max-[480px]:px-[5px]
-              max-[480px]:text-[10px]"
+              max-tight:min-w-[23px] max-tight:px-[5px]
+              max-tight:text-[10px]"
           >
             {key}
           </kbd>
