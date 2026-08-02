@@ -1,7 +1,8 @@
 import { expect, test } from "@playwright/test";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import { degrees, PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import { getDocument as getPdfDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
 
 const PEN_COLORS = [
   { label: "black", hex: "#111827", y: 140 },
@@ -128,7 +129,13 @@ test.describe("Annotouch browser QA", () => {
 
     await expect(settingsPanel).toBeVisible();
     await expect(settingsButton).toHaveAttribute("aria-expanded", "true");
-    await expect(page.getByLabel("show undo/redo")).toBeChecked();
+    await expect(page.getByLabel("show undo/redo")).not.toBeChecked();
+    await expect(settingsPanel.locator(".keyboard-shortcuts")).toHaveCount(0);
+    await expect(
+      settingsPanel.getByRole("button", {
+        name: "view keyboard shortcuts",
+      })
+    ).toBeVisible();
 
     await page.keyboard.press("Escape");
 
@@ -222,6 +229,8 @@ test.describe("Annotouch browser QA", () => {
         rows: [
           { command: "draw", keys: ["space"] },
           { command: "erase", keys: ["e"] },
+          { command: "text", keys: ["t"] },
+          { command: "stroke width", keys: ["w"] },
         ],
       },
       {
@@ -249,7 +258,7 @@ test.describe("Annotouch browser QA", () => {
         ],
       },
     ]);
-    await expect(dialog.locator(".commands-shortcuts-row")).toHaveCount(11);
+    await expect(dialog.locator(".commands-shortcuts-row")).toHaveCount(13);
     await expect(dialog.locator(".commands-shortcuts-row button")).toHaveCount(0);
   });
 
@@ -323,7 +332,7 @@ test.describe("Annotouch browser QA", () => {
 
     await expect(dialog).toHaveCSS("background-color", "rgb(23, 25, 35)");
     await expect(dialog).toHaveCSS("color", "rgb(243, 244, 246)");
-    await expect(shortcutKeys).toHaveCount(20);
+    await expect(shortcutKeys).toHaveCount(22);
     await expect(shortcutKeys.first()).toHaveCSS("border-top-style", "none");
     await expect(shortcutKeys.first()).toHaveCSS(
       "color",
@@ -383,7 +392,7 @@ test.describe("Annotouch browser QA", () => {
     await page.getByRole("button", { name: "red pen" }).click();
     await drawStroke(page, annotationCanvas, PEN_COLORS[1].y);
     await expect(page.locator("#document-count")).toHaveText(
-      "1/1 pages | 1 stroke"
+      "1/1 pages | 1 annotation"
     );
 
     await page.getByRole("button", { name: "settings" }).click();
@@ -406,7 +415,7 @@ test.describe("Annotouch browser QA", () => {
       initialTheme
     );
     await expect(page.locator("#document-count")).toHaveText(
-      "1/1 pages | 1 stroke"
+      "1/1 pages | 1 annotation"
     );
     await expectCanvasHasColor(annotationCanvas, PEN_COLORS[1]);
     await expect(page.getByRole("status")).toHaveText("ready");
@@ -492,7 +501,7 @@ test.describe("Annotouch browser QA", () => {
     await expect(page.locator("#document-name")).toHaveCSS("font-size", "13px");
     await expect(page.locator("#document-count")).toBeVisible();
     await expect(page.locator("#document-count")).toHaveText(
-      "1/1 pages | 0 strokes"
+      "1/1 pages | 0 annotations"
     );
   });
 
@@ -580,7 +589,7 @@ test.describe("Annotouch browser QA", () => {
     ]);
     await expectCanvasHasColor(annotationCanvas, PEN_COLORS[1]);
     await expect(page.locator("#document-count")).toHaveText(
-      "1/1 pages | 1 stroke"
+      "1/1 pages | 1 annotation"
     );
     await page.close();
   });
@@ -691,7 +700,7 @@ test.describe("Annotouch browser QA", () => {
 
     await expect(page.locator("#document-name")).toHaveText("second.pdf");
     await expect(page.locator("#document-count")).toHaveText(
-      "1/1 pages | 0 strokes"
+      "1/1 pages | 0 annotations"
     );
   });
 
@@ -732,7 +741,7 @@ test.describe("Annotouch browser QA", () => {
 
     await expect(page.locator("#document-name")).toHaveText("drop-second.pdf");
     await expect(page.locator("#document-count")).toHaveText(
-      "1/1 pages | 0 strokes"
+      "1/1 pages | 0 annotations"
     );
   });
 
@@ -992,15 +1001,303 @@ test.describe("Annotouch browser QA", () => {
     await expect(widthButton).toHaveText("small");
 
     await page.getByRole("button", { name: "settings" }).click();
-    const shortcuts = page.locator(".keyboard-shortcuts");
+    await page
+      .getByRole("button", { name: "view keyboard shortcuts" })
+      .click();
+    const shortcuts = page.getByRole("dialog", {
+      name: "keyboard shortcuts",
+    });
 
-    await expect(shortcuts.getByRole("heading")).toHaveText(
-      "keyboard shortcuts"
-    );
     await expect(
       shortcuts.locator("dt", { hasText: "stroke width" })
     ).toBeVisible();
     await expect(shortcuts.locator("kbd", { hasText: "W" })).toBeVisible();
+  });
+
+  test("places and edits keyboard-only multiline text with unified history", async ({
+    page,
+  }, testInfo) => {
+    const fixturePath = await createPdfFixture(testInfo, 1);
+
+    await expect(
+      page.getByRole("button", { name: "add text" })
+    ).toHaveCount(0);
+    await page.keyboard.press("Meta+k");
+    const shortcutsDialog = page.getByRole("dialog", {
+      name: "keyboard shortcuts",
+    });
+    await expect(
+      shortcutsDialog.locator("dt", { hasText: "text" })
+    ).toBeVisible();
+    await expect(
+      shortcutsDialog.locator("kbd", { hasText: /^t$/ })
+    ).toBeVisible();
+    await page.keyboard.press("Escape");
+
+    await uploadPdf(page, fixturePath, 1);
+
+    const annotationCanvas = page.locator(".annotation-canvas").first();
+
+    await page.getByRole("button", { name: "red pen" }).click();
+    await page.keyboard.press("t");
+    await expect(page.getByRole("status")).toHaveText(
+      "click a page to add text"
+    );
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("status")).toHaveText("ready");
+    await page.keyboard.press("t");
+    await expect(page.getByRole("status")).toHaveText(
+      "click a page to add text"
+    );
+    await expect(annotationCanvas).toHaveCSS("cursor", "text");
+
+    await clickCanvasAt(page, annotationCanvas, { x: 120, y: 180 });
+    const editor = page.getByRole("textbox", {
+      name: "new text annotation",
+    });
+
+    await expect(editor).toBeVisible();
+    await expect(page.getByRole("status")).toHaveText("adding text");
+    await editor.fill("First line\nSecond line");
+    const editorBox = await editor.boundingBox();
+    expect(editorBox.height).toBeGreaterThan(40);
+
+    await page.keyboard.press("Control+Enter");
+
+    await expect(editor).toBeHidden();
+    await expect(page.locator("#document-count")).toHaveText(
+      "1/1 pages | 1 annotation"
+    );
+    await expectCanvasHasColor(annotationCanvas, PEN_COLORS[1]);
+
+    await page.getByRole("button", { name: "green pen" }).click();
+    await doubleClickCanvasAt(page, annotationCanvas, { x: 140, y: 190 });
+
+    const editBox = page.getByRole("textbox", {
+      name: "edit text annotation",
+    });
+    await expect(editBox).toHaveValue("First line\nSecond line");
+    await editBox.fill("Edited line\nStill multiline");
+    await page.keyboard.press("Escape");
+
+    await expect(editBox).toBeHidden();
+    await expect(page.locator("#document-count")).toHaveText(
+      "1/1 pages | 1 annotation"
+    );
+    await expectCanvasHasColor(annotationCanvas, PEN_COLORS[1]);
+    await expectCanvasLacksColor(annotationCanvas, PEN_COLORS[2]);
+
+    await page.keyboard.press("Control+Z");
+    await doubleClickCanvasAt(page, annotationCanvas, { x: 140, y: 190 });
+    await expect(
+      page.getByRole("textbox", { name: "edit text annotation" })
+    ).toHaveValue("First line\nSecond line");
+    await page.keyboard.press("Escape");
+
+    await page.keyboard.press("Control+Shift+Z");
+    await doubleClickCanvasAt(page, annotationCanvas, { x: 140, y: 190 });
+    await expect(
+      page.getByRole("textbox", { name: "edit text annotation" })
+    ).toHaveValue("Edited line\nStill multiline");
+    await page.keyboard.press("Escape");
+  });
+
+  test("discards blank text and deletes text by blank edit or eraser", async ({
+    page,
+  }, testInfo) => {
+    const fixturePath = await createPdfFixture(testInfo, 1);
+
+    await uploadPdf(page, fixturePath, 1);
+    const annotationCanvas = page.locator(".annotation-canvas").first();
+
+    await page.keyboard.press("t");
+    await clickCanvasAt(page, annotationCanvas, { x: 120, y: 180 });
+    await page.getByRole("textbox", { name: "new text annotation" }).fill("  ");
+    await page.keyboard.press("Escape");
+    await expect(page.locator("#document-count")).toHaveText(
+      "1/1 pages | 0 annotations"
+    );
+
+    await placeText(page, annotationCanvas, {
+      x: 120,
+      y: 180,
+      text: "Delete me",
+    });
+    await expect(page.locator("#document-count")).toHaveText(
+      "1/1 pages | 1 annotation"
+    );
+
+    await doubleClickCanvasAt(page, annotationCanvas, { x: 140, y: 190 });
+    await page
+      .getByRole("textbox", { name: "edit text annotation" })
+      .fill("");
+    await page.keyboard.press("Escape");
+    await expect(page.locator("#document-count")).toHaveText(
+      "1/1 pages | 0 annotations"
+    );
+
+    await page.keyboard.press("Control+Z");
+    await expect(page.locator("#document-count")).toHaveText(
+      "1/1 pages | 1 annotation"
+    );
+
+    await moveCanvasPointerTo(page, annotationCanvas, { x: 140, y: 190 });
+    await page.keyboard.down("e");
+    await expect(page.getByRole("status")).toHaveText("erasing");
+    await page.keyboard.up("e");
+    await expect(page.locator("#document-count")).toHaveText(
+      "1/1 pages | 0 annotations"
+    );
+    await expectCanvasToBeEmpty(annotationCanvas);
+  });
+
+  test("warns before unloading an in-progress text draft", async ({
+    page,
+  }, testInfo) => {
+    const fixturePath = await createPdfFixture(testInfo, 1);
+
+    await uploadPdf(page, fixturePath, 1);
+    const annotationCanvas = page.locator(".annotation-canvas").first();
+    await page.keyboard.press("t");
+    await clickCanvasAt(page, annotationCanvas, { x: 120, y: 180 });
+    await page
+      .getByRole("textbox", { name: "new text annotation" })
+      .fill("Unsaved draft");
+
+    expect(await reloadAndCollectDialogs(page)).toEqual([
+      { type: "beforeunload", message: "" },
+    ]);
+  });
+
+  test("exports multiline text as extractable vector PDF content", async ({
+    page,
+  }, testInfo) => {
+    const fixturePath = await createPdfFixture(testInfo, 1);
+
+    await uploadPdf(page, fixturePath, 1);
+    const annotationCanvas = page.locator(".annotation-canvas").first();
+    await page.getByRole("button", { name: "red pen" }).click();
+    await placeText(page, annotationCanvas, {
+      x: 120,
+      y: PEN_COLORS[1].y,
+      text: "Vector café\nVector second",
+    });
+
+    const [download] = await Promise.all([
+      page.waitForEvent("download"),
+      page.getByRole("button", { name: "export" }).click(),
+    ]);
+    const exportedPath = testInfo.outputPath("text-annotated.pdf");
+    await download.saveAs(exportedPath);
+
+    await expectPdfContainsText(exportedPath, [
+      "Vector café",
+      "Vector second",
+    ]);
+    await expectPdfPageCount(exportedPath, 1);
+
+    page.once("dialog", (dialog) => dialog.accept());
+    await uploadPdf(page, exportedPath, 1);
+    await expectCanvasHasColor(
+      page.locator(".pdf-canvas").first(),
+      PEN_COLORS[1]
+    );
+  });
+
+  for (const rotation of [90, 180, 270]) {
+    test(`preserves text placement and orientation on a ${rotation}-degree page`, async ({
+      page,
+    }, testInfo) => {
+      const text = `Rotate ${rotation}`;
+      const fixturePath = await createPdfFixture(testInfo, 1, {
+        fileName: `fixture-rotated-${rotation}.pdf`,
+        rotation,
+      });
+
+      await uploadPdf(page, fixturePath, 1);
+      const annotationCanvas = page.locator(".annotation-canvas").first();
+      await page.getByRole("button", { name: "red pen" }).click();
+      await placeText(page, annotationCanvas, {
+        x: 120,
+        y: 180,
+        text,
+      });
+      const sourceBounds = await expectCanvasColorBounds(
+        annotationCanvas,
+        PEN_COLORS[1]
+      );
+
+      const [download] = await Promise.all([
+        page.waitForEvent("download"),
+        page.getByRole("button", { name: "export" }).click(),
+      ]);
+      const exportedPath = testInfo.outputPath(
+        `text-rotated-${rotation}-annotated.pdf`
+      );
+      await download.saveAs(exportedPath);
+      await expectPdfTextRotation(exportedPath, text, rotation);
+
+      page.once("dialog", (dialog) => dialog.accept());
+      await uploadPdf(page, exportedPath, 1);
+      const exportedCanvas = page.locator(".pdf-canvas").first();
+      const exportedBounds = await expectCanvasColorBounds(
+        exportedCanvas,
+        PEN_COLORS[1]
+      );
+
+      expect(exportedBounds.width).toBeGreaterThan(exportedBounds.height * 2);
+      expect(
+        Math.abs(exportedBounds.centerX - sourceBounds.centerX)
+      ).toBeLessThan(10);
+      expect(
+        Math.abs(exportedBounds.centerY - sourceBounds.centerY)
+      ).toBeLessThan(10);
+    });
+  }
+
+  test("rejects unsupported text before export and allows correction", async ({
+    page,
+  }, testInfo) => {
+    const fixturePath = await createPdfFixture(testInfo, 1);
+    let downloadCount = 0;
+
+    page.on("download", () => {
+      downloadCount += 1;
+    });
+
+    await uploadPdf(page, fixturePath, 1);
+    const annotationCanvas = page.locator(".annotation-canvas").first();
+    await placeText(page, annotationCanvas, {
+      x: 120,
+      y: 180,
+      text: "Cannot export 😀",
+    });
+
+    await page.getByRole("button", { name: "export" }).click();
+
+    await expect(page.getByRole("status")).toHaveText(
+      "cannot export “😀” (U+1F600) on page 1; Helvetica does not support this character"
+    );
+    expect(downloadCount).toBe(0);
+    await expect(page.locator("#document-count")).toHaveText(
+      "1/1 pages | 1 annotation"
+    );
+
+    await doubleClickCanvasAt(page, annotationCanvas, { x: 140, y: 190 });
+    const editor = page.getByRole("textbox", {
+      name: "edit text annotation",
+    });
+    await expect(editor).toHaveValue("Cannot export 😀");
+    await editor.fill("Can export now");
+    await page.keyboard.press("Control+Enter");
+
+    const [download] = await Promise.all([
+      page.waitForEvent("download"),
+      page.getByRole("button", { name: "export" }).click(),
+    ]);
+    const exportedPath = testInfo.outputPath("corrected-text-annotated.pdf");
+    await download.saveAs(exportedPath);
+    await expectPdfContainsText(exportedPath, ["Can export now"]);
   });
 
   test("erases whole strokes with E and supports undo, redo, and export", async ({
@@ -1018,7 +1315,7 @@ test.describe("Annotouch browser QA", () => {
     await page.getByRole("button", { name: "green pen" }).click();
     await drawStroke(page, annotationCanvas, PEN_COLORS[2].y);
 
-    await expect(documentCount).toHaveText("1/1 pages | 2 strokes");
+    await expect(documentCount).toHaveText("1/1 pages | 2 annotations");
     await expectCanvasHasColor(annotationCanvas, PEN_COLORS[1]);
     await expectCanvasHasColor(annotationCanvas, PEN_COLORS[2]);
 
@@ -1031,26 +1328,26 @@ test.describe("Annotouch browser QA", () => {
     await page.evaluate(() => document.activeElement?.blur());
 
     await eraseStroke(page, annotationCanvas, PEN_COLORS[1].y);
-    await expect(documentCount).toHaveText("1/1 pages | 1 stroke");
+    await expect(documentCount).toHaveText("1/1 pages | 1 annotation");
     await expectCanvasLacksColor(annotationCanvas, PEN_COLORS[1]);
     await expectCanvasHasColor(annotationCanvas, PEN_COLORS[2]);
 
     await page.keyboard.press("Control+Z");
-    await expect(documentCount).toHaveText("1/1 pages | 2 strokes");
+    await expect(documentCount).toHaveText("1/1 pages | 2 annotations");
     await expectCanvasHasColor(annotationCanvas, PEN_COLORS[1]);
     await expectCanvasHasColor(annotationCanvas, PEN_COLORS[2]);
 
     await page.keyboard.press("Control+Shift+Z");
-    await expect(documentCount).toHaveText("1/1 pages | 1 stroke");
+    await expect(documentCount).toHaveText("1/1 pages | 1 annotation");
     await expectCanvasLacksColor(annotationCanvas, PEN_COLORS[1]);
     await expectCanvasHasColor(annotationCanvas, PEN_COLORS[2]);
 
     await eraseStroke(page, annotationCanvas, PEN_COLORS[2].y);
-    await expect(documentCount).toHaveText("1/1 pages | 0 strokes");
+    await expect(documentCount).toHaveText("1/1 pages | 0 annotations");
     await expectCanvasToBeEmpty(annotationCanvas);
 
     await page.keyboard.press("Control+Z");
-    await expect(documentCount).toHaveText("1/1 pages | 1 stroke");
+    await expect(documentCount).toHaveText("1/1 pages | 1 annotation");
     await expectCanvasLacksColor(annotationCanvas, PEN_COLORS[1]);
     await expectCanvasHasColor(annotationCanvas, PEN_COLORS[2]);
 
@@ -1112,17 +1409,25 @@ test.describe("Annotouch browser QA", () => {
   });
 });
 
-async function createPdfFixture(testInfo, pageCount) {
+async function createPdfFixture(
+  testInfo,
+  pageCount,
+  { fileName = `fixture-${pageCount}-page.pdf`, rotation = 0 } = {}
+) {
   const fixtureDir = testInfo.outputPath("fixtures");
   await mkdir(fixtureDir, { recursive: true });
 
   const pdfDoc = await PDFDocument.create();
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-  const filePath = path.join(fixtureDir, `fixture-${pageCount}-page.pdf`);
+  const filePath = path.join(fixtureDir, fileName);
 
   for (let index = 0; index < pageCount; index += 1) {
     const page = pdfDoc.addPage([420, 560]);
     const { width, height } = page.getSize();
+
+    if (rotation !== 0) {
+      page.setRotation(degrees(rotation));
+    }
 
     page.drawRectangle({
       x: 0,
@@ -1148,7 +1453,7 @@ async function createPdfFixture(testInfo, pageCount) {
   }
 
   const bytes = await pdfDoc.save();
-  await testInfo.attach(`fixture-${pageCount}-page.pdf`, {
+  await testInfo.attach(fileName, {
     body: Buffer.from(bytes),
     contentType: "application/pdf",
   });
@@ -1348,11 +1653,170 @@ async function moveWithEraserKey(page, canvas, y, { expectActive }) {
   }
 }
 
+async function placeText(page, canvas, { x, y, text }) {
+  await page.keyboard.press("t");
+  await clickCanvasAt(page, canvas, { x, y });
+  const editor = page.getByRole("textbox", {
+    name: "new text annotation",
+  });
+
+  await editor.fill(text);
+  await page.keyboard.press("Control+Enter");
+  await expect(editor).toBeHidden();
+}
+
+async function clickCanvasAt(page, canvas, point) {
+  const clientPoint = await canvasPointToClient(canvas, point);
+  await page.mouse.click(clientPoint.x, clientPoint.y);
+}
+
+async function doubleClickCanvasAt(page, canvas, point) {
+  const clientPoint = await canvasPointToClient(canvas, point);
+  await page.mouse.dblclick(clientPoint.x, clientPoint.y);
+}
+
+async function moveCanvasPointerTo(page, canvas, point) {
+  const clientPoint = await canvasPointToClient(canvas, point);
+  await page.mouse.move(clientPoint.x, clientPoint.y);
+}
+
+async function canvasPointToClient(canvas, point) {
+  await canvas.scrollIntoViewIfNeeded();
+
+  return canvas.evaluate((element, point) => {
+    const rect = element.getBoundingClientRect();
+
+    return {
+      x: rect.left + point.x * (rect.width / element.width),
+      y: rect.top + point.y * (rect.height / element.height),
+    };
+  }, point);
+}
+
 async function expectPdfPageCount(filePath, expectedPageCount) {
   const bytes = await readFile(filePath);
   const pdfDoc = await PDFDocument.load(bytes);
 
   expect(pdfDoc.getPageCount()).toBe(expectedPageCount);
+}
+
+async function expectPdfContainsText(filePath, expectedLines) {
+  const bytes = await readFile(filePath);
+  const loadingTask = getPdfDocument({
+    data: new Uint8Array(bytes),
+    disableWorker: true,
+    standardFontDataUrl:
+      path.resolve("node_modules/pdfjs-dist/standard_fonts") + path.sep,
+  });
+  const pdf = await loadingTask.promise;
+
+  try {
+    const pdfPage = await pdf.getPage(1);
+    const textContent = await pdfPage.getTextContent();
+    const extractedText = textContent.items
+      .map((item) => item.str)
+      .join(" ");
+
+    for (const line of expectedLines) {
+      expect(extractedText).toContain(line);
+      const item = textContent.items.find((candidate) =>
+        candidate.str.includes(line)
+      );
+      expect(item?.height).toBeCloseTo(16, 0);
+    }
+  } finally {
+    await pdf.destroy();
+  }
+}
+
+async function expectPdfTextRotation(filePath, expectedText, expectedRotation) {
+  const bytes = await readFile(filePath);
+  const loadingTask = getPdfDocument({
+    data: new Uint8Array(bytes),
+    disableWorker: true,
+    standardFontDataUrl:
+      path.resolve("node_modules/pdfjs-dist/standard_fonts") + path.sep,
+  });
+  const pdf = await loadingTask.promise;
+
+  try {
+    const pdfPage = await pdf.getPage(1);
+    const textContent = await pdfPage.getTextContent();
+    const item = textContent.items.find(
+      (candidate) => candidate.str === expectedText
+    );
+
+    expect(item).toBeDefined();
+
+    const rotation =
+      (Math.atan2(item.transform[1], item.transform[0]) * 180) / Math.PI;
+    const normalizedRotation = (rotation + 360) % 360;
+
+    expect(normalizedRotation).toBeCloseTo(expectedRotation, 0);
+  } finally {
+    await pdf.destroy();
+  }
+}
+
+async function expectCanvasColorBounds(canvas, color) {
+  await expect
+    .poll(async () => Boolean(await getCanvasColorBounds(canvas, color)), {
+      message: `${color.label} pixel bounds should be present`,
+    })
+    .toBe(true);
+
+  return getCanvasColorBounds(canvas, color);
+}
+
+async function getCanvasColorBounds(canvas, color) {
+  const expected = hexToRgb(color.hex);
+
+  return canvas.evaluate((element, expected) => {
+    const context = element.getContext("2d");
+    const { width, height } = element;
+    const data = context.getImageData(0, 0, width, height).data;
+    let minX = width;
+    let minY = height;
+    let maxX = -1;
+    let maxY = -1;
+
+    for (let y = 0; y < height; y += 1) {
+      for (let x = 0; x < width; x += 1) {
+        const index = (y * width + x) * 4;
+        const alpha = data[index + 3];
+
+        if (
+          alpha < 80 ||
+          Math.abs(data[index] - expected.r) > 40 ||
+          Math.abs(data[index + 1] - expected.g) > 40 ||
+          Math.abs(data[index + 2] - expected.b) > 40
+        ) {
+          continue;
+        }
+
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x);
+        maxY = Math.max(maxY, y);
+      }
+    }
+
+    if (maxX === -1) return null;
+
+    const boundsWidth = maxX - minX + 1;
+    const boundsHeight = maxY - minY + 1;
+
+    return {
+      minX,
+      minY,
+      maxX,
+      maxY,
+      width: boundsWidth,
+      height: boundsHeight,
+      centerX: minX + boundsWidth / 2,
+      centerY: minY + boundsHeight / 2,
+    };
+  }, expected);
 }
 
 async function expectCanvasHasColor(canvas, color) {
