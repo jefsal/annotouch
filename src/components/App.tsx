@@ -1,11 +1,5 @@
 import { useLayoutEffect, useReducer, useRef } from "preact/hooks";
-import {
-  DISCARD_ANNOTATIONS_MESSAGE,
-  NIGHT_BODY_BACKGROUND,
-  NIGHT_FILTER,
-  NIGHT_FILTER_SOURCE_BACKGROUND,
-  THEMES,
-} from "../app/config";
+import { DISCARD_ANNOTATIONS_MESSAGE, THEMES } from "../app/config";
 import {
   createDocumentController,
   isPdfFile,
@@ -66,7 +60,6 @@ export function App({ root }: AppProps) {
       pagesContainer,
       dispatch,
       getPenSettings: () => ({ ...stateRef.current.pen }),
-      getTheme: () => stateRef.current.theme,
     });
 
     controllerRef.current = controller;
@@ -78,9 +71,8 @@ export function App({ root }: AppProps) {
   }, []);
 
   useLayoutEffect(() => {
-    applyTheme(root, state.theme);
-    controllerRef.current?.applyTheme(state.theme);
-  }, [root, state.theme]);
+    applyTheme(state.theme);
+  }, [state.theme]);
 
   useLayoutEffect(() => {
     controllerRef.current?.setViewScale(state.viewScale);
@@ -224,14 +216,13 @@ export function App({ root }: AppProps) {
   );
 }
 
-function applyTheme(root: HTMLElement, theme: Theme): void {
-  const isNight = theme === THEMES.NIGHT;
-
+/**
+ * The whole theme boundary: one attribute, which the token layer keys off.
+ */
+function applyTheme(theme: Theme): void {
   document.documentElement.dataset.theme = theme;
-  document.documentElement.style.colorScheme = isNight ? "dark" : "light";
-  document.body.style.background = isNight ? NIGHT_BODY_BACKGROUND : "";
-  root.style.background = isNight ? NIGHT_FILTER_SOURCE_BACKGROUND : "";
-  root.style.filter = isNight ? NIGHT_FILTER : "";
+  document.documentElement.style.colorScheme =
+    theme === THEMES.NIGHT ? "dark" : "light";
 }
 
 function warnBeforeUnload(event: BeforeUnloadEvent): void {

@@ -1,11 +1,10 @@
-import { NIGHT_FILTER, type PenColor } from "../app/config";
+import type { PenColor } from "../app/config";
 import { cx } from "./classNames";
 
 interface ColorSwatchProps {
   color: PenColor;
   shortcut: number;
   isSelected: boolean;
-  isNight: boolean;
   onSelect: (color: string) => void;
 }
 
@@ -13,7 +12,6 @@ export function ColorSwatch({
   color,
   shortcut,
   isSelected,
-  isNight,
   onSelect,
 }: ColorSwatchProps) {
   return (
@@ -39,11 +37,7 @@ export function ColorSwatch({
       aria-label={`${color.label} pen`}
       aria-keyshortcuts={String(shortcut)}
       aria-pressed={isSelected}
-      style={{
-        "--swatch-color": color.value,
-        // Counter-inverts the night filter so pen colors stay true.
-        filter: isNight ? NIGHT_FILTER : "",
-      }}
+      style={{ "--swatch-color": color.value }}
       onClick={(event) => {
         onSelect(color.value);
         event.currentTarget.blur();

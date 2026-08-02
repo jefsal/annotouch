@@ -2,15 +2,13 @@ import {
   DEFAULT_RENDER_SCALE,
   DEFAULT_VIEW_SCALE,
   MAX_ANNOTATABLE_PAGES,
-  NIGHT_FILTER,
   PAGE_RENDER_ROOT_MARGIN,
-  THEMES,
 } from "./config";
 import type { AppAction } from "./state";
 import { createAnnotationStore } from "../annotationStore";
 import { createAnnotator } from "../annotator";
 import { UnsupportedTextCharacterError } from "../domain/errors";
-import type { PenSettings, Theme } from "../domain/types";
+import type { PenSettings } from "../domain/types";
 import {
   getPdfPageViewport,
   loadPdfDocument,
@@ -36,7 +34,6 @@ export interface DocumentControllerOptions {
   pagesContainer: HTMLElement;
   dispatch: (action: AppAction) => void;
   getPenSettings: () => PenSettings;
-  getTheme: () => Theme;
 }
 
 export interface DocumentController {
@@ -44,7 +41,6 @@ export interface DocumentController {
   close(): void;
   exportPdf(): Promise<void>;
   setViewScale(scale: number): void;
-  applyTheme(theme: Theme): void;
   toggleTextMode(): void;
   cancelTextMode(): boolean;
   undo(): void;
@@ -66,7 +62,6 @@ export function createDocumentController({
   pagesContainer,
   dispatch,
   getPenSettings,
-  getTheme,
 }: DocumentControllerOptions): DocumentController {
   const pageViewports = new Map<number, PageViewport>();
   const pageViews = new Map<number, PageView>();
@@ -271,7 +266,6 @@ export function createDocumentController({
     placeholder.textContent = `page ${pageNumber}`;
 
     pageShell.append(placeholder);
-    applyNightCompensation(pageShell, getTheme());
     return pageShell;
   }
 
@@ -411,12 +405,6 @@ export function createDocumentController({
       }
     },
 
-    applyTheme(theme) {
-      for (const pageView of pageViews.values()) {
-        applyNightCompensation(pageView.pageShell, theme);
-      }
-    },
-
     toggleTextMode() {
       annotator.toggleTextMode();
     },
@@ -440,8 +428,4 @@ export function createDocumentController({
       loadedFileName = DEFAULT_EXPORT_FILE_NAME;
     },
   };
-}
-
-function applyNightCompensation(element: HTMLElement, theme: Theme): void {
-  element.style.filter = theme === THEMES.NIGHT ? NIGHT_FILTER : "";
 }

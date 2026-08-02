@@ -34,8 +34,5 @@ export const THEMES = {
   NIGHT: "night",
 } as const satisfies Record<string, Theme>;
 
-export const NIGHT_FILTER = "invert(1) hue-rotate(180deg)";
-export const NIGHT_BODY_BACKGROUND = "#111827";
-export const NIGHT_FILTER_SOURCE_BACKGROUND = "#eef1f5";
 export const DISCARD_ANNOTATIONS_MESSAGE =
   "discard unsaved annotations and open another PDF?";

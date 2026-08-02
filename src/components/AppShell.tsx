@@ -158,7 +158,6 @@ function Toolbar({
               color={color}
               shortcut={index + 1}
               isSelected={color.value === state.pen.color}
-              isNight={isNight}
               onSelect={onSelectColor}
             />
           ))}

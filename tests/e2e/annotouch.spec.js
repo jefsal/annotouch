@@ -73,18 +73,16 @@ test.describe("Annotouch browser QA", () => {
 
     await expect(page.locator("html")).toHaveAttribute("data-theme", "night");
     await expect(themeToggle).toHaveAttribute("aria-pressed", "true");
-    await expect(page.locator("#app")).toHaveCSS(
-      "filter",
-      "invert(1) hue-rotate(180deg)"
-    );
-    await expect(page.locator("#app")).toHaveCSS(
-      "background-color",
-      "rgb(238, 241, 245)"
+    await expect(page.locator("html")).toHaveCSS("color-scheme", "dark");
+    await expect(page.locator(".toolbar")).toHaveCSS(
+      "color",
+      "rgb(243, 244, 246)"
     );
     await expect(page.locator("body")).toHaveCSS(
       "background-color",
       "rgb(17, 24, 39)"
     );
+    await expect(page.locator("#app")).toHaveCSS("filter", "none");
 
     await page.reload();
 

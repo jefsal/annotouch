@@ -74,9 +74,9 @@
   .page-shell {
     position: relative;
     overflow: hidden;
-    border: 1px solid var(--color-border-subtle);
+    border: 1px solid var(--color-page-border);
     border-radius: var(--radius-control);
-    background: var(--color-surface);
+    background: var(--color-page-surface);
     box-shadow: var(--shadow-page);
   }
 
@@ -86,16 +86,16 @@
     display: grid;
     place-items: center;
     z-index: 0;
-    border: 1px solid var(--color-border-placeholder);
+    border: 1px solid var(--color-page-placeholder-border);
     background:
       linear-gradient(135deg, rgba(216, 221, 229, 0.28), transparent 42%),
-      var(--color-surface);
-    color: var(--color-text-secondary);
+      var(--color-page-surface);
+    color: var(--color-page-text);
     font-size: 13px;
   }
 
   .page-shell.is-loading .page-placeholder {
-    color: #4b5563;
+    color: var(--color-page-text-loading);
   }
 
   .pdf-canvas,
