@@ -7,7 +7,10 @@ import {
 import type { AppAction } from "./state";
 import { createAnnotationStore } from "../annotationStore";
 import { createAnnotator } from "../annotator";
-import { UnsupportedTextCharacterError } from "../domain/errors";
+import {
+  EmptyPdfDocumentError,
+  UnsupportedTextCharacterError,
+} from "../domain/errors";
 import type { PenSettings } from "../domain/types";
 import {
   getPdfPageViewport,
@@ -137,6 +140,14 @@ export function createDocumentController({
       if (version !== documentVersion) {
         pdf.destroy().catch(() => {});
         return;
+      }
+
+      // PDF.js loads a page-less document without complaint. Left alone it
+      // would hide the drop affordance behind an empty workspace and leave
+      // export enabled, so it is rejected like any other unusable file.
+      if (pdf.numPages < 1) {
+        pdf.destroy().catch(() => {});
+        throw new EmptyPdfDocumentError();
       }
 
       originalPdfBytes = bytes;
