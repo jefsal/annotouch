@@ -143,7 +143,7 @@ Exit criteria:
 - [x] Move repeated colors, spacing, shadows, and sizing into named design
       tokens.
 - [x] Split the Preact shell into smaller components before moving their styles.
-- [ ] Migrate component layout and visual states to Tailwind utilities.
+- [x] Migrate component layout and visual states to Tailwind utilities.
   - [x] Settings button and panel, including narrow viewport states.
   - [x] Shortcut dialog layout, night palette, and responsive states; browser
         scrollbar and `::backdrop` rules remain in semantic CSS.
@@ -176,27 +176,58 @@ Exit criteria:
 
 ## Phase 5: Hardening and Performance
 
-- [ ] Add focused component tests for the shell, dialogs, settings, and document
-      states. Only `AppShell` has coverage today; `App`, `DocumentViewport`,
-      `SettingsPanel`, and `ShortcutDialog` have none. `App` needs a fake
-      document controller, since the real one loads PDF.js.
-- [ ] Test malformed, encrypted, empty, rotated, and over-200-page PDFs.
-      Rotated (90/180/270) and 205-page are already covered in the browser
-      suite; malformed, encrypted, and zero-page are not. All three should end
-      on the `could not load PDF` status with the previous document discarded.
-- [ ] Verify keyboard-only operation and accessible names, focus order, and
-      dialog focus restoration. Partly covered: the focus ring is asserted per
-      control, and the shortcut dialog already restores focus to the settings
-      button. Missing: a full Tab-order walk of the toolbar, and confirmation
-      that the modal traps focus.
-- [ ] Confirm export remains lazy-loaded and review production chunk sizes.
+- [x] Add focused component tests for the shell, dialogs, settings, and document
+      states. `App`, `DocumentViewport`, `SettingsPanel`, and `ShortcutDialog`
+      now have suites alongside `AppShell`; the unit suite went from 55 to 114
+      tests. `App.test.tsx` mocks only `createDocumentController` and keeps the
+      real `isPdfFile`, so file-type rules are still exercised. Coverage was
+      mutation-checked: dropping the `beforeunload` guard, the shortcut-dialog
+      focus restore, the `dragleave` containment check, the busy-drag guard, and
+      the dialog `close()` call each fail at least one test.
+- [x] Test malformed, encrypted, empty, rotated, and over-200-page PDFs.
+      Rotated (90/180/270) and 205-page were already covered. Malformed,
+      truncated, encrypted, and zero-page fixtures are now written by hand in
+      `UNLOADABLE_PDF_FIXTURES`, since `pdf-lib` always emits a well-formed,
+      unencrypted document with at least one page. Each is asserted twice: from
+      an empty workspace, and replacing an open document. Recovery after a
+      failed load is covered too. Zero-page PDFs needed a source fix, noted
+      below.
+- [x] Verify keyboard-only operation and accessible names, focus order, and
+      dialog focus restoration. The focus ring and dialog focus restoration were
+      already covered. Added: a full Tab-order walk of the toolbar in both the
+      empty and fully enabled states, the settings panel's own order, and proof
+      the shortcut viewer traps focus in both directions.
+- [x] Confirm export remains lazy-loaded and review production chunk sizes.
       Current build: `index` ~422 kB (127 kB gzip), `exporter` ~433 kB
       (179 kB gzip, still a separate chunk), `pdf.worker` ~2.2 MB. The worker
-      is the obvious target if size matters.
-- [ ] Profile large-document scrolling and verify canvases are not rendered
-      outside `PAGE_RENDER_ROOT_MARGIN`. The 200-page fixture is the workload;
-      assert rendered-page count stays bounded while scrolling.
-- [ ] Run `npm audit` and resolve actionable production issues.
+      is the obvious target if size matters, and no size work is planned yet.
+- [x] Profile large-document scrolling and verify canvases are not rendered
+      outside `PAGE_RENDER_ROOT_MARGIN`. On the 205-page fixture: 3 of 200 pages
+      render at rest, 7 after jumping to page 50, and 10 after also jumping to
+      the end. Pages scrolled past are never rendered, and pages 150 and 200
+      stay `pending` until approached.
+- [x] Run `npm audit` and resolve actionable production issues. A clean
+      `npm ci` reports 0 vulnerabilities across 347 packages.
+
+Three findings from Phase 5 worth keeping:
+
+- Zero-page PDFs needed a source fix. PDF.js loads them without complaint, so
+  the app reported "0 pages ready", hid the drop affordance behind an empty
+  workspace, and left export enabled. `open()` now rejects `numPages < 1` with
+  `EmptyPdfDocumentError`, routing it through the same failure path as every
+  other unusable file.
+- Two tab-order behaviors, both correct and now asserted: disabled controls drop
+  out of the tab order, so undo/redo only appear once history exists in both
+  directions; and the workspace `<section>` takes focus between export and the
+  settings button, because browsers make scrollable regions focusable for
+  keyboard scrolling.
+- Page rendering is monotonic — a rendered page is never released — so the
+  scrolling test asserts locality and an upper bound rather than a steady-state
+  count. If memory on very large documents ever matters, releasing off-screen
+  canvases is the lever, and it does not exist today.
+
+Phase 5 is complete. The unit suite went from 55 to 114 tests and the browser
+suite from 41 to 55.
 
 Exit criteria:
 
@@ -276,11 +307,18 @@ The branch `jefsal/typescript-preact-refactor` carries all committed work.
 git clone git@github.com:jefsal/annotouch.git
 cd annotouch && git checkout jefsal/typescript-preact-refactor
 npm ci
-npx playwright install chromium
+npx playwright install --with-deps chromium
 ```
 
-`CLAUDE.md` and this file are git-ignored, so they do not travel with the
-clone. Copy them across by hand, or they will be missing on the new machine.
+`CLAUDE.md` and this file are tracked, so they travel with the clone.
+
+Node 20.19+/22.12+ is required: Vitest 4 refuses anything older, and Ubuntu's
+distro `nodejs` package is still 18.x. Use NodeSource or a version manager.
+
+`npx playwright install chromium` downloads the browser but not the shared
+libraries it links against; without them every browser test fails at launch
+with `libatk-1.0.so.0: cannot open shared object file`. The `--with-deps` form
+installs them and needs sudo.
 
 ### The visual review harness does not travel either
 

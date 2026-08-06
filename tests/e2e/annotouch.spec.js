@@ -12,6 +12,11 @@ const PEN_COLORS = [
   { label: "white", hex: "#ffffff", y: 300 },
 ];
 const MAX_ANNOTATABLE_PAGES = 200;
+// Upper bounds on lazily rendered pages, kept well above the observed counts
+// (3 at rest, 10 after scrolling) so they fail on a broken observer rather than
+// on timing noise. Rendering is monotonic: a page is never released once drawn.
+const NEARBY_RENDERED_PAGE_LIMIT = 6;
+const SCROLLED_RENDERED_PAGE_LIMIT = 25;
 const errorsByPage = new WeakMap();
 
 /**
@@ -236,6 +241,97 @@ test.describe("Annotouch browser QA", () => {
         "rgba(31, 111, 235, 0.24)"
       );
     }
+  });
+
+  test("walks the empty toolbar in visual order with Tab", async ({ page }) => {
+    await page.evaluate(() => document.activeElement?.blur());
+
+    expect(await walkTabOrder(page, 10)).toEqual([
+      "#theme-toggle",
+      "#pdf-input",
+      ...PEN_COLORS.map((color) => `button[${color.label} pen]`),
+      "#width-button",
+      "#settings-button",
+      "body",
+    ]);
+  });
+
+  test("walks every enabled toolbar control in visual order with Tab", async ({
+    page,
+  }, testInfo) => {
+    await page.evaluate(() => {
+      localStorage.setItem(
+        "annotouch-toolbar-settings",
+        JSON.stringify({ showHistoryControls: true })
+      );
+    });
+    await page.reload();
+
+    const fixturePath = await createPdfFixture(testInfo, 2);
+    await uploadPdf(page, fixturePath, 2);
+
+    // Undo and redo are only reachable once both directions are available;
+    // disabled controls are correctly skipped by the browser.
+    const annotationCanvas = page.locator(".annotation-canvas").first();
+    await drawStroke(page, annotationCanvas, PEN_COLORS[1].y);
+    await drawStroke(page, annotationCanvas, PEN_COLORS[2].y);
+    await page.keyboard.press("Control+z");
+    await expect(page.locator("#undo-button")).toBeEnabled();
+    await expect(page.locator("#redo-button")).toBeEnabled();
+
+    await page.evaluate(() => document.activeElement?.blur());
+
+    expect(await walkTabOrder(page, 15)).toEqual([
+      "#theme-toggle",
+      "#pdf-input",
+      ...PEN_COLORS.map((color) => `button[${color.label} pen]`),
+      "#width-button",
+      "#undo-button",
+      "#redo-button",
+      "#zoom-out-button",
+      "#zoom-in-button",
+      "#export-button",
+      // The workspace scrolls, so the browser makes it focusable for
+      // keyboard scrolling.
+      "section[pdf annotation workspace]",
+      "#settings-button",
+    ]);
+  });
+
+  test("reaches both settings controls with Tab while the panel is open", async ({
+    page,
+  }) => {
+    await page.getByRole("button", { name: "settings" }).click();
+    await page.evaluate(() => document.activeElement?.blur());
+
+    expect(await walkTabOrder(page, 3)).toEqual([
+      "#show-history-controls",
+      "#commands-shortcuts-button",
+      "body",
+    ]);
+  });
+
+  test("traps focus inside the shortcuts viewer", async ({ page }) => {
+    await page.getByRole("button", { name: "settings" }).click();
+    await page.getByRole("button", { name: "view keyboard shortcuts" }).click();
+    await expect(
+      page.getByRole("dialog", { name: "keyboard shortcuts" })
+    ).toBeVisible();
+
+    // The close button is the viewer's only focusable control, so a trapped
+    // focus ring can never leave it in either direction.
+    expect(await walkTabOrder(page, 4)).toEqual(
+      Array(4).fill("#commands-shortcuts-close")
+    );
+
+    const backwards = [];
+    for (let step = 0; step < 3; step += 1) {
+      await page.keyboard.press("Shift+Tab");
+      backwards.push(await describeFocusedElement(page));
+    }
+    expect(backwards).toEqual(Array(3).fill("#commands-shortcuts-close"));
+
+    await expect(page.locator("#settings-button")).not.toBeFocused();
   });
 
   test("keeps the settings button visible at narrow widths", async ({
@@ -1003,6 +1099,67 @@ test.describe("Annotouch browser QA", () => {
     await expectPdfPageCount(exportedPath, 205);
   });
 
+  test("renders only pages near the viewport while scrolling a large document", async ({
+    page,
+  }, testInfo) => {
+    const fixturePath = await createPdfFixture(testInfo, 205);
+
+    await uploadPdf(page, fixturePath, 205);
+
+    const shells = page.locator(".page-shell");
+    const renderedShells = page.locator(
+      ".page-shell[data-render-state='rendered']"
+    );
+    const workspace = page.locator(".workspace");
+
+    await expect(shells).toHaveCount(MAX_ANNOTATABLE_PAGES);
+
+    // Observed: 3 of 200 rendered at rest.
+    expect(await renderedShells.count()).toBeLessThanOrEqual(
+      NEARBY_RENDERED_PAGE_LIMIT
+    );
+
+    const shellHeight = await shells
+      .first()
+      .evaluate((element) => element.getBoundingClientRect().height);
+
+    await workspace.evaluate((element, scrollTop) => {
+      element.scrollTop = scrollTop;
+    }, shellHeight * 49);
+
+    await expect(shellByPageNumber(page, 50)).toHaveAttribute(
+      "data-render-state",
+      "rendered"
+    );
+
+    // Page 50 was reached by jumping straight past pages 4-45, and nothing
+    // beyond the root margin was touched on the way.
+    await expect(shellByPageNumber(page, 150)).toHaveAttribute(
+      "data-render-state",
+      "pending"
+    );
+    await expect(shellByPageNumber(page, 200)).toHaveAttribute(
+      "data-render-state",
+      "pending"
+    );
+
+    await workspace.evaluate((element) => {
+      element.scrollTop = element.scrollHeight;
+    });
+
+    await expect(
+      shellByPageNumber(page, MAX_ANNOTATABLE_PAGES)
+    ).toHaveAttribute("data-render-state", "rendered");
+
+    // Observed: 10 of 200 after visiting the top, the middle, and the end.
+    expect(await renderedShells.count()).toBeLessThanOrEqual(
+      SCROLLED_RENDERED_PAGE_LIMIT
+    );
+    await expect(
+      page.locator(".page-shell[data-render-state='rendering']")
+    ).toHaveCount(0);
+  });
+
   test("renders pages lazily and exports strokes drawn on a later rendered page", async ({
     page,
   }, testInfo) => {
@@ -1665,6 +1822,36 @@ async function createPdfFixture(
   await writeFile(filePath, bytes);
 
   return filePath;
+}
+
+function shellByPageNumber(page, pageNumber) {
+  return page.locator(`.page-shell[data-page-number='${pageNumber}']`);
+}
+
+/** Presses Tab `steps` times, reporting what holds focus after each press. */
+async function walkTabOrder(page, steps) {
+  const focused = [];
+
+  for (let step = 0; step < steps; step += 1) {
+    await page.keyboard.press("Tab");
+    focused.push(await describeFocusedElement(page));
+  }
+
+  return focused;
+}
+
+async function describeFocusedElement(page) {
+  return page.evaluate(() => {
+    const element = document.activeElement;
+
+    if (!element || element === document.body) return "body";
+    if (element.id) return `#${element.id}`;
+
+    const label = element.getAttribute("aria-label");
+    const tagName = element.tagName.toLowerCase();
+
+    return label ? `${tagName}[${label}]` : tagName;
+  });
 }
 
 /** Writes bytes verbatim, for fixtures `pdf-lib` cannot express. */
