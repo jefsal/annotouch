@@ -2,7 +2,7 @@
   <title>Mouse pointer drawing a line</title>
   <rect width="64" height="64" rx="14" fill="#171923" />
   <path
-    d="M8 47c10-11 17 2 27-9 5-5 8-12 14-17"
+    d="M8 47c9-10 15 2 25-7 8-7 10-21 16-30"
     fill="none"
     stroke="#38bdf8"
     stroke-linecap="round"
