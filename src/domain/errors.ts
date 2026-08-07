@@ -1,3 +1,15 @@
+/**
+ * A structurally valid PDF that carries no pages. PDF.js loads it happily, so
+ * without this the app would show an empty workspace with the drop affordance
+ * hidden and export enabled.
+ */
+export class EmptyPdfDocumentError extends Error {
+  constructor() {
+    super("the PDF has no pages");
+    this.name = "EmptyPdfDocumentError";
+  }
+}
+
 interface UnsupportedTextCharacterErrorInput {
   character: string;
   pageNumber: number;

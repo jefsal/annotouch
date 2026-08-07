@@ -12,7 +12,71 @@ const PEN_COLORS = [
   { label: "white", hex: "#ffffff", y: 300 },
 ];
 const MAX_ANNOTATABLE_PAGES = 200;
+// Upper bounds on lazily rendered pages, kept well above the observed counts
+// (3 at rest, 10 after scrolling) so they fail on a broken observer rather than
+// on timing noise. Rendering is monotonic: a page is never released once drawn.
+const NEARBY_RENDERED_PAGE_LIMIT = 6;
+const SCROLLED_RENDERED_PAGE_LIMIT = 25;
 const errorsByPage = new WeakMap();
+
+/**
+ * `pdf-lib` cannot produce any of these: it always writes a well-formed,
+ * unencrypted document with at least one page, so each is written by hand.
+ */
+const UNLOADABLE_PDF_FIXTURES = [
+  {
+    label: "a malformed PDF",
+    fileName: "malformed.pdf",
+    bytes: () => Buffer.from("this is definitely not a pdf"),
+  },
+  {
+    label: "a truncated PDF",
+    fileName: "truncated.pdf",
+    bytes: () =>
+      Buffer.from("%PDF-1.4\n1 0 obj<< /Type /Catalog >>endobj\n", "latin1"),
+  },
+  {
+    // The /O and /U digests are deliberately wrong, so the standard security
+    // handler rejects the empty user password exactly as a real encrypted
+    // document would.
+    label: "an encrypted PDF",
+    fileName: "encrypted.pdf",
+    bytes: () =>
+      Buffer.from(
+        [
+          "%PDF-1.4",
+          "1 0 obj<< /Type /Catalog /Pages 2 0 R >>endobj",
+          "2 0 obj<< /Type /Pages /Kids [3 0 R] /Count 1 >>endobj",
+          "3 0 obj<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] >>endobj",
+          "4 0 obj<< /Filter /Standard /V 1 /R 2 " +
+            "/O <0123456789ABCDEF0123456789ABCDEF> " +
+            "/U <FEDCBA9876543210FEDCBA9876543210> /P -1 >>endobj",
+          "trailer<< /Size 5 /Root 1 0 R /Encrypt 4 0 R /ID [<01> <02>] >>",
+          "%%EOF",
+          "",
+        ].join("\n"),
+        "latin1"
+      ),
+  },
+  {
+    // Structurally valid and loads cleanly in PDF.js; only the page count makes
+    // it unusable, so the guard for it lives in the document controller.
+    label: "a PDF with no pages",
+    fileName: "zero-page.pdf",
+    bytes: () =>
+      Buffer.from(
+        [
+          "%PDF-1.4",
+          "1 0 obj<< /Type /Catalog /Pages 2 0 R >>endobj",
+          "2 0 obj<< /Type /Pages /Kids [] /Count 0 >>endobj",
+          "trailer<< /Size 3 /Root 1 0 R >>",
+          "%%EOF",
+          "",
+        ].join("\n"),
+        "latin1"
+      ),
+  },
+];
 
 test.describe("Annotouch browser QA", () => {
   test.beforeEach(async ({ page }) => {
@@ -177,6 +241,97 @@ test.describe("Annotouch browser QA", () => {
         "rgba(31, 111, 235, 0.24)"
       );
     }
+  });
+
+  test("walks the empty toolbar in visual order with Tab", async ({ page }) => {
+    await page.evaluate(() => document.activeElement?.blur());
+
+    expect(await walkTabOrder(page, 10)).toEqual([
+      "#theme-toggle",
+      "#pdf-input",
+      ...PEN_COLORS.map((color) => `button[${color.label} pen]`),
+      "#width-button",
+      "#settings-button",
+      "body",
+    ]);
+  });
+
+  test("walks every enabled toolbar control in visual order with Tab", async ({
+    page,
+  }, testInfo) => {
+    await page.evaluate(() => {
+      localStorage.setItem(
+        "annotouch-toolbar-settings",
+        JSON.stringify({ showHistoryControls: true })
+      );
+    });
+    await page.reload();
+
+    const fixturePath = await createPdfFixture(testInfo, 2);
+    await uploadPdf(page, fixturePath, 2);
+
+    // Undo and redo are only reachable once both directions are available;
+    // disabled controls are correctly skipped by the browser.
+    const annotationCanvas = page.locator(".annotation-canvas").first();
+    await drawStroke(page, annotationCanvas, PEN_COLORS[1].y);
+    await drawStroke(page, annotationCanvas, PEN_COLORS[2].y);
+    await page.keyboard.press("Control+z");
+    await expect(page.locator("#undo-button")).toBeEnabled();
+    await expect(page.locator("#redo-button")).toBeEnabled();
+
+    await page.evaluate(() => document.activeElement?.blur());
+
+    expect(await walkTabOrder(page, 15)).toEqual([
+      "#theme-toggle",
+      "#pdf-input",
+      ...PEN_COLORS.map((color) => `button[${color.label} pen]`),
+      "#width-button",
+      "#undo-button",
+      "#redo-button",
+      "#zoom-out-button",
+      "#zoom-in-button",
+      "#export-button",
+      // The workspace scrolls, so the browser makes it focusable for
+      // keyboard scrolling.
+      "section[pdf annotation workspace]",
+      "#settings-button",
+    ]);
+  });
+
+  test("reaches both settings controls with Tab while the panel is open", async ({
+    page,
+  }) => {
+    await page.getByRole("button", { name: "settings" }).click();
+    await page.evaluate(() => document.activeElement?.blur());
+
+    expect(await walkTabOrder(page, 3)).toEqual([
+      "#show-history-controls",
+      "#commands-shortcuts-button",
+      "body",
+    ]);
+  });
+
+  test("traps focus inside the shortcuts viewer", async ({ page }) => {
+    await page.getByRole("button", { name: "settings" }).click();
+    await page.getByRole("button", { name: "view keyboard shortcuts" }).click();
+    await expect(
+      page.getByRole("dialog", { name: "keyboard shortcuts" })
+    ).toBeVisible();
+
+    // The close button is the viewer's only focusable control, so a trapped
+    // focus ring can never leave it in either direction.
+    expect(await walkTabOrder(page, 4)).toEqual(
+      Array(4).fill("#commands-shortcuts-close")
+    );
+
+    const backwards = [];
+    for (let step = 0; step < 3; step += 1) {
+      await page.keyboard.press("Shift+Tab");
+      backwards.push(await describeFocusedElement(page));
+    }
+    expect(backwards).toEqual(Array(3).fill("#commands-shortcuts-close"));
+
+    await expect(page.locator("#settings-button")).not.toBeFocused();
   });
 
   test("keeps the settings button visible at narrow widths", async ({
@@ -823,6 +978,70 @@ test.describe("Annotouch browser QA", () => {
     await expectPdfPageCount(exportedPath, 1);
   });
 
+  for (const { label, fileName, bytes } of UNLOADABLE_PDF_FIXTURES) {
+    test(`refuses ${label} and keeps the workspace empty`, async ({
+      page,
+    }, testInfo) => {
+      const fixturePath = await writeRawFixture(testInfo, fileName, bytes());
+
+      await page.locator("#pdf-input").setInputFiles(fixturePath);
+
+      await expect(page.locator("#status")).toHaveText("could not load PDF");
+      await expect(page.locator(".page-shell")).toHaveCount(0);
+      await expect(page.locator("#empty-state")).toBeVisible();
+      await expect(page.locator("#document-summary")).toHaveCount(0);
+      await expect(page.getByRole("button", { name: "export" })).toBeDisabled();
+
+      // PDF.js reports the rejection through console.error on purpose.
+      errorsByPage.get(page).consoleErrors.length = 0;
+    });
+
+    test(`discards the open document when ${label} fails to load`, async ({
+      page,
+    }, testInfo) => {
+      const goodFixturePath = await createPdfFixture(testInfo, 3);
+      const badFixturePath = await writeRawFixture(testInfo, fileName, bytes());
+
+      await uploadPdf(page, goodFixturePath, 3);
+      await expect(page.locator(".page-shell")).toHaveCount(3);
+
+      await page.locator("#pdf-input").setInputFiles(badFixturePath);
+
+      await expect(page.locator("#status")).toHaveText("could not load PDF");
+      await expect(page.locator(".page-shell")).toHaveCount(0);
+      await expect(page.locator("#empty-state")).toBeVisible();
+      await expect(page.getByRole("button", { name: "export" })).toBeDisabled();
+
+      // The discarded document must not leave a stale unload guard behind.
+      expect(await reloadAndCollectDialogs(page)).toEqual([]);
+
+      errorsByPage.get(page).consoleErrors.length = 0;
+    });
+  }
+
+  test("recovers and loads a valid PDF after a failed load", async ({
+    page,
+  }, testInfo) => {
+    const badFixturePath = await writeRawFixture(
+      testInfo,
+      "malformed.pdf",
+      Buffer.from("this is definitely not a pdf")
+    );
+    const goodFixturePath = await createPdfFixture(testInfo, 2);
+
+    await page.locator("#pdf-input").setInputFiles(badFixturePath);
+    await expect(page.locator("#status")).toHaveText("could not load PDF");
+    errorsByPage.get(page).consoleErrors.length = 0;
+
+    await uploadPdf(page, goodFixturePath, 2);
+
+    await expect(page.locator(".page-shell")).toHaveCount(2);
+    await expect(page.locator("#document-count")).toHaveText(
+      "2/2 pages | 0 annotations"
+    );
+    await expect(page.getByRole("button", { name: "export" })).toBeEnabled();
+  });
+
   for (const pageCount of [1, 3, 25, 30]) {
     test(`uploads and exports a ${pageCount}-page fixture`, async ({
       page,
@@ -878,6 +1097,67 @@ test.describe("Annotouch browser QA", () => {
     const exportedPath = testInfo.outputPath("fixture-205-page-annotated.pdf");
     await download.saveAs(exportedPath);
     await expectPdfPageCount(exportedPath, 205);
+  });
+
+  test("renders only pages near the viewport while scrolling a large document", async ({
+    page,
+  }, testInfo) => {
+    const fixturePath = await createPdfFixture(testInfo, 205);
+
+    await uploadPdf(page, fixturePath, 205);
+
+    const shells = page.locator(".page-shell");
+    const renderedShells = page.locator(
+      ".page-shell[data-render-state='rendered']"
+    );
+    const workspace = page.locator(".workspace");
+
+    await expect(shells).toHaveCount(MAX_ANNOTATABLE_PAGES);
+
+    // Observed: 3 of 200 rendered at rest.
+    expect(await renderedShells.count()).toBeLessThanOrEqual(
+      NEARBY_RENDERED_PAGE_LIMIT
+    );
+
+    const shellHeight = await shells
+      .first()
+      .evaluate((element) => element.getBoundingClientRect().height);
+
+    await workspace.evaluate((element, scrollTop) => {
+      element.scrollTop = scrollTop;
+    }, shellHeight * 49);
+
+    await expect(shellByPageNumber(page, 50)).toHaveAttribute(
+      "data-render-state",
+      "rendered"
+    );
+
+    // Page 50 was reached by jumping straight past pages 4-45, and nothing
+    // beyond the root margin was touched on the way.
+    await expect(shellByPageNumber(page, 150)).toHaveAttribute(
+      "data-render-state",
+      "pending"
+    );
+    await expect(shellByPageNumber(page, 200)).toHaveAttribute(
+      "data-render-state",
+      "pending"
+    );
+
+    await workspace.evaluate((element) => {
+      element.scrollTop = element.scrollHeight;
+    });
+
+    await expect(
+      shellByPageNumber(page, MAX_ANNOTATABLE_PAGES)
+    ).toHaveAttribute("data-render-state", "rendered");
+
+    // Observed: 10 of 200 after visiting the top, the middle, and the end.
+    expect(await renderedShells.count()).toBeLessThanOrEqual(
+      SCROLLED_RENDERED_PAGE_LIMIT
+    );
+    await expect(
+      page.locator(".page-shell[data-render-state='rendering']")
+    ).toHaveCount(0);
   });
 
   test("renders pages lazily and exports strokes drawn on a later rendered page", async ({
@@ -1539,6 +1819,47 @@ async function createPdfFixture(
     contentType: "application/pdf",
   });
 
+  await writeFile(filePath, bytes);
+
+  return filePath;
+}
+
+function shellByPageNumber(page, pageNumber) {
+  return page.locator(`.page-shell[data-page-number='${pageNumber}']`);
+}
+
+/** Presses Tab `steps` times, reporting what holds focus after each press. */
+async function walkTabOrder(page, steps) {
+  const focused = [];
+
+  for (let step = 0; step < steps; step += 1) {
+    await page.keyboard.press("Tab");
+    focused.push(await describeFocusedElement(page));
+  }
+
+  return focused;
+}
+
+async function describeFocusedElement(page) {
+  return page.evaluate(() => {
+    const element = document.activeElement;
+
+    if (!element || element === document.body) return "body";
+    if (element.id) return `#${element.id}`;
+
+    const label = element.getAttribute("aria-label");
+    const tagName = element.tagName.toLowerCase();
+
+    return label ? `${tagName}[${label}]` : tagName;
+  });
+}
+
+/** Writes bytes verbatim, for fixtures `pdf-lib` cannot express. */
+async function writeRawFixture(testInfo, fileName, bytes) {
+  const fixtureDir = testInfo.outputPath("fixtures");
+  await mkdir(fixtureDir, { recursive: true });
+
+  const filePath = path.join(fixtureDir, fileName);
   await writeFile(filePath, bytes);
 
   return filePath;
