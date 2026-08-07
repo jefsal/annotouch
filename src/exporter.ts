@@ -218,7 +218,11 @@ function convertToPdfPoint(
 }
 
 function downloadBytes(bytes: Uint8Array, fileName: string): void {
-  const blob = new Blob([new Uint8Array(bytes)], { type: "application/pdf" });
+  // `bytes` is already a Uint8Array, so the previous `new Uint8Array(bytes)`
+  // duplicated the whole document in memory. The cast stands in for that copy:
+  // the DOM types accept only ArrayBuffer-backed views, and pdf-lib never
+  // returns a SharedArrayBuffer-backed one.
+  const blob = new Blob([bytes as BlobPart], { type: "application/pdf" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
 
@@ -226,5 +230,9 @@ function downloadBytes(bytes: Uint8Array, fileName: string): void {
   link.download = fileName;
   link.click();
 
-  URL.revokeObjectURL(url);
+  // `click()` starts the download asynchronously, so revoking in the same task
+  // can cancel it before the browser has read the blob.
+  setTimeout(() => {
+    URL.revokeObjectURL(url);
+  }, 0);
 }
