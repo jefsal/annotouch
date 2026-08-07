@@ -50,6 +50,8 @@ export function openTextEditor({
   const element = document.createElement("textarea");
   const isEditing = Boolean(annotation);
   const canvas = page.annotationCanvas;
+  // Measured against once per keystroke, so the context is acquired once.
+  const measuringContext = canvas.getContext("2d");
   const color = annotation?.color ?? penSettings.color;
   const fontSize = annotation?.fontSize ?? TEXT_FONT_SIZE;
   const lineHeight = annotation?.lineHeight ?? TEXT_LINE_HEIGHT;
@@ -102,20 +104,23 @@ export function openTextEditor({
   };
 
   function resize(): void {
-    const context = canvas.getContext("2d");
     const lines = normalizeText(element.value).split("\n");
     const displayScale = getCanvasDisplayScale(canvas);
 
     let measuredWidth = fontSize * 2;
 
-    if (context) {
-      context.save();
-      context.font = `${fontSize}px Helvetica, Arial, sans-serif`;
-      measuredWidth = Math.max(
-        measuredWidth,
-        ...lines.map((line) => context.measureText(line || " ").width)
-      );
-      context.restore();
+    if (measuringContext) {
+      measuringContext.save();
+      measuringContext.font = `${fontSize}px Helvetica, Arial, sans-serif`;
+
+      for (const line of lines) {
+        measuredWidth = Math.max(
+          measuredWidth,
+          measuringContext.measureText(line || " ").width
+        );
+      }
+
+      measuringContext.restore();
     }
 
     const measuredHeight = Math.max(lineHeight, lines.length * lineHeight);

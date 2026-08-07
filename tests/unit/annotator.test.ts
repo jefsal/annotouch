@@ -6,6 +6,7 @@ import { createAnnotator, type Annotator } from "../../src/annotator";
 const PEN_SETTINGS = { color: "#e11d48", width: 5 };
 
 let activeAnnotator: Annotator | null = null;
+let activeCanvas: HTMLCanvasElement | null = null;
 
 function createPage(pageNumber: number, { zoom = 1 } = {}) {
   const pageShell = document.createElement("div");
@@ -45,14 +46,22 @@ function setup({ zoom = 1 } = {}) {
   });
 
   activeAnnotator = annotator;
+  activeCanvas = page.annotationCanvas;
   annotator.registerPage(page);
   store.registerPage({ pageNumber: 1, canvas: page.annotationCanvas });
 
   return { annotator, store, statuses, page, onTextModeChange };
 }
 
+/**
+ * Dispatched from the annotation canvas, as a browser would: the annotator
+ * locates the page from the event target, and only falls back to the pointer
+ * position for the in-canvas bounds check.
+ */
 function movePointer(clientX: number, clientY: number): void {
-  document.dispatchEvent(
+  const target: EventTarget = activeCanvas ?? document;
+
+  target.dispatchEvent(
     new MouseEvent("pointermove", { clientX, clientY, bubbles: true })
   );
 }
@@ -78,6 +87,7 @@ function drawStroke(): void {
 afterEach(() => {
   activeAnnotator?.destroy();
   activeAnnotator = null;
+  activeCanvas = null;
   document.body.replaceChildren();
 });
 

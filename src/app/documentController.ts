@@ -20,6 +20,8 @@ import {
 import type { PDFDocumentProxy, PageViewport } from "pdfjs-dist";
 
 const DEFAULT_EXPORT_FILE_NAME = "annotated.pdf";
+/** How often page preparation reports progress, in pages. */
+const PAGE_PREPARE_STATUS_INTERVAL = 10;
 
 interface PageView {
   pageNumber: number;
@@ -232,7 +234,16 @@ export function createDocumentController({
     for (let pageNumber = 1; pageNumber <= pageCount; pageNumber += 1) {
       if (version !== documentVersion) return false;
 
-      setStatus(`preparing page ${pageNumber} of ${pageCount}`);
+      // Every status dispatch re-renders the whole shell. On a 200-page
+      // document that was 200 renders nobody could read; report periodically
+      // and always on the last page.
+      if (
+        pageNumber === 1 ||
+        pageNumber === pageCount ||
+        pageNumber % PAGE_PREPARE_STATUS_INTERVAL === 0
+      ) {
+        setStatus(`preparing page ${pageNumber} of ${pageCount}`);
+      }
 
       const result = await getPdfPageViewport({
         pdf,
@@ -421,7 +432,7 @@ export function createDocumentController({
     },
 
     cancelTextMode() {
-      return Boolean(annotator.cancelTextMode());
+      return annotator.cancelTextMode();
     },
 
     undo() {

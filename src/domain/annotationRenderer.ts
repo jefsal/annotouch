@@ -33,8 +33,13 @@ export function drawStroke(
   context.beginPath();
   context.moveTo(firstPoint.x, firstPoint.y);
 
-  for (const point of stroke.points.slice(1)) {
-    context.lineTo(point.x, point.y);
+  // Indexed rather than `points.slice(1)`: this runs for every annotation on
+  // the page on every pointer move while drawing, and the copy was pure waste.
+  for (let index = 1; index < stroke.points.length; index += 1) {
+    const point = stroke.points[index];
+    if (point) {
+      context.lineTo(point.x, point.y);
+    }
   }
 
   context.stroke();

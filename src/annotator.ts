@@ -44,6 +44,13 @@ interface PagePointer {
   point: Point;
 }
 
+/** The parts of a pointer or mouse event needed to locate a page position. */
+interface PointerLike {
+  clientX: number;
+  clientY: number;
+  target: EventTarget | null;
+}
+
 /**
  * The interaction modes are mutually exclusive: holding the eraser ends a
  * stroke, drawing or erasing disarms text placement, and an open editor
@@ -64,9 +71,30 @@ export function createAnnotator({
   onTextModeChange,
 }: AnnotatorOptions): Annotator {
   const pages = new Map<number, AnnotatorPage>();
+  /** The same pages keyed by shell, so a pointer target resolves without a scan. */
+  const pagesByShell = new Map<Element, AnnotatorPage>();
 
   let mode: InteractionMode = { type: "idle" };
   let lastPointer: PagePointer | null = null;
+
+  function addPage(page: AnnotatorPage): void {
+    removePage(page.pageNumber);
+    pages.set(page.pageNumber, page);
+    pagesByShell.set(page.pageShell, page);
+  }
+
+  function removePage(pageNumber: number): void {
+    const page = pages.get(pageNumber);
+    if (!page) return;
+
+    pages.delete(pageNumber);
+    pagesByShell.delete(page.pageShell);
+  }
+
+  function clearPages(): void {
+    pages.clear();
+    pagesByShell.clear();
+  }
 
   function setStatus(message: string): void {
     onStatusChange?.(message);
@@ -112,7 +140,7 @@ export function createAnnotator({
     if (
       mode.type !== "placingText" ||
       event.button !== 0 ||
-      isEditableTarget(event.target)
+      isInteractiveTarget(event.target)
     ) {
       return;
     }
@@ -129,7 +157,7 @@ export function createAnnotator({
       mode.type === "placingText" ||
       mode.type === "editingText" ||
       event.button !== 0 ||
-      isEditableTarget(event.target)
+      isInteractiveTarget(event.target)
     ) {
       return;
     }
@@ -185,7 +213,7 @@ export function createAnnotator({
   }
 
   function handleKeyDown(event: KeyboardEvent): void {
-    if (isEditableTarget(event.target)) {
+    if (isInteractiveTarget(event.target)) {
       return;
     }
 
@@ -377,16 +405,31 @@ export function createAnnotator({
     }
   }
 
-  function getPagePointer(event: {
-    clientX: number;
-    clientY: number;
-  }): PagePointer | null {
-    for (const page of pages.values()) {
-      const point = getCanvasPoint(page.annotationCanvas, event);
+  /**
+   * Resolves the pointer against the page under it. The page is found by
+   * walking up from the event target rather than by scanning every registered
+   * page: rendering is monotonic, so a reader who scrolls a long document
+   * accumulates hundreds of live pages, and testing each one cost a forced
+   * layout on every pointer move.
+   */
+  function getPagePointer(event: PointerLike): PagePointer | null {
+    const page = getPageFromTarget(event.target);
+    if (!page) return null;
 
-      if (point) {
-        return { pageNumber: page.pageNumber, point };
-      }
+    const point = getCanvasPoint(page.annotationCanvas, event);
+    return point ? { pageNumber: page.pageNumber, point } : null;
+  }
+
+  function getPageFromTarget(target: EventTarget | null): AnnotatorPage | null {
+    if (!(target instanceof Element)) return null;
+
+    for (
+      let element: Element | null = target;
+      element;
+      element = element.parentElement
+    ) {
+      const page = pagesByShell.get(element);
+      if (page) return page;
     }
 
     return null;
@@ -408,7 +451,7 @@ export function createAnnotator({
 
   return {
     registerPage(page) {
-      pages.set(page.pageNumber, page);
+      addPage(page);
     },
 
     unregisterPage(pageNumber) {
@@ -423,15 +466,15 @@ export function createAnnotator({
         closeEditor({ commit: false });
       }
 
-      pages.delete(pageNumber);
+      removePage(pageNumber);
     },
 
     setPages(nextPages) {
       closeEditor({ commit: false });
-      pages.clear();
+      clearPages();
 
       for (const page of nextPages) {
-        pages.set(page.pageNumber, page);
+        addPage(page);
       }
 
       cancelInteraction();
@@ -443,7 +486,7 @@ export function createAnnotator({
 
     destroy() {
       closeEditor({ commit: false });
-      pages.clear();
+      clearPages();
       mode = { type: "idle" };
       lastPointer = null;
 
@@ -458,7 +501,12 @@ export function createAnnotator({
   };
 }
 
-function isEditableTarget(target: EventTarget | null): boolean {
+/**
+ * Wider than `isEditableTarget` in `app/shortcuts`, which this deliberately
+ * does not reuse: buttons count here too, so holding Space on a focused control
+ * activates it instead of starting a stroke.
+ */
+function isInteractiveTarget(target: EventTarget | null): boolean {
   if (!(target instanceof Element)) {
     return false;
   }
