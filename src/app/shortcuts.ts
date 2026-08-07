@@ -86,6 +86,10 @@ export function isNightModeShortcut(event: KeyboardEvent): boolean {
   return isUnmodifiedKey(event, "n");
 }
 
+/**
+ * Deliberately looser than the other single-key shortcuts: shift is allowed so
+ * that a capital W cycles the width too, which `isUnmodifiedKey` would reject.
+ */
 export function isWidthShortcut(event: KeyboardEvent): boolean {
   return (
     !event.metaKey &&

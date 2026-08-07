@@ -3,7 +3,7 @@ import { cx, FOCUS_RING } from "./classNames";
 
 type NativeButtonProps = Omit<JSX.IntrinsicElements["button"], "class">;
 
-export type ControlButtonVariant = "default" | "accent" | "ghost";
+export type ControlButtonVariant = "default" | "accent";
 
 export interface ControlButtonProps extends NativeButtonProps {
   variant?: ControlButtonVariant;
@@ -30,7 +30,6 @@ const VARIANTS: Record<ControlButtonVariant, string> = {
   accent:
     "border-action bg-action text-white font-[650] shadow-control " +
     "enabled:hover:border-action-hover enabled:hover:bg-action-hover",
-  ghost: "border-transparent bg-transparent shadow-none",
 };
 
 export function ControlButton({
