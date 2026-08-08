@@ -224,7 +224,8 @@ Three findings from Phase 5 worth keeping:
 - Page rendering is monotonic — a rendered page is never released — so the
   scrolling test asserts locality and an upper bound rather than a steady-state
   count. If memory on very large documents ever matters, releasing off-screen
-  canvases is the lever, and it does not exist today.
+  canvases is the lever, and it does not exist today. This also turned out to be
+  a performance hazard rather than only a memory one; see the review pass below.
 
 Phase 5 is complete. The unit suite went from 55 to 114 tests and the browser
 suite from 41 to 55.
@@ -234,6 +235,51 @@ Exit criteria:
 - Typecheck, lint, formatting, unit tests, browser tests, and production build
   all pass.
 - No critical accessibility or data-loss regression remains.
+
+## Review Pass: Performance, Bloat, and Readability
+
+A full read of the refactor after Phase 5. Landed in three commits, with no
+behavior change beyond the export download fix.
+
+Pointer tracking scaled with document length. Locating the page under the
+pointer scanned every registered page and called `getBoundingClientRect()` on
+each — a forced layout apiece — on every `pointermove`, drawing or not. Because
+rendering is monotonic, a reader scrolling a long document accumulates hundreds
+of live pages and paid for all of them on every mouse move. Measured with 58
+pages rendered, pointing near the end of the document: 58 forced layouts per
+move before, 1 after; 200 synthetic moves went from 24.9 ms to 5.0 ms. At the
+200-page cap it was 200 layouts a move. Pages now resolve by walking up from the
+event target against a shell-keyed map, which costs no layout and is constant in
+document length.
+
+Smaller costs in the same paths: `drawStroke` copied a stroke's points with
+`slice(1)` on every redraw, the text editor re-acquired a 2D context on every
+keystroke, and page preparation dispatched a status update per page — 200 full
+shell re-renders during a large load, now every 10 pages and on the last.
+
+Export had two defects. It duplicated the whole PDF in memory before creating
+the blob, a copy that was standing in for a DOM-types mismatch rather than doing
+any work. It also revoked the object URL in the same task as `link.click()`,
+which can cancel a download before the browser reads the blob; Chrome tolerates
+it, which is why the browser suite never caught it.
+
+Dead code removed: `AnnotationStore.unregisterPage` and `unregisterAllPages`
+were declared, implemented, and never called, and `ControlButton`'s `ghost`
+variant was unused. `addStroke` and `addText` shared an identical twelve-line
+sequence, now `appendAnnotation`.
+
+Two things were deliberately left alone:
+
+- Export emits one `drawLine` per stroke segment. A single-path rewrite measured
+  only 1.4× smaller, since pdf-lib already compresses the content stream, and it
+  would touch the rotation and coordinate-mapping code the guardrails protect.
+- Releasing off-screen page canvases, as above: a feature, not a cleanup.
+
+One test changed shape. The annotator unit tests dispatched `pointermove` on
+`document`, which no browser does and which leaves no target to resolve against;
+they now dispatch from the annotation canvas. The in-canvas bounds check still
+rejects positions outside the page, so the zoom and stroke-boundary assertions
+are unchanged.
 
 ## Phase 6: Cloudflare Tunnel Deployment
 
