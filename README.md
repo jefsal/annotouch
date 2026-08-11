@@ -12,7 +12,7 @@ document to a server.
 
 I created Annotouch after realizing that not having a tablet put me at a
 disadvantage while taking notes in class. Annotating a PDF with traditional
-trackpad movements felt limiting. [osu!](https://github.com/ppy/osu) inspired
+trackpad movements felt limiting and dangerous considering the odd wrist movements required when annotating a pdf/ taking notes. [osu!](https://github.com/ppy/osu) inspired
 the idea of holding a key to draw while using pointer movement for the stroke.
 
 ## Features
@@ -106,13 +106,3 @@ Tailwind utilities.
 - `tests/unit/` covers typed policies, application state, and domain behavior.
 - `tests/e2e/annotouch.spec.js` covers upload, lazy rendering, drawing, text,
   colors, undo/redo, page limits, themes, and PDF export.
-
-## Refactor Status
-
-Completed foundations include the TypeScript toolchain, typed domain and PDF
-services, the Preact application shell, Tailwind shell layout, unit tests, lazy
-loading of the export pipeline, typed application state, the split between the
-Preact UI and the document controller, the TypeScript interaction layer, and
-component-owned Tailwind styling with a token-driven night theme. The next
-phase is hardening: component tests, malformed-PDF handling, accessibility,
-and performance review.
