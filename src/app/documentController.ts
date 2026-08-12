@@ -194,29 +194,42 @@ export function createDocumentController({
   async function exportPdf(): Promise<void> {
     if (!originalPdfBytes) return;
 
+    // Snapshot every input before the first await: `open()` can land during the
+    // lazy import or the export itself, and `close()` resets the store and
+    // clears `pageViewports` in place.
+    const version = documentVersion;
+    const exportInput = {
+      originalBytes: originalPdfBytes,
+      annotationsByPage: annotationStore.getAnnotationsByPage(), // already cloned
+      pageViewports: new Map(pageViewports), // detach the reference
+      scale: renderScale,
+      sourceFileName: loadedFileName,
+    };
+
     dispatch({ type: "busy/set", isBusy: true });
     setStatus("exporting");
 
     try {
       const { exportAnnotatedPdf } = await import("../exporter");
-      await exportAnnotatedPdf({
-        originalBytes: originalPdfBytes,
-        annotationsByPage: annotationStore.getAnnotationsByPage(),
-        pageViewports,
-        scale: renderScale,
-        sourceFileName: loadedFileName,
-      });
+      await exportAnnotatedPdf(exportInput);
+      if (version !== documentVersion) return;
+
       setStatus("exported");
     } catch (error) {
+      // Trace every real failure, even for an export whose document has since
+      // been replaced; only the user-facing status is version-gated, so a
+      // stale export cannot write over the document that replaced it.
       if (error instanceof UnsupportedTextCharacterError) {
-        setStatus(error.message);
+        if (version === documentVersion) setStatus(error.message);
       } else {
         console.error(error);
-        setStatus("export failed");
+        if (version === documentVersion) setStatus("export failed");
       }
     } finally {
-      dispatch({ type: "busy/set", isBusy: false });
-      syncHistory();
+      if (version === documentVersion) {
+        dispatch({ type: "busy/set", isBusy: false });
+        syncHistory();
+      }
     }
   }
 

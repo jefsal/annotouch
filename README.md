@@ -1,7 +1,8 @@
 # Annotouch
 
 Annotouch is a local-first browser app for marking up PDFs without clicking or
-pressing down on a trackpad. Open a PDF, hold `Space`, move the pointer over a
+pressing down on a trackpad. 
+Open a PDF, hold `Space`, move the pointer over a
 page, and release `Space` to finish the stroke. Hold `E` while moving over an
 annotation to erase it. Press `T`, click a page, and type to add text.
 

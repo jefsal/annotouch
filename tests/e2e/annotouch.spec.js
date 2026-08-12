@@ -978,6 +978,74 @@ test.describe("Annotouch browser QA", () => {
     await expectPdfPageCount(exportedPath, 1);
   });
 
+  test("exports the annotated document when a replacement drops mid-export", async ({
+    page,
+  }, testInfo) => {
+    const originalPath = await createNamedPdfFixture(testInfo, "original.pdf");
+    const replacementPath = await createNamedPdfFixture(
+      testInfo,
+      "replacement.pdf"
+    );
+
+    await uploadPdf(page, originalPath, 1);
+    const annotationCanvas = page.locator(".annotation-canvas").first();
+    await placeText(page, annotationCanvas, {
+      x: 120,
+      y: PEN_COLORS[1].y,
+      text: "raced export",
+    });
+
+    // Hold the lazily imported exporter so the replacement lands inside the
+    // export's await window, where `close()` resets the annotation store and
+    // clears `pageViewports` in place.
+    let releaseExporter;
+    const exporterReleased = new Promise((resolve) => {
+      releaseExporter = resolve;
+    });
+    let markExporterRequested;
+    const exporterRequested = new Promise((resolve) => {
+      markExporterRequested = resolve;
+    });
+
+    await page.route(
+      (url) => url.pathname.includes("exporter"),
+      async (route) => {
+        markExporterRequested();
+        await exporterReleased;
+        await route.continue();
+      }
+    );
+
+    const downloadPromise = page.waitForEvent("download");
+    await page.getByRole("button", { name: "export" }).click();
+    await exporterRequested;
+
+    // The picker is disabled while busy, so a drop is the only way in — which
+    // is exactly the path that races the export.
+    const dialogPromise = page.waitForEvent("dialog");
+    const drop = dropPdf(page, replacementPath);
+    await (await dialogPromise).accept();
+    await drop;
+    await expectPdfReady(page, 1);
+
+    // The replacement is fully open and the store is empty before the export
+    // is allowed to read anything.
+    await expect(page.locator("#document-name")).toHaveText("replacement.pdf");
+    await expect(page.locator("#document-count")).toHaveText(
+      "1/1 pages | 0 annotations"
+    );
+
+    releaseExporter();
+
+    // The export still belongs to the document that was open when it started.
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toBe("original-annotated.pdf");
+
+    const exportedPath = testInfo.outputPath("original-annotated.pdf");
+    await download.saveAs(exportedPath);
+    await expectPdfContainsText(exportedPath, ["raced export"]);
+  });
+
   for (const { label, fileName, bytes } of UNLOADABLE_PDF_FIXTURES) {
     test(`refuses ${label} and keeps the workspace empty`, async ({
       page,
