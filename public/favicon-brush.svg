@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Paintbrush drawing across a trackpad</title>
+  <rect width="64" height="64" rx="14" fill="#171923" />
+  <rect x="7" y="18" width="50" height="37" rx="7" fill="#242936" stroke="#64748b" stroke-width="2" />
+  <path
+    d="M11 47c8-7 15 2 23-6"
+    fill="none"
+    stroke="#38bdf8"
+    stroke-linecap="round"
+    stroke-width="4"
+  />
+  <path d="m49 8-19 21" stroke="#f8fafc" stroke-linecap="round" stroke-width="7" />
+  <path d="m27 26 8 7-8 9-8-7z" fill="#94a3b8" stroke="#171923" stroke-linejoin="round" stroke-width="2" />
+  <path d="M19 34c-4 4-3 9-8 13 7 1 12-1 16-5z" fill="#fbbf24" stroke="#171923" stroke-linejoin="round" stroke-width="2" />
+</svg>
