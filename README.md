@@ -16,19 +16,6 @@ disadvantage while taking notes in class. Annotating a PDF with traditional
 trackpad movements felt limiting and dangerous considering the odd wrist movements required when annotating a pdf/ taking notes. [osu!](https://github.com/ppy/osu) inspired
 the idea of holding a key to draw while using pointer movement for the stroke.
 
-## Features
-
-- Loads local PDFs in the browser.
-- Lazily renders pages as they approach the viewport.
-- Supports freehand drawing, editable multiline text, and whole-annotation
-  erasing.
-- Stores annotations independently for each page.
-- Supports multiple colors, stroke widths, undo, redo, and light/dark themes.
-- Exports annotations into a new PDF without modifying the source file.
-
-PDFs with more than 200 pages still export with their original page count. Only
-pages 1–200 are currently rendered and annotatable; later pages are copied to
-the exported PDF unchanged.
 
 ## Development
 
@@ -103,6 +90,21 @@ Tailwind utilities.
 - `src/styles/tailwind.css` holds the design tokens, base layer, named
   breakpoints, and the night-theme token swap.
 - `src/style.css` is the small remainder: styling for DOM the component tree
+
+
+## Features
+
+- Loads local PDFs in the browser.
+- Lazily renders pages as they approach the viewport.
+- Supports freehand drawing, editable multiline text, and whole-annotation
+  erasing.
+- Stores annotations independently for each page.
+- Supports multiple colors, stroke widths, undo, redo, and light/dark themes.
+- Exports annotations into a new PDF without modifying the source file.
+
+PDFs with more than 200 pages still export with their original page count. Only
+pages 1–200 are currently rendered and annotatable; later pages are copied to
+the exported PDF unchanged.
   does not own, plus scrollbar pseudo-elements.
 - `tests/unit/` covers typed policies, application state, and domain behavior.
 - `tests/e2e/annotouch.spec.js` covers upload, lazy rendering, drawing, text,
