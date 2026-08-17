@@ -288,19 +288,22 @@ function ZoomButton({
 }
 
 function StatusMessage({ state }: Pick<AppShellProps, "state">) {
-  const isDocumentOpen = hasDocument(state);
+  // The chip is only painted for messages the rest of the toolbar does not
+  // already say: with a document open the summary covers it, and the idle
+  // placeholder ("no PDF loaded") repeats what the empty viewport shows. That
+  // leaves the transient messages — loading, load failures, and the prompts to
+  // pick a file. It always stays in the DOM so `aria-live` still announces
+  // every change.
+  const isRedundant = hasDocument(state) || state.status.isMuted;
 
   return (
     <div
       id="status"
       class={cx(
         "status max-compact:hidden",
-        // With a document open the toolbar shows the summary instead, and the
-        // status stays for screen readers only.
-        isDocumentOpen
+        isRedundant
           ? "sr-only"
-          : "border-border-status bg-surface-muted text-text-muted ml-auto inline-flex h-9 items-center rounded-control border px-[9px] text-xs leading-none whitespace-nowrap",
-        !isDocumentOpen && state.status.isMuted && "opacity-36"
+          : "border-border-status bg-surface-muted text-text-muted ml-auto inline-flex h-9 items-center rounded-control border px-[9px] text-xs leading-none whitespace-nowrap"
       )}
       role="status"
       aria-live="polite"
