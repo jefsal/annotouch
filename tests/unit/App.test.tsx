@@ -563,6 +563,17 @@ describe("App", () => {
       );
     });
 
+    it("toggles and persists the background image with shift+i", async () => {
+      const user = userEvent.setup();
+
+      renderApp();
+
+      await user.keyboard("{Shift>}i{/Shift}");
+
+      expect(document.documentElement.dataset.backgroundImage).toBe("hidden");
+      expect(localStorage.getItem("annotouch-background-image")).toBe("false");
+    });
+
     it("closes the settings panel on Escape and returns focus", async () => {
       const user = userEvent.setup();
 

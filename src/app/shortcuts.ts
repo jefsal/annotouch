@@ -34,7 +34,10 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
   },
   {
     label: "appearance",
-    commands: [{ label: "toggle night mode", keys: ["n"] }],
+    commands: [
+      { label: "toggle night mode", keys: ["n"] },
+      { label: "toggle background image", keys: ["shift", "i"] },
+    ],
   },
   {
     label: "history",
@@ -84,6 +87,18 @@ export function getColorShortcut(event: KeyboardEvent): PenColor | null {
 
 export function isNightModeShortcut(event: KeyboardEvent): boolean {
   return isUnmodifiedKey(event, "n");
+}
+
+export function isBackgroundImageShortcut(event: KeyboardEvent): boolean {
+  return (
+    event.shiftKey &&
+    !event.metaKey &&
+    !event.ctrlKey &&
+    !event.altKey &&
+    !event.repeat &&
+    event.key.toLowerCase() === "i" &&
+    !isEditableTarget(event.target)
+  );
 }
 
 /**

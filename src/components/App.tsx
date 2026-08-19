@@ -145,6 +145,15 @@ export function App({ root }: AppProps) {
     persistTheme(nextTheme);
   };
 
+  const setBackgroundImageVisibility = (isVisible: boolean): void => {
+    dispatch({ type: "background/setImageVisible", isVisible });
+    persistBackgroundImageVisibility(isVisible);
+  };
+
+  const toggleBackgroundImage = (): void => {
+    setBackgroundImageVisibility(!stateRef.current.isBackgroundImageVisible);
+  };
+
   const openFile = (file: File | undefined): void => {
     if (!file) return;
 
@@ -172,6 +181,7 @@ export function App({ root }: AppProps) {
     onSelectColor: (color) => dispatch({ type: "pen/setColor", color }),
     onCycleWidth: () => dispatch({ type: "pen/cycleWidth" }),
     onToggleTheme: toggleTheme,
+    onToggleBackgroundImage: toggleBackgroundImage,
     onOpenShortcuts: openShortcuts,
     onEscape: () => {
       const didCancelTextMode = Boolean(
@@ -218,10 +228,7 @@ export function App({ root }: AppProps) {
         dispatch({ type: "toolbar/set", settings });
         persistToolbarSettings(settings);
       }}
-      onBackgroundImageVisibilityChange={(isVisible) => {
-        dispatch({ type: "background/setImageVisible", isVisible });
-        persistBackgroundImageVisibility(isVisible);
-      }}
+      onBackgroundImageVisibilityChange={setBackgroundImageVisibility}
       onOpenShortcuts={openShortcuts}
       onCloseShortcuts={closeShortcuts}
     />
