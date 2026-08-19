@@ -125,6 +125,7 @@ beforeEach(() => {
   createDocumentController.mockClear();
   window.localStorage.clear();
   delete document.documentElement.dataset.theme;
+  delete document.documentElement.dataset.backgroundImage;
   document.documentElement.style.colorScheme = "";
 });
 
@@ -203,6 +204,33 @@ describe("App", () => {
       expect(document.documentElement.dataset.theme).toBe("night");
       expect(document.documentElement.style.colorScheme).toBe("dark");
       expect(window.localStorage.getItem("annotouch-theme")).toBe("night");
+    });
+  });
+
+  describe("background image", () => {
+    it("applies and persists the settings checkbox", async () => {
+      const user = userEvent.setup();
+
+      renderApp();
+
+      expect(document.documentElement.dataset.backgroundImage).toBe("visible");
+
+      await user.click(screen.getByRole("button", { name: "settings" }));
+      await user.click(screen.getByLabelText("toggle background image"));
+
+      expect(document.documentElement.dataset.backgroundImage).toBe("hidden");
+      expect(localStorage.getItem("annotouch-background-image")).toBe("false");
+    });
+
+    it("applies the stored background image preference", () => {
+      localStorage.setItem("annotouch-background-image", "false");
+
+      renderApp();
+
+      expect(document.documentElement.dataset.backgroundImage).toBe("hidden");
+      expect(
+        screen.getByLabelText("toggle background image")
+      ).not.toBeChecked();
     });
   });
 

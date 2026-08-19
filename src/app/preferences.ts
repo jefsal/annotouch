@@ -3,6 +3,7 @@ import type { Theme } from "../domain/types";
 
 const THEME_STORAGE_KEY = "annotouch-theme";
 const TOOLBAR_SETTINGS_STORAGE_KEY = "annotouch-toolbar-settings";
+const BACKGROUND_IMAGE_STORAGE_KEY = "annotouch-background-image";
 
 export interface ToolbarSettings {
   showHistoryControls: boolean;
@@ -11,6 +12,8 @@ export interface ToolbarSettings {
 export const DEFAULT_TOOLBAR_SETTINGS: ToolbarSettings = {
   showHistoryControls: false,
 };
+
+export const DEFAULT_BACKGROUND_IMAGE_VISIBILITY = true;
 
 export function getInitialTheme(): Theme {
   const savedTheme = readStoredTheme();
@@ -45,6 +48,33 @@ export function persistTheme(theme: Theme): void {
     window.localStorage.setItem(THEME_STORAGE_KEY, theme);
   } catch {
     // The selected theme still applies for this page load if storage is blocked.
+  }
+}
+
+export function getInitialBackgroundImageVisibility(): boolean {
+  try {
+    const storedVisibility = window.localStorage.getItem(
+      BACKGROUND_IMAGE_STORAGE_KEY
+    );
+
+    if (storedVisibility === "true" || storedVisibility === "false") {
+      return storedVisibility === "true";
+    }
+  } catch {
+    return DEFAULT_BACKGROUND_IMAGE_VISIBILITY;
+  }
+
+  return DEFAULT_BACKGROUND_IMAGE_VISIBILITY;
+}
+
+export function persistBackgroundImageVisibility(isVisible: boolean): void {
+  try {
+    window.localStorage.setItem(
+      BACKGROUND_IMAGE_STORAGE_KEY,
+      String(isVisible)
+    );
+  } catch {
+    // The selected setting still applies for this page load if storage is blocked.
   }
 }
 

@@ -6,8 +6,10 @@ import {
   type DocumentController,
 } from "../app/documentController";
 import {
+  getInitialBackgroundImageVisibility,
   getInitialTheme,
   getInitialToolbarSettings,
+  persistBackgroundImageVisibility,
   persistTheme,
   persistToolbarSettings,
 } from "../app/preferences";
@@ -38,6 +40,7 @@ export function App({ root }: AppProps) {
     createInitialState({
       theme: getInitialTheme(),
       toolbar: getInitialToolbarSettings(),
+      isBackgroundImageVisible: getInitialBackgroundImageVisibility(),
     })
   );
 
@@ -73,6 +76,11 @@ export function App({ root }: AppProps) {
   useLayoutEffect(() => {
     applyTheme(state.theme);
   }, [state.theme]);
+
+  useLayoutEffect(() => {
+    document.documentElement.dataset.backgroundImage =
+      state.isBackgroundImageVisible ? "visible" : "hidden";
+  }, [state.isBackgroundImageVisible]);
 
   useLayoutEffect(() => {
     controllerRef.current?.setViewScale(state.viewScale);
@@ -209,6 +217,10 @@ export function App({ root }: AppProps) {
 
         dispatch({ type: "toolbar/set", settings });
         persistToolbarSettings(settings);
+      }}
+      onBackgroundImageVisibilityChange={(isVisible) => {
+        dispatch({ type: "background/setImageVisible", isVisible });
+        persistBackgroundImageVisibility(isVisible);
       }}
       onOpenShortcuts={openShortcuts}
       onCloseShortcuts={closeShortcuts}

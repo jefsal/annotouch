@@ -6,8 +6,10 @@ interface SettingsPanelProps {
   panelRef: Ref<HTMLDivElement>;
   isOpen: boolean;
   showHistoryControls: boolean;
+  isBackgroundImageVisible: boolean;
   onToggle: () => void;
   onShowHistoryControlsChange: (showHistoryControls: boolean) => void;
+  onBackgroundImageVisibilityChange: (isVisible: boolean) => void;
   onOpenShortcuts: () => void;
 }
 
@@ -16,8 +18,10 @@ export function SettingsPanel({
   panelRef,
   isOpen,
   showHistoryControls,
+  isBackgroundImageVisible,
   onToggle,
   onShowHistoryControlsChange,
+  onBackgroundImageVisibilityChange,
   onOpenShortcuts,
 }: SettingsPanelProps) {
   return (
@@ -91,6 +95,22 @@ export function SettingsPanel({
             }}
           />
           <span>show undo/redo</span>
+        </label>
+        <label
+          class="text-text-strong mt-2 flex cursor-pointer items-center gap-2 text-[13px]/[1.2]
+            whitespace-nowrap"
+        >
+          <input
+            id="toggle-background-image"
+            class="m-0 size-3.5 accent-action"
+            type="checkbox"
+            checked={isBackgroundImageVisible}
+            aria-keyshortcuts="Shift+I"
+            onChange={(event) => {
+              onBackgroundImageVisibilityChange(event.currentTarget.checked);
+            }}
+          />
+          <span>toggle background image</span>
         </label>
         <button
           id="commands-shortcuts-button"

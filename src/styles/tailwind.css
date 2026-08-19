@@ -41,6 +41,18 @@
       var(--color-app-background);
   }
 
+  /* The photographic backdrop sits under a translucent legibility scrim. */
+  html[data-background-image="visible"] body {
+    background-color: var(--color-app-background);
+    background-image:
+      linear-gradient(var(--color-app-scrim), var(--color-app-scrim)),
+      url("/anno.png");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: cover;
+    background-attachment: fixed;
+  }
+
   button,
   input,
   select {
@@ -77,9 +89,8 @@
    * backdrop should read through, not by legibility.
    */
   --color-toolbar-surface: rgba(255, 255, 255, 0);
-  /* Top stop of the page-background gradient; its own token so the palette
-     role does not ride on a surface colour. */
   --color-app-background-top: #f8fafc;
+  --color-app-scrim: rgba(238, 241, 245, 0.78);
   --color-surface-drop: #e8f0fe;
 
   /* Text */
@@ -166,6 +177,7 @@ html[data-theme="night"] {
   --color-surface-muted: #242936;
   --color-toolbar-surface: rgba(23, 25, 35, 0.25);
   --color-app-background-top: #161d2b;
+  --color-app-scrim: rgba(17, 24, 39, 0.82);
   --color-surface-drop: #1b2a44;
 
   --color-overlay-surface: rgba(23, 25, 35, 0.82);
