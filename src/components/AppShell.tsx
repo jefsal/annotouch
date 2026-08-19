@@ -9,7 +9,7 @@ import {
   hasDocument,
   type AppState,
 } from "../app/state";
-import { cx } from "./classNames";
+import { cx, FOCUS_RING } from "./classNames";
 import { ColorSwatch } from "./ColorSwatch";
 import { ControlButton } from "./ControlButton";
 import { DocumentViewport } from "./DocumentViewport";
@@ -37,6 +37,8 @@ export interface AppShellProps {
   onOpenShortcuts: () => void;
   onCloseShortcuts: () => void;
 }
+
+const TOOLBAR_CONTROL_TEXT = "text-sm";
 
 export function AppShell(props: AppShellProps) {
   const { state } = props;
@@ -104,51 +106,72 @@ function Toolbar({
           hasDocument(state) && "max-compact:hidden"
         )}
       >
-        <div
+        <button
           id="theme-toggle"
-          class="brand cursor-pointer text-base leading-[1.1] font-bold
-            max-compact:text-[15px] max-tight:text-[14px]"
-          role="button"
-          tabIndex={0}
-          aria-label="toggle night mode"
+          class={cx(
+            "brand cursor-pointer border-0 bg-transparent p-0 text-left text-base",
+            "leading-[1.1] font-bold text-text-primary max-compact:text-[15px]",
+            "max-tight:text-[14px]",
+            FOCUS_RING
+          )}
+          type="button"
+          aria-label="night mode"
           aria-keyshortcuts="N"
           aria-pressed={isNight}
-          title={isNight ? "switch to light mode (N)" : "toggle night mode (N)"}
+          title={
+            isNight ? "switch to light mode (N)" : "switch to night mode (N)"
+          }
           onClick={onToggleTheme}
-          onKeyDown={(event) => {
-            if (event.key !== "Enter" && event.key !== " ") return;
-
-            event.preventDefault();
-            onToggleTheme();
-          }}
         >
           annotouch
-        </div>
+        </button>
       </div>
-      <input
-        id="pdf-input"
-        class="file-input pointer-events-none fixed size-px opacity-0"
-        type="file"
-        accept="application/pdf"
-        disabled={state.isBusy}
-        onClick={(event) => {
-          event.currentTarget.value = "";
-        }}
-        onChange={(event) => {
-          onOpenFile(event.currentTarget.files?.[0]);
-        }}
-      />
+      <label
+        class={cx(
+          "file-control border-border-default bg-surface text-text-muted",
+          "shadow-control grid size-9 flex-none cursor-pointer place-items-center",
+          "rounded-control border max-tight:size-[34px]",
+          "hover:border-border-strong hover:bg-surface-muted hover:text-text-primary",
+          state.isBusy && "cursor-default opacity-50"
+        )}
+        title="open PDF"
+      >
+        <input
+          id="pdf-input"
+          class="file-input sr-only"
+          type="file"
+          accept="application/pdf"
+          aria-label="open PDF"
+          disabled={state.isBusy}
+          onClick={(event) => {
+            event.currentTarget.value = "";
+          }}
+          onChange={(event) => {
+            onOpenFile(event.currentTarget.files?.[0]);
+          }}
+        />
+        <svg
+          class="size-[17px] fill-none stroke-current stroke-[1.8]
+            [stroke-linecap:round] [stroke-linejoin:round]"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+          focusable="false"
+        >
+          <path d="M3.5 7.5h6l2-2h9v13h-17z" />
+          <path d="M12 9v6M9 12h6" />
+        </svg>
+      </label>
       <div
         class="toolbar-section border-border-section bg-surface-raised inline-flex
           h-11 flex-none items-center gap-2 rounded-control border px-[5px]
           py-[3px] max-compact:h-[38px] max-compact:gap-1.5 max-compact:px-1
-          max-compact:py-0.5 max-tight:h-[34px] max-tight:px-[3px]
+          max-compact:py-0.5 max-tight:h-[34px] max-tight:px-0.5
           max-tight:py-0.5"
       >
         <div
           id="color-controls"
           class="pen-color-group inline-flex items-center gap-2
-            max-compact:gap-1.5 max-tight:gap-[5px]"
+            max-compact:gap-1.5 max-tight:gap-[3px]"
           role="group"
           aria-label="pen color"
         >
@@ -165,7 +188,11 @@ function Toolbar({
       </div>
       <ControlButton
         id="width-button"
-        class="width-button w-16 min-w-16 px-3 text-[12px]"
+        class={cx(
+          "width-button w-16 min-w-16 px-3 max-tight:w-[58px]",
+          "max-tight:min-w-[58px] max-tight:px-1.5",
+          TOOLBAR_CONTROL_TEXT
+        )}
         data-width-value={String(currentWidth.value)}
         aria-label={`stroke width: ${currentWidth.label}`}
         aria-keyshortcuts="W"
@@ -189,9 +216,11 @@ function Toolbar({
       >
         <ControlButton
           id="undo-button"
-          class="history-button min-w-0 flex-1 rounded-tl-[4px] rounded-tr-none
-            rounded-br-none rounded-bl-[6px] p-0.5 text-[13px] hover:z-1
-            focus-visible:z-1"
+          class={cx(
+            "history-button min-w-0 flex-1 rounded-tl-[4px] rounded-tr-none",
+            "rounded-br-none rounded-bl-[6px] p-0.5 hover:z-1 focus-visible:z-1",
+            TOOLBAR_CONTROL_TEXT
+          )}
           disabled={!canUndo(state)}
           onClick={onUndo}
         >
@@ -199,9 +228,11 @@ function Toolbar({
         </ControlButton>
         <ControlButton
           id="redo-button"
-          class="history-button -ml-px min-w-0 flex-1 rounded-tl-none rounded-tr-[4px]
-            rounded-br-[6px] rounded-bl-none p-0.5 text-[13px] hover:z-1
-            focus-visible:z-1"
+          class={cx(
+            "history-button -ml-px min-w-0 flex-1 rounded-tl-none rounded-tr-[4px]",
+            "rounded-br-[6px] rounded-bl-none p-0.5 hover:z-1 focus-visible:z-1",
+            TOOLBAR_CONTROL_TEXT
+          )}
           disabled={!canRedo(state)}
           onClick={onRedo}
         >
@@ -210,7 +241,7 @@ function Toolbar({
       </div>
       <div
         class="zoom-controls border-border-default bg-surface shadow-control
-          inline-flex h-9 w-8 flex-none items-stretch overflow-hidden
+          inline-flex h-9 w-14 flex-none items-stretch overflow-hidden
           rounded-control border max-compact:hidden"
         role="group"
         aria-label="zoom"
@@ -221,7 +252,7 @@ function Toolbar({
           disabled={!canZoomOut(state)}
           onActivate={onZoomOut}
         >
-          -
+          −
         </ZoomButton>
         <ZoomButton
           id="zoom-in-button"
@@ -236,10 +267,12 @@ function Toolbar({
       <StatusMessage state={state} />
       <ControlButton
         id="export-button"
-        class="export-button ml-auto min-w-23 flex-none px-3
-          max-compact:h-[38px] max-compact:min-w-[70px] max-compact:px-2
-          max-compact:text-[13px] max-tight:h-[34px] max-tight:min-w-[58px]
-          max-tight:px-1.5 max-tight:text-[12px]"
+        class={cx(
+          "export-button ml-auto min-w-23 flex-none px-3",
+          "max-compact:h-[38px] max-compact:min-w-[70px] max-compact:px-2",
+          "max-tight:h-[34px] max-tight:min-w-[58px] max-tight:px-1.5",
+          TOOLBAR_CONTROL_TEXT
+        )}
         variant="accent"
         disabled={!canExport(state)}
         title="export PDF"
@@ -269,9 +302,12 @@ function ZoomButton({
   return (
     <ControlButton
       id={id}
-      class="zoom-button h-[34px] w-4 min-w-0 rounded-none border-0 p-0
-        text-[13px] shadow-none not-first:border-l not-first:border-l-border-default
-        hover:z-1 focus-visible:z-1"
+      class={cx(
+        "zoom-button h-[34px] w-7 min-w-0 rounded-none border-0 p-0",
+        "shadow-none not-first:border-l not-first:border-l-border-default",
+        "hover:z-1 focus-visible:z-1",
+        TOOLBAR_CONTROL_TEXT
+      )}
       title={label}
       aria-label={label}
       disabled={disabled}
@@ -298,7 +334,7 @@ function StatusMessage({ state }: Pick<AppShellProps, "state">) {
         isDocumentOpen
           ? "sr-only"
           : "border-border-status bg-surface-muted text-text-muted ml-auto rounded-control border px-[9px] py-[7px] text-xs leading-none whitespace-nowrap",
-        !isDocumentOpen && state.status.isMuted && "opacity-36"
+        !isDocumentOpen && state.status.isMuted && "text-text-secondary"
       )}
       role="status"
       aria-live="polite"
@@ -342,7 +378,7 @@ function DocumentSummary({ state }: Pick<AppShellProps, "state">) {
       <span
         id="document-count"
         class="document-count text-text-secondary block overflow-hidden
-          text-[12px]/[1.2] text-ellipsis whitespace-nowrap opacity-50
+          text-[12px]/[1.2] text-ellipsis whitespace-nowrap
           max-compact:hidden summary:max-compact:block"
       >
         {countLabel}

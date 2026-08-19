@@ -21,15 +21,18 @@ const BASE =
   "inline-flex h-9 cursor-pointer items-center justify-center whitespace-nowrap " +
   "rounded-control border p-0 text-text-primary " +
   `${FOCUS_RING} ` +
-  "disabled:cursor-default disabled:opacity-[0.48]";
+  "disabled:cursor-not-allowed";
 
 const VARIANTS: Record<ControlButtonVariant, string> = {
   default:
     "border-border-default bg-surface shadow-control " +
-    "enabled:hover:border-border-strong enabled:hover:bg-surface-muted",
+    "enabled:hover:border-border-strong enabled:hover:bg-surface-muted " +
+    "disabled:opacity-[0.48]",
   accent:
     "border-action bg-action text-white font-[650] shadow-control " +
-    "enabled:hover:border-action-hover enabled:hover:bg-action-hover",
+    "enabled:hover:border-action-hover enabled:hover:bg-action-hover " +
+    "disabled:border-border-default disabled:bg-surface-muted " +
+    "disabled:text-text-secondary disabled:shadow-none",
 };
 
 export function ControlButton({

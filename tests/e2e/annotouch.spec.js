@@ -119,7 +119,10 @@ test.describe("Annotouch browser QA", () => {
     await expect(themeToggle).toHaveText("annotouch");
     await expect(themeToggle).toHaveAttribute("aria-pressed", "false");
     await expect(themeToggle).toHaveAttribute("aria-keyshortcuts", "N");
-    await expect(themeToggle).toHaveAttribute("title", "toggle night mode (N)");
+    await expect(themeToggle).toHaveAttribute(
+      "title",
+      "switch to night mode (N)"
+    );
     await expect(themeToggle).toHaveCSS("cursor", "pointer");
     expect(themeToggleBox?.x).toBeLessThan(32);
 
@@ -236,10 +239,26 @@ test.describe("Annotouch browser QA", () => {
 
       await expect(control).toHaveCSS("outline-style", "solid");
       await expect(control).toHaveCSS("outline-width", "3px");
-      await expect(control).toHaveCSS(
-        "outline-color",
-        "rgba(31, 111, 235, 0.24)"
-      );
+      await expect(control).toHaveCSS("outline-color", "rgb(29, 78, 216)");
+    }
+
+    const fileInput = page.locator("#pdf-input");
+    const fileControl = page.locator(".file-control");
+    await page.keyboard.press("Tab");
+    await fileInput.focus();
+    await expect(fileControl).toHaveCSS("outline-style", "solid");
+    await expect(fileControl).toHaveCSS("outline-width", "3px");
+    await expect(fileControl).toHaveCSS("outline-color", "rgb(29, 78, 216)");
+  });
+
+  test("uses one readable size for toolbar text controls", async ({ page }) => {
+    for (const selector of [
+      "#width-button",
+      "#zoom-out-button",
+      "#zoom-in-button",
+      "#export-button",
+    ]) {
+      await expect(page.locator(selector)).toHaveCSS("font-size", "14px");
     }
   });
 
@@ -715,13 +734,13 @@ test.describe("Annotouch browser QA", () => {
 
     expect(zoomControlsBox).not.toBeNull();
     expect(widthButtonBox).not.toBeNull();
-    expect(zoomControlsBox.width).toBeCloseTo(widthButtonBox.width / 2, 0);
+    expect(zoomControlsBox.width).toBeLessThan(widthButtonBox.width);
 
     for (const name of ["zoom out", "zoom in"]) {
       const buttonBox = await page.getByRole("button", { name }).boundingBox();
 
       expect(buttonBox).not.toBeNull();
-      expect(buttonBox.width).toBeGreaterThan(8);
+      expect(buttonBox.width).toBeGreaterThanOrEqual(24);
       expect(buttonBox.x).toBeGreaterThanOrEqual(zoomControlsBox.x - 1);
       expect(buttonBox.x + buttonBox.width).toBeLessThanOrEqual(
         zoomControlsBox.x + zoomControlsBox.width + 1

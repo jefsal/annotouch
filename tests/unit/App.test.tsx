@@ -196,9 +196,7 @@ describe("App", () => {
 
       expect(document.documentElement.dataset.theme).toBe("light");
 
-      await user.click(
-        screen.getByRole("button", { name: "toggle night mode" })
-      );
+      await user.click(screen.getByRole("button", { name: "night mode" }));
 
       expect(document.documentElement.dataset.theme).toBe("night");
       expect(document.documentElement.style.colorScheme).toBe("dark");

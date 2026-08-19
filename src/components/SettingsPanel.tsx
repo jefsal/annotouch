@@ -26,19 +26,18 @@ export function SettingsPanel({
         ref={buttonRef}
         id="settings-button"
         class={cx(
-          "fixed right-3.5 bottom-3.5 z-30 grid size-8 cursor-pointer",
-          "place-items-center rounded-pill border border-[rgba(104,115,134,0.35)]",
-          "bg-(--color-overlay-surface) p-0 text-text-muted opacity-[0.42]",
-          "shadow-floating transition-[background,border-color,color,opacity]",
-          "duration-[140ms] ease-[ease] hover:border-border-strong",
+          "fixed right-3.5 bottom-3.5 z-30 grid size-9 cursor-pointer",
+          "place-items-center rounded-pill border border-border-default",
+          "bg-(--color-overlay-surface) p-0 text-text-secondary",
+          "shadow-floating motion-safe:transition-[background,border-color,color]",
+          "motion-safe:duration-[140ms] motion-safe:ease-[ease] hover:border-border-strong",
           "hover:bg-(--color-overlay-surface-strong) hover:text-text-primary",
-          "hover:opacity-100 focus-visible:border-border-strong",
+          "focus-visible:border-border-strong",
           "focus-visible:bg-(--color-overlay-surface-strong)",
-          "focus-visible:text-text-primary focus-visible:opacity-100",
+          "focus-visible:text-text-primary",
           "aria-expanded:border-border-strong aria-expanded:text-text-primary",
           "aria-expanded:bg-(--color-overlay-surface-strong)",
-          "aria-expanded:opacity-100 max-tight:right-4 max-tight:bottom-2.5",
-          "max-tight:size-[30px]",
+          "max-tight:right-4 max-tight:bottom-2.5 max-tight:size-10",
           FOCUS_RING
         )}
         type="button"

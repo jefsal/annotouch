@@ -51,6 +51,10 @@ describe("AppShell", () => {
       screen.getByRole("region", { name: "pdf annotation workspace" })
     ).toBeInTheDocument();
     expect(screen.getByLabelText("show undo/redo")).not.toBeChecked();
+    expect(screen.getByLabelText("open PDF")).toHaveAttribute(
+      "accept",
+      "application/pdf"
+    );
     expect(screen.getByRole("button", { name: "export" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "zoom in" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "undo" })).toBeDisabled();
@@ -64,9 +68,10 @@ describe("AppShell", () => {
       })
     );
 
-    expect(
-      screen.getByRole("button", { name: "toggle night mode" })
-    ).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "night mode" })).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
     expect(screen.getByLabelText("show undo/redo")).toBeChecked();
   });
 
@@ -126,13 +131,25 @@ describe("AppShell", () => {
     await user.click(
       screen.getByRole("button", { name: "stroke width: small" })
     );
-    await user.click(screen.getByRole("button", { name: "toggle night mode" }));
+    await user.click(screen.getByRole("button", { name: "night mode" }));
     await user.click(screen.getByRole("button", { name: "settings" }));
 
     expect(props.onSelectColor).toHaveBeenCalledWith("#2563eb");
     expect(props.onCycleWidth).toHaveBeenCalledTimes(1);
     expect(props.onToggleTheme).toHaveBeenCalledTimes(1);
     expect(props.onToggleSettings).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports a PDF chosen from the visible file control", async () => {
+    const user = userEvent.setup();
+    const props = renderShell(createInitialState());
+    const file = new File(["%PDF-1.4"], "notes.pdf", {
+      type: "application/pdf",
+    });
+
+    await user.upload(screen.getByLabelText("open PDF"), file);
+
+    expect(props.onOpenFile).toHaveBeenCalledWith(file);
   });
 
   it("keeps the shortcut dialog closed until it is opened", () => {
