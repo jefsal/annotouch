@@ -69,6 +69,33 @@ export type AppAction =
 
 export const IDLE_STATUS_MESSAGE = "no PDF loaded";
 export const LOADING_STATUS_MESSAGE = "loading PDF";
+export const READY_STATUS_MESSAGE = "ready";
+
+export const PREPARING_STATUS_PREFIX = "preparing page";
+
+const QUIET_STATUS_MESSAGES: ReadonlySet<string> = new Set([
+  IDLE_STATUS_MESSAGE,
+  LOADING_STATUS_MESSAGE,
+  READY_STATUS_MESSAGE,
+]);
+
+/**
+ * Whether a message only narrates what the app is doing, as opposed to
+ * reporting a problem or asking the reader to act. Quiet messages are
+ * announced but never painted, so `isMuted` defaults to true for them and the
+ * toolbar keeps a chip for the things worth interrupting someone over.
+ *
+ * "ready" needs this as much as the idle placeholder does: the annotator emits
+ * it whenever an interaction ends, including from its `window` blur handler,
+ * which fires when the file picker opens. The annotator outlives any one
+ * document, so that arrives even with nothing loaded.
+ */
+function isQuietStatus(message: string): boolean {
+  return (
+    QUIET_STATUS_MESSAGES.has(message) ||
+    message.startsWith(PREPARING_STATUS_PREFIX)
+  );
+}
 
 const EMPTY_HISTORY: HistoryState = {
   canUndo: false,
@@ -110,7 +137,7 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         ...closeDocument(state),
         document: { status: "loading", fileName: action.fileName },
         isBusy: true,
-        status: { message: LOADING_STATUS_MESSAGE, isMuted: false },
+        status: { message: LOADING_STATUS_MESSAGE, isMuted: true },
       };
 
     case "document/loaded": {
@@ -144,7 +171,10 @@ export function appReducer(state: AppState, action: AppAction): AppState {
     case "status/set":
       return {
         ...state,
-        status: { message: action.message, isMuted: action.isMuted ?? false },
+        status: {
+          message: action.message,
+          isMuted: action.isMuted ?? isQuietStatus(action.message),
+        },
       };
 
     case "busy/set":
