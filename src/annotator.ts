@@ -1,4 +1,5 @@
 import type { AnnotationStore } from "./annotationStore";
+import { READY_STATUS_MESSAGE } from "./app/state";
 import { getCanvasPoint } from "./domain/canvasCoordinates";
 import { distance } from "./domain/geometry";
 import type { PenSettings, Point, TextAnnotation } from "./domain/types";
@@ -113,7 +114,7 @@ export function createAnnotator({
     onTextModeChange?.(isActive);
 
     if (updateStatus && mode.type !== "editingText") {
-      setStatus(isActive ? "click a page to add text" : "ready");
+      setStatus(isActive ? "click a page to add text" : READY_STATUS_MESSAGE);
     }
   }
 
@@ -293,7 +294,7 @@ export function createAnnotator({
       mode = { type: "idle" };
     }
 
-    setStatus("ready");
+    setStatus(READY_STATUS_MESSAGE);
   }
 
   function handleEraserKeyUp(event: KeyboardEvent): void {
@@ -303,7 +304,7 @@ export function createAnnotator({
 
     event.preventDefault();
     mode = { type: "idle" };
-    setStatus("ready");
+    setStatus(READY_STATUS_MESSAGE);
   }
 
   function startStroke(pointer: PagePointer): void {
@@ -401,7 +402,7 @@ export function createAnnotator({
     annotationStore.redrawAll();
 
     if (mode.type === "idle") {
-      setStatus("ready");
+      setStatus(READY_STATUS_MESSAGE);
     }
   }
 

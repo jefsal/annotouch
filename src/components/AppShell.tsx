@@ -92,15 +92,18 @@ function Toolbar({
 
   return (
     <header
-      class="toolbar border-border-toolbar bg-surface/94 shadow-toolbar sticky
-        top-0 z-10 flex min-h-16 items-center gap-2.5 border-b px-4 py-2.5
-        backdrop-blur-[16px] max-compact:min-h-14 max-compact:gap-1.5
+      class="toolbar border-border-toolbar bg-toolbar-surface shadow-toolbar sticky
+        top-0 z-10 flex min-h-16 items-end gap-2.5 border-b px-4 py-2.5
+        backdrop-blur-[10px] max-compact:min-h-14 max-compact:gap-1.5
         max-compact:px-2 max-compact:py-2 max-tight:min-h-12
         max-tight:gap-[5px] max-tight:px-1.5 max-tight:py-1.5"
     >
       <div
         class={cx(
-          "brand-block mr-1 grid min-w-[118px] gap-px max-compact:mr-0",
+          // Every toolbar item is one control height with its content centred,
+          // so the bar's `items-end` lines the contents up rather than just
+          // their boxes.
+          "brand-block mr-1 grid h-9 content-center min-w-[118px] gap-px max-compact:mr-0",
           "max-compact:flex-[0_0_92px] max-compact:min-w-23",
           "max-tight:basis-[78px] max-tight:min-w-[78px] max-micro:hidden",
           hasDocument(state) && "max-compact:hidden"
@@ -128,10 +131,9 @@ function Toolbar({
       </div>
       <label
         class={cx(
-          "file-control border-border-default bg-surface text-text-muted",
-          "shadow-control grid size-9 flex-none cursor-pointer place-items-center",
-          "rounded-control border max-tight:size-[34px]",
-          "hover:border-border-strong hover:bg-surface-muted hover:text-text-primary",
+          "file-control text-text-muted grid size-9 flex-none cursor-pointer",
+          "place-items-center rounded-control border border-transparent bg-transparent",
+          "hover:bg-surface/45 hover:text-text-primary max-tight:size-[34px]",
           state.isBusy && "cursor-default opacity-50"
         )}
         title="open PDF"
@@ -162,11 +164,10 @@ function Toolbar({
         </svg>
       </label>
       <div
-        class="toolbar-section border-border-section bg-surface-raised inline-flex
-          h-11 flex-none items-center gap-2 rounded-control border px-[5px]
-          py-[3px] max-compact:h-[38px] max-compact:gap-1.5 max-compact:px-1
-          max-compact:py-0.5 max-tight:h-[34px] max-tight:px-0.5
-          max-tight:py-0.5"
+        class="toolbar-section inline-flex h-9 flex-none items-center gap-2
+          rounded-control px-[5px] py-[3px] max-compact:h-[38px]
+          max-compact:gap-1.5 max-compact:px-1 max-compact:py-0.5
+          max-tight:h-[34px] max-tight:px-0.5 max-tight:py-0.5"
       >
         <div
           id="color-controls"
@@ -188,6 +189,7 @@ function Toolbar({
       </div>
       <ControlButton
         id="width-button"
+        variant="glass"
         class={cx(
           "width-button w-16 min-w-16 px-3 max-tight:w-[58px]",
           "max-tight:min-w-[58px] max-tight:px-1.5",
@@ -206,7 +208,7 @@ function Toolbar({
       </ControlButton>
       <div
         class={cx(
-          "history-controls w-22 items-stretch max-compact:hidden",
+          "history-controls h-9 w-22 items-center max-compact:hidden",
           // One display utility only: `hidden` and `inline-flex` are the same
           // family, so Tailwind's sort order would decide the winner.
           state.toolbar.showHistoryControls ? "inline-flex" : "hidden"
@@ -216,9 +218,9 @@ function Toolbar({
       >
         <ControlButton
           id="undo-button"
+          variant="glass"
           class={cx(
-            "history-button min-w-0 flex-1 rounded-tl-[4px] rounded-tr-none",
-            "rounded-br-none rounded-bl-[6px] p-0.5 hover:z-1 focus-visible:z-1",
+            "history-button min-w-0 flex-1 p-0.5 hover:z-1 focus-visible:z-1",
             TOOLBAR_CONTROL_TEXT
           )}
           disabled={!canUndo(state)}
@@ -228,9 +230,9 @@ function Toolbar({
         </ControlButton>
         <ControlButton
           id="redo-button"
+          variant="glass"
           class={cx(
-            "history-button -ml-px min-w-0 flex-1 rounded-tl-none rounded-tr-[4px]",
-            "rounded-br-[6px] rounded-bl-none p-0.5 hover:z-1 focus-visible:z-1",
+            "history-button min-w-0 flex-1 p-0.5 hover:z-1 focus-visible:z-1",
             TOOLBAR_CONTROL_TEXT
           )}
           disabled={!canRedo(state)}
@@ -240,9 +242,8 @@ function Toolbar({
         </ControlButton>
       </div>
       <div
-        class="zoom-controls border-border-default bg-surface shadow-control
-          inline-flex h-9 w-14 flex-none items-stretch overflow-hidden
-          rounded-control border max-compact:hidden"
+        class="zoom-controls inline-flex h-9 w-14 flex-none items-center
+          overflow-hidden rounded-control max-compact:hidden"
         role="group"
         aria-label="zoom"
       >
@@ -302,10 +303,10 @@ function ZoomButton({
   return (
     <ControlButton
       id={id}
+      variant="glass"
       class={cx(
         "zoom-button h-[34px] w-7 min-w-0 rounded-none border-0 p-0",
-        "shadow-none not-first:border-l not-first:border-l-border-default",
-        "hover:z-1 focus-visible:z-1",
+        "shadow-none hover:z-1 focus-visible:z-1",
         TOOLBAR_CONTROL_TEXT
       )}
       title={label}
@@ -322,19 +323,22 @@ function ZoomButton({
 }
 
 function StatusMessage({ state }: Pick<AppShellProps, "state">) {
-  const isDocumentOpen = hasDocument(state);
+  // The chip is only painted for messages the rest of the toolbar does not
+  // already say: with a document open the summary covers it, and the idle
+  // placeholder ("no PDF loaded") repeats what the empty viewport shows. That
+  // leaves the transient messages — loading, load failures, and the prompts to
+  // pick a file. It always stays in the DOM so `aria-live` still announces
+  // every change.
+  const isRedundant = hasDocument(state) || state.status.isMuted;
 
   return (
     <div
       id="status"
       class={cx(
         "status max-compact:hidden",
-        // With a document open the toolbar shows the summary instead, and the
-        // status stays for screen readers only.
-        isDocumentOpen
+        isRedundant
           ? "sr-only"
-          : "border-border-status bg-surface-muted text-text-muted ml-auto rounded-control border px-[9px] py-[7px] text-xs leading-none whitespace-nowrap",
-        !isDocumentOpen && state.status.isMuted && "text-text-secondary"
+          : "border-border-status bg-surface-muted text-text-muted ml-auto inline-flex h-9 items-center rounded-control border px-[9px] text-xs leading-none whitespace-nowrap"
       )}
       role="status"
       aria-live="polite"
@@ -358,7 +362,8 @@ function DocumentSummary({ state }: Pick<AppShellProps, "state">) {
 
   return (
     <div
-      class="document-summary ml-auto grid min-w-0 max-w-[min(320px,24vw)] gap-0.5
+      class="document-summary ml-auto grid h-9 content-center min-w-0
+        max-w-[min(320px,24vw)] gap-0.5
         leading-[1.2] max-compact:ml-0 max-compact:flex-[1_1_72px]
         max-compact:max-w-24 summary:max-compact:basis-40
         summary:max-compact:max-w-45 max-tight:basis-14 max-tight:max-w-[70px]"

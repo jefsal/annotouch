@@ -77,7 +77,7 @@ export function DocumentViewport({
         <span class="empty-copy max-w-[34ch] text-[14px]/[1.5] text-pretty">
           drop one here or choose a file from this device
         </span>
-        <span class="empty-action text-text-primary border-border-default bg-surface mt-1.5 inline-flex h-9 items-center justify-center whitespace-nowrap rounded-control border px-3 text-[13px] font-[650]">
+        <span class="empty-action text-text-primary bg-surface mt-1.5 inline-flex h-9 items-center justify-center whitespace-nowrap rounded-control px-3 text-[13px] font-[650]">
           choose PDF
         </span>
       </label>

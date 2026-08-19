@@ -4,7 +4,7 @@ import {
   MAX_ANNOTATABLE_PAGES,
   PAGE_RENDER_ROOT_MARGIN,
 } from "./config";
-import type { AppAction } from "./state";
+import { PREPARING_STATUS_PREFIX, type AppAction } from "./state";
 import { createAnnotationStore } from "../annotationStore";
 import { createAnnotator } from "../annotator";
 import {
@@ -255,7 +255,7 @@ export function createDocumentController({
         pageNumber === pageCount ||
         pageNumber % PAGE_PREPARE_STATUS_INTERVAL === 0
       ) {
-        setStatus(`preparing page ${pageNumber} of ${pageCount}`);
+        setStatus(`${PREPARING_STATUS_PREFIX} ${pageNumber} of ${pageCount}`);
       }
 
       const result = await getPdfPageViewport({
