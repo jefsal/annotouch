@@ -90,7 +90,7 @@ function Toolbar({
 
   return (
     <header
-      class="toolbar border-border-toolbar bg-surface/50 shadow-toolbar sticky
+      class="toolbar border-border-toolbar bg-toolbar-surface shadow-toolbar sticky
         top-0 z-10 flex min-h-16 items-end gap-2.5 border-b px-4 py-2.5
         backdrop-blur-[10px] max-compact:min-h-14 max-compact:gap-1.5
         max-compact:px-2 max-compact:py-2 max-tight:min-h-12

@@ -65,6 +65,18 @@
   --color-surface: #ffffff;
   --color-surface-raised: #fafbfe;
   --color-surface-muted: #f8fafc;
+  /*
+   * The toolbar's own fill. It is a token rather than a `bg-surface/<alpha>`
+   * utility because the two themes want different alphas: light mode carries
+   * no fill at all and is frosted purely by the backdrop blur, while night
+   * mode keeps a little of its own body.
+   *
+   * Contrast is not what bounds these. The page scrim behind the bar is opaque
+   * enough that the worst composited pixel still clears 9:1 against the
+   * primary text with zero fill, so the values are set by how much of the
+   * backdrop should read through, not by legibility.
+   */
+  --color-toolbar-surface: rgba(255, 255, 255, 0);
   /* Top stop of the page-background gradient; its own token so the palette
      role does not ride on a surface colour. */
   --color-app-background-top: #f8fafc;
@@ -152,6 +164,7 @@ html[data-theme="night"] {
   --color-surface: #171923;
   --color-surface-raised: #1d212c;
   --color-surface-muted: #242936;
+  --color-toolbar-surface: rgba(23, 25, 35, 0.25);
   --color-app-background-top: #161d2b;
   --color-surface-drop: #1b2a44;
 
