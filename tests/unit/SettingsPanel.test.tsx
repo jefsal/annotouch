@@ -15,8 +15,10 @@ function renderPanel(
     panelRef: createRef<HTMLDivElement>(),
     isOpen: false,
     showHistoryControls: false,
+    isBackgroundImageVisible: true,
     onToggle: vi.fn(),
     onShowHistoryControlsChange: vi.fn(),
+    onBackgroundImageVisibilityChange: vi.fn(),
     onOpenShortcuts: vi.fn(),
     ...overrides,
   };
@@ -103,6 +105,22 @@ describe("SettingsPanel", () => {
     await user.click(screen.getByLabelText("show undo/redo"));
 
     expect(props.onShowHistoryControlsChange).toHaveBeenCalledWith(false);
+  });
+
+  it("reflects and updates the background image preference", async () => {
+    const user = userEvent.setup();
+    const props = renderPanel({
+      isOpen: true,
+      isBackgroundImageVisible: false,
+    });
+    const checkbox = screen.getByLabelText("toggle background image");
+
+    expect(checkbox).not.toBeChecked();
+    expect(checkbox).toHaveAttribute("aria-keyshortcuts", "Shift+I");
+
+    await user.click(checkbox);
+
+    expect(props.onBackgroundImageVisibilityChange).toHaveBeenCalledWith(true);
   });
 
   it("reports a request to open the shortcut dialog", async () => {

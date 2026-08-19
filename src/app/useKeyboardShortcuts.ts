@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef } from "preact/hooks";
 import {
   getColorShortcut,
+  isBackgroundImageShortcut,
   isKeyboardShortcutsShortcut,
   isNightModeShortcut,
   isTextShortcut,
@@ -17,6 +18,7 @@ export interface KeyboardShortcutHandlers {
   onSelectColor: (color: string) => void;
   onCycleWidth: () => void;
   onToggleTheme: () => void;
+  onToggleBackgroundImage: () => void;
   onOpenShortcuts: () => void;
   /** Returns true when Escape was consumed by the application. */
   onEscape: () => boolean;
@@ -76,6 +78,12 @@ export function useKeyboardShortcuts(handlers: KeyboardShortcutHandlers): void {
       if (isNightModeShortcut(event)) {
         event.preventDefault();
         current.onToggleTheme();
+        return;
+      }
+
+      if (isBackgroundImageShortcut(event)) {
+        event.preventDefault();
+        current.onToggleBackgroundImage();
         return;
       }
 

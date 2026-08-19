@@ -6,8 +6,10 @@ import {
   type DocumentController,
 } from "../app/documentController";
 import {
+  getInitialBackgroundImageVisibility,
   getInitialTheme,
   getInitialToolbarSettings,
+  persistBackgroundImageVisibility,
   persistTheme,
   persistToolbarSettings,
 } from "../app/preferences";
@@ -38,6 +40,7 @@ export function App({ root }: AppProps) {
     createInitialState({
       theme: getInitialTheme(),
       toolbar: getInitialToolbarSettings(),
+      isBackgroundImageVisible: getInitialBackgroundImageVisibility(),
     })
   );
 
@@ -73,6 +76,11 @@ export function App({ root }: AppProps) {
   useLayoutEffect(() => {
     applyTheme(state.theme);
   }, [state.theme]);
+
+  useLayoutEffect(() => {
+    document.documentElement.dataset.backgroundImage =
+      state.isBackgroundImageVisible ? "visible" : "hidden";
+  }, [state.isBackgroundImageVisible]);
 
   useLayoutEffect(() => {
     controllerRef.current?.setViewScale(state.viewScale);
@@ -137,6 +145,15 @@ export function App({ root }: AppProps) {
     persistTheme(nextTheme);
   };
 
+  const setBackgroundImageVisibility = (isVisible: boolean): void => {
+    dispatch({ type: "background/setImageVisible", isVisible });
+    persistBackgroundImageVisibility(isVisible);
+  };
+
+  const toggleBackgroundImage = (): void => {
+    setBackgroundImageVisibility(!stateRef.current.isBackgroundImageVisible);
+  };
+
   const openFile = (file: File | undefined): void => {
     if (!file) return;
 
@@ -164,6 +181,7 @@ export function App({ root }: AppProps) {
     onSelectColor: (color) => dispatch({ type: "pen/setColor", color }),
     onCycleWidth: () => dispatch({ type: "pen/cycleWidth" }),
     onToggleTheme: toggleTheme,
+    onToggleBackgroundImage: toggleBackgroundImage,
     onOpenShortcuts: openShortcuts,
     onEscape: () => {
       const didCancelTextMode = Boolean(
@@ -210,6 +228,7 @@ export function App({ root }: AppProps) {
         dispatch({ type: "toolbar/set", settings });
         persistToolbarSettings(settings);
       }}
+      onBackgroundImageVisibilityChange={setBackgroundImageVisibility}
       onOpenShortcuts={openShortcuts}
       onCloseShortcuts={closeShortcuts}
     />

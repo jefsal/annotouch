@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   getColorShortcut,
+  isBackgroundImageShortcut,
   isKeyboardShortcutsShortcut,
   isNightModeShortcut,
   isTextShortcut,
@@ -28,6 +29,9 @@ describe("keyboard shortcuts", () => {
     );
     expect(isTextShortcut(keyboardEvent("t"))).toBe(true);
     expect(isNightModeShortcut(keyboardEvent("N"))).toBe(true);
+    expect(
+      isBackgroundImageShortcut(keyboardEvent("I", { shiftKey: true }))
+    ).toBe(true);
     expect(isWidthShortcut(keyboardEvent("w"))).toBe(true);
     expect(
       isKeyboardShortcutsShortcut(keyboardEvent("k", { metaKey: true }))
@@ -51,5 +55,17 @@ describe("keyboard shortcuts", () => {
       isUndoRedoShortcut(keyboardEvent("z", { metaKey: true }, input))
     ).toBe(false);
     expect(getColorShortcut(keyboardEvent("1", {}, input))).toBeNull();
+    expect(
+      isBackgroundImageShortcut(keyboardEvent("I", { shiftKey: true }, input))
+    ).toBe(false);
+  });
+
+  it("requires shift for the background image shortcut", () => {
+    expect(isBackgroundImageShortcut(keyboardEvent("i"))).toBe(false);
+    expect(
+      isBackgroundImageShortcut(
+        keyboardEvent("I", { shiftKey: true, metaKey: true })
+      )
+    ).toBe(false);
   });
 });

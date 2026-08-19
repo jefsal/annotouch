@@ -56,10 +56,12 @@ describe("createInitialState", () => {
     const state = createInitialState({
       theme: "night",
       toolbar: { showHistoryControls: true },
+      isBackgroundImageVisible: false,
     });
 
     expect(state.theme).toBe("night");
     expect(state.toolbar.showHistoryControls).toBe(true);
+    expect(state.isBackgroundImageVisible).toBe(false);
   });
 });
 
@@ -109,6 +111,7 @@ describe("document lifecycle", () => {
       createInitialState({
         theme: "night",
         toolbar: { showHistoryControls: true },
+        isBackgroundImageVisible: false,
       }),
       { type: "pen/setColor", color: "#16a34a" },
       { type: "document/loading", fileName: "notes.pdf" },
@@ -117,6 +120,7 @@ describe("document lifecycle", () => {
 
     expect(state.theme).toBe("night");
     expect(state.toolbar.showHistoryControls).toBe(true);
+    expect(state.isBackgroundImageVisible).toBe(false);
     expect(state.pen.color).toBe("#16a34a");
     expect(state.status).toEqual({
       message: IDLE_STATUS_MESSAGE,

@@ -29,6 +29,7 @@ function renderShell(
     onExport: vi.fn(),
     onToggleSettings: vi.fn(),
     onShowHistoryControlsChange: vi.fn(),
+    onBackgroundImageVisibilityChange: vi.fn(),
     onOpenShortcuts: vi.fn(),
     onCloseShortcuts: vi.fn(),
     ...overrides,
@@ -51,6 +52,7 @@ describe("AppShell", () => {
       screen.getByRole("region", { name: "pdf annotation workspace" })
     ).toBeInTheDocument();
     expect(screen.getByLabelText("show undo/redo")).not.toBeChecked();
+    expect(screen.getByLabelText("toggle background image")).toBeChecked();
     expect(screen.getByRole("button", { name: "export" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "zoom in" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "undo" })).toBeDisabled();
@@ -61,6 +63,7 @@ describe("AppShell", () => {
       createInitialState({
         theme: "night",
         toolbar: { showHistoryControls: true },
+        isBackgroundImageVisible: false,
       })
     );
 
@@ -68,6 +71,7 @@ describe("AppShell", () => {
       screen.getByRole("button", { name: "toggle night mode" })
     ).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByLabelText("show undo/redo")).toBeChecked();
+    expect(screen.getByLabelText("toggle background image")).not.toBeChecked();
   });
 
   it("enables document controls and summarizes the open document", () => {
@@ -143,7 +147,7 @@ describe("AppShell", () => {
     expect(dialog).not.toBeNull();
     expect(dialog).not.toHaveAttribute("open");
     expect(dialog?.querySelectorAll(".commands-shortcuts-row")).toHaveLength(
-      13
+      14
     );
   });
 });

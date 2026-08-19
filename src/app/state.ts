@@ -7,7 +7,11 @@ import {
   THEMES,
   VIEW_SCALE_STEP,
 } from "./config";
-import { DEFAULT_TOOLBAR_SETTINGS, type ToolbarSettings } from "./preferences";
+import {
+  DEFAULT_BACKGROUND_IMAGE_VISIBILITY,
+  DEFAULT_TOOLBAR_SETTINGS,
+  type ToolbarSettings,
+} from "./preferences";
 import type { DocumentState, PenSettings, Theme } from "../domain/types";
 
 export interface StatusState {
@@ -33,6 +37,7 @@ export interface AppState {
   theme: Theme;
   viewScale: number;
   toolbar: ToolbarSettings;
+  isBackgroundImageVisible: boolean;
   isSettingsOpen: boolean;
   isShortcutDialogOpen: boolean;
   isTextMode: boolean;
@@ -60,6 +65,7 @@ export type AppAction =
   | { type: "view/zoomIn" }
   | { type: "view/zoomOut" }
   | { type: "toolbar/set"; settings: ToolbarSettings }
+  | { type: "background/setImageVisible"; isVisible: boolean }
   | { type: "settings/setOpen"; isOpen: boolean }
   | { type: "settings/toggle" }
   | { type: "shortcuts/setOpen"; isOpen: boolean }
@@ -106,12 +112,14 @@ const EMPTY_HISTORY: HistoryState = {
 export interface InitialStateInput {
   theme: Theme;
   toolbar: ToolbarSettings;
+  isBackgroundImageVisible: boolean;
 }
 
 export function createInitialState(
-  { theme, toolbar }: InitialStateInput = {
+  { theme, toolbar, isBackgroundImageVisible }: InitialStateInput = {
     theme: THEMES.LIGHT,
     toolbar: DEFAULT_TOOLBAR_SETTINGS,
+    isBackgroundImageVisible: DEFAULT_BACKGROUND_IMAGE_VISIBILITY,
   }
 ): AppState {
   return {
@@ -122,6 +130,7 @@ export function createInitialState(
     theme,
     viewScale: DEFAULT_VIEW_SCALE,
     toolbar: { ...toolbar },
+    isBackgroundImageVisible,
     isSettingsOpen: false,
     isShortcutDialogOpen: false,
     isTextMode: false,
@@ -215,6 +224,11 @@ export function appReducer(state: AppState, action: AppAction): AppState {
 
     case "toolbar/set":
       return { ...state, toolbar: { ...action.settings } };
+
+    case "background/setImageVisible":
+      return state.isBackgroundImageVisible === action.isVisible
+        ? state
+        : { ...state, isBackgroundImageVisible: action.isVisible };
 
     case "settings/setOpen":
       return state.isSettingsOpen === action.isOpen

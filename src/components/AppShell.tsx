@@ -34,6 +34,7 @@ export interface AppShellProps {
   onExport: () => void;
   onToggleSettings: () => void;
   onShowHistoryControlsChange: (showHistoryControls: boolean) => void;
+  onBackgroundImageVisibilityChange: (isVisible: boolean) => void;
   onOpenShortcuts: () => void;
   onCloseShortcuts: () => void;
 }
@@ -56,8 +57,12 @@ export function AppShell(props: AppShellProps) {
         panelRef={props.settingsPanelRef}
         isOpen={state.isSettingsOpen}
         showHistoryControls={state.toolbar.showHistoryControls}
+        isBackgroundImageVisible={state.isBackgroundImageVisible}
         onToggle={props.onToggleSettings}
         onShowHistoryControlsChange={props.onShowHistoryControlsChange}
+        onBackgroundImageVisibilityChange={
+          props.onBackgroundImageVisibilityChange
+        }
         onOpenShortcuts={props.onOpenShortcuts}
       />
       <ShortcutDialog

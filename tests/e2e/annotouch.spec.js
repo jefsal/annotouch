@@ -182,6 +182,46 @@ test.describe("Annotouch browser QA", () => {
     await expect(themeToggle).toHaveAttribute("aria-pressed", "false");
   });
 
+  test("toggles and persists the background image from settings and shift+i", async ({
+    page,
+  }) => {
+    const html = page.locator("html");
+    const body = page.locator("body");
+    const backgroundImageToggle = page.getByLabel("toggle background image");
+
+    await expect(html).toHaveAttribute("data-background-image", "visible");
+    await expect(body).toHaveCSS("background-image", /url\(/);
+
+    await page.getByRole("button", { name: "settings" }).click();
+    await expect(backgroundImageToggle).toBeChecked();
+    await expect(backgroundImageToggle).toHaveAttribute(
+      "aria-keyshortcuts",
+      "Shift+I"
+    );
+    await backgroundImageToggle.uncheck();
+
+    await expect(html).toHaveAttribute("data-background-image", "hidden");
+    await expect(body).not.toHaveCSS("background-image", /url\(/);
+    await expect
+      .poll(() =>
+        page.evaluate(() => localStorage.getItem("annotouch-background-image"))
+      )
+      .toBe("false");
+
+    await page.reload();
+    await expect(html).toHaveAttribute("data-background-image", "hidden");
+
+    await page.keyboard.press("Shift+i");
+
+    await expect(html).toHaveAttribute("data-background-image", "visible");
+    await expect(body).toHaveCSS("background-image", /url\(/);
+    await expect
+      .poll(() =>
+        page.evaluate(() => localStorage.getItem("annotouch-background-image"))
+      )
+      .toBe("true");
+  });
+
   test("opens and closes the settings overlay", async ({ page }) => {
     const settingsButton = page.getByRole("button", { name: "settings" });
     const settingsPanel = page.getByRole("dialog", { name: "settings" });
@@ -195,6 +235,7 @@ test.describe("Annotouch browser QA", () => {
     await expect(settingsPanel).toBeVisible();
     await expect(settingsButton).toHaveAttribute("aria-expanded", "true");
     await expect(page.getByLabel("show undo/redo")).not.toBeChecked();
+    await expect(page.getByLabel("toggle background image")).toBeChecked();
     await expect(settingsPanel.locator(".keyboard-shortcuts")).toHaveCount(0);
     await expect(
       settingsPanel.getByRole("button", {
@@ -298,14 +339,15 @@ test.describe("Annotouch browser QA", () => {
     ]);
   });
 
-  test("reaches both settings controls with Tab while the panel is open", async ({
+  test("reaches every settings control with Tab while the panel is open", async ({
     page,
   }) => {
     await page.getByRole("button", { name: "settings" }).click();
     await page.evaluate(() => document.activeElement?.blur());
 
-    expect(await walkTabOrder(page, 3)).toEqual([
+    expect(await walkTabOrder(page, 4)).toEqual([
       "#show-history-controls",
+      "#toggle-background-image",
       "#commands-shortcuts-button",
       "body",
     ]);
@@ -426,7 +468,10 @@ test.describe("Annotouch browser QA", () => {
       },
       {
         label: "appearance",
-        rows: [{ command: "toggle night mode", keys: ["n"] }],
+        rows: [
+          { command: "toggle night mode", keys: ["n"] },
+          { command: "toggle background image", keys: ["shift", "i"] },
+        ],
       },
       {
         label: "history",
@@ -439,7 +484,7 @@ test.describe("Annotouch browser QA", () => {
         ],
       },
     ]);
-    await expect(dialog.locator(".commands-shortcuts-row")).toHaveCount(13);
+    await expect(dialog.locator(".commands-shortcuts-row")).toHaveCount(14);
     await expect(dialog.locator(".commands-shortcuts-row button")).toHaveCount(
       0
     );
@@ -515,7 +560,7 @@ test.describe("Annotouch browser QA", () => {
 
     await expect(dialog).toHaveCSS("background-color", "rgb(23, 25, 35)");
     await expect(dialog).toHaveCSS("color", "rgb(243, 244, 246)");
-    await expect(shortcutKeys).toHaveCount(22);
+    await expect(shortcutKeys).toHaveCount(24);
     await expect(shortcutKeys.first()).toHaveCSS("border-top-style", "none");
     await expect(shortcutKeys.first()).toHaveCSS("color", "rgb(170, 178, 192)");
     await expect(
@@ -581,8 +626,12 @@ test.describe("Annotouch browser QA", () => {
 
     const selectedColor = page.getByRole("button", { name: "red pen" });
     const initialTheme = await page.locator("html").getAttribute("data-theme");
+    const initialBackgroundImage = await page
+      .locator("html")
+      .getAttribute("data-background-image");
     await page.keyboard.press("5");
     await page.keyboard.press("n");
+    await page.keyboard.press("Shift+i");
     await page.keyboard.press("Control+Z");
     await page.keyboard.press("Control+Shift+Z");
     await page.keyboard.press("Space");
@@ -592,6 +641,10 @@ test.describe("Annotouch browser QA", () => {
     await expect(page.locator("html")).toHaveAttribute(
       "data-theme",
       initialTheme
+    );
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-background-image",
+      initialBackgroundImage
     );
     await expect(page.locator("#document-count")).toHaveText(
       "1/1 pages | 1 annotation"
