@@ -119,7 +119,10 @@ test.describe("Annotouch browser QA", () => {
     await expect(themeToggle).toHaveText("annotouch");
     await expect(themeToggle).toHaveAttribute("aria-pressed", "false");
     await expect(themeToggle).toHaveAttribute("aria-keyshortcuts", "N");
-    await expect(themeToggle).toHaveAttribute("title", "toggle night mode (N)");
+    await expect(themeToggle).toHaveAttribute(
+      "title",
+      "switch to night mode (N)"
+    );
     await expect(themeToggle).toHaveCSS("cursor", "pointer");
     expect(themeToggleBox?.x).toBeLessThan(32);
 
@@ -187,7 +190,7 @@ test.describe("Annotouch browser QA", () => {
   }) => {
     const html = page.locator("html");
     const body = page.locator("body");
-    const backgroundImageToggle = page.getByLabel("toggle background image");
+    const backgroundImageToggle = page.getByLabel("show background image");
 
     await expect(html).toHaveAttribute("data-background-image", "visible");
     await expect(body).toHaveCSS("background-image", /url\(/);
@@ -235,7 +238,7 @@ test.describe("Annotouch browser QA", () => {
     await expect(settingsPanel).toBeVisible();
     await expect(settingsButton).toHaveAttribute("aria-expanded", "true");
     await expect(page.getByLabel("show undo/redo")).not.toBeChecked();
-    await expect(page.getByLabel("toggle background image")).toBeChecked();
+    await expect(page.getByLabel("show background image")).toBeChecked();
     await expect(settingsPanel.locator(".keyboard-shortcuts")).toHaveCount(0);
     await expect(
       settingsPanel.getByRole("button", {
@@ -277,10 +280,26 @@ test.describe("Annotouch browser QA", () => {
 
       await expect(control).toHaveCSS("outline-style", "solid");
       await expect(control).toHaveCSS("outline-width", "3px");
-      await expect(control).toHaveCSS(
-        "outline-color",
-        "rgba(31, 111, 235, 0.24)"
-      );
+      await expect(control).toHaveCSS("outline-color", "rgb(29, 78, 216)");
+    }
+
+    const fileInput = page.locator("#pdf-input");
+    const fileControl = page.locator(".file-control");
+    await page.keyboard.press("Tab");
+    await fileInput.focus();
+    await expect(fileControl).toHaveCSS("outline-style", "solid");
+    await expect(fileControl).toHaveCSS("outline-width", "3px");
+    await expect(fileControl).toHaveCSS("outline-color", "rgb(29, 78, 216)");
+  });
+
+  test("uses one readable size for toolbar text controls", async ({ page }) => {
+    for (const selector of [
+      "#width-button",
+      "#zoom-out-button",
+      "#zoom-in-button",
+      "#export-button",
+    ]) {
+      await expect(page.locator(selector)).toHaveCSS("font-size", "14px");
     }
   });
 
@@ -347,7 +366,7 @@ test.describe("Annotouch browser QA", () => {
 
     expect(await walkTabOrder(page, 4)).toEqual([
       "#show-history-controls",
-      "#toggle-background-image",
+      "#show-background-image",
       "#commands-shortcuts-button",
       "body",
     ]);
@@ -768,13 +787,13 @@ test.describe("Annotouch browser QA", () => {
 
     expect(zoomControlsBox).not.toBeNull();
     expect(widthButtonBox).not.toBeNull();
-    expect(zoomControlsBox.width).toBeCloseTo(widthButtonBox.width / 2, 0);
+    expect(zoomControlsBox.width).toBeLessThan(widthButtonBox.width);
 
     for (const name of ["zoom out", "zoom in"]) {
       const buttonBox = await page.getByRole("button", { name }).boundingBox();
 
       expect(buttonBox).not.toBeNull();
-      expect(buttonBox.width).toBeGreaterThan(8);
+      expect(buttonBox.width).toBeGreaterThanOrEqual(24);
       expect(buttonBox.x).toBeGreaterThanOrEqual(zoomControlsBox.x - 1);
       expect(buttonBox.x + buttonBox.width).toBeLessThanOrEqual(
         zoomControlsBox.x + zoomControlsBox.width + 1

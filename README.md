@@ -1,8 +1,7 @@
 # Annotouch
 
 Annotouch is a local-first browser app for marking up PDFs without clicking or
-pressing down on a trackpad. 
-Open a PDF, hold `Space`, move the pointer over a
+pressing down on a trackpad. Open a PDF, hold `Space`, move the pointer over a
 page, and release `Space` to finish the stroke. Hold `E` while moving over an
 annotation to erase it. Press `T`, click a page, and type to add text.
 
@@ -11,11 +10,11 @@ document to a server.
 
 ## Why
 
-I created Annotouch after realizing that not having a tablet put me at a
-disadvantage while taking notes in class. Annotating a PDF with traditional
-trackpad movements felt limiting and dangerous considering the odd wrist movements required when annotating a pdf/ taking notes. [osu!](https://github.com/ppy/osu) inspired
-the idea of holding a key to draw while using pointer movement for the stroke.
-
+I created Annotouch after realizing that working without a tablet put me at a
+disadvantage while taking notes in class. Traditional trackpad gestures felt
+limiting and uncomfortable during long PDF annotation sessions.
+[osu!](https://github.com/ppy/osu) inspired the idea of holding a key to draw
+while using pointer movement for the stroke.
 
 ## Development
 
@@ -90,7 +89,10 @@ Tailwind utilities.
 - `src/styles/tailwind.css` holds the design tokens, base layer, named
   breakpoints, and the night-theme token swap.
 - `src/style.css` is the small remainder: styling for DOM the component tree
-
+  does not own, plus scrollbar pseudo-elements.
+- `tests/unit/` covers typed policies, application state, and domain behavior.
+- `tests/e2e/annotouch.spec.js` covers upload, lazy rendering, drawing, text,
+  colors, undo/redo, page limits, themes, and PDF export.
 
 ## Features
 
@@ -99,13 +101,10 @@ Tailwind utilities.
 - Supports freehand drawing, editable multiline text, and whole-annotation
   erasing.
 - Stores annotations independently for each page.
-- Supports multiple colors, stroke widths, undo, redo, and light/dark themes.
+- Supports multiple colors, stroke widths, undo, redo, and light/night themes.
+- Offers an optional photographic workspace background.
 - Exports annotations into a new PDF without modifying the source file.
 
 PDFs with more than 200 pages still export with their original page count. Only
 pages 1–200 are currently rendered and annotatable; later pages are copied to
 the exported PDF unchanged.
-  does not own, plus scrollbar pseudo-elements.
-- `tests/unit/` covers typed policies, application state, and domain behavior.
-- `tests/e2e/annotouch.spec.js` covers upload, lazy rendering, drawing, text,
-  colors, undo/redo, page limits, themes, and PDF export.

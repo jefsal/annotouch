@@ -21,15 +21,18 @@ const BASE =
   "inline-flex h-9 cursor-pointer items-center justify-center whitespace-nowrap " +
   "rounded-control border p-0 text-text-primary " +
   `${FOCUS_RING} ` +
-  "disabled:cursor-default disabled:opacity-[0.48]";
+  "disabled:cursor-not-allowed";
 
 const VARIANTS: Record<ControlButtonVariant, string> = {
   default:
     "border-border-default bg-surface shadow-control " +
-    "enabled:hover:border-border-strong enabled:hover:bg-surface-muted",
+    "enabled:hover:border-border-strong enabled:hover:bg-surface-muted " +
+    "disabled:opacity-[0.48]",
   accent:
     "border-action bg-action text-white font-[650] shadow-control " +
-    "enabled:hover:border-action-hover enabled:hover:bg-action-hover",
+    "enabled:hover:border-action-hover enabled:hover:bg-action-hover " +
+    "disabled:border-border-default disabled:bg-surface-muted " +
+    "disabled:text-text-secondary disabled:shadow-none",
   // For controls sitting on the frosted toolbar: no fill and no outline of
   // their own, so the toolbar's blurred backdrop reads straight through. Hover
   // tints rather than filling, which would put the opaque slab back. The border
@@ -37,7 +40,9 @@ const VARIANTS: Record<ControlButtonVariant, string> = {
   // the other variants. A caller cannot get either by adding `bg-transparent` /
   // `border-0` to the `default` variant — competing utilities in one family
   // resolve by Tailwind's sort order, not by class order.
-  glass: "border-transparent bg-transparent enabled:hover:bg-surface/45",
+  glass:
+    "border-transparent bg-transparent enabled:hover:bg-surface/45 " +
+    "disabled:opacity-[0.48]",
 };
 
 export function ControlButton({

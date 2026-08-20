@@ -26,6 +26,8 @@
       sans-serif;
     background: var(--color-app-background);
     color: var(--color-text-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   body {
@@ -46,11 +48,10 @@
     background-color: var(--color-app-background);
     background-image:
       linear-gradient(var(--color-app-scrim), var(--color-app-scrim)),
-      url("/anno.png");
+      url("/anno.jpg");
     background-repeat: no-repeat;
     background-position: center;
     background-size: cover;
-    background-attachment: fixed;
   }
 
   button,
@@ -97,6 +98,8 @@
   --color-text-primary: #171923;
   --color-text-strong: #242936;
   --color-text-muted: #4f5969;
+  /* Secondary toolbar copy must remain readable over every backdrop pixel. */
+  --color-text-toolbar-detail: #424b59;
   --color-text-secondary: #687386;
   --color-text-faint: #8a93a3;
 
@@ -108,6 +111,7 @@
   --color-border-status: #e0e5ec;
   --color-border-strong: #8a93a3;
   --color-border-placeholder: #d8dde5;
+  --color-border-dropzone: #b9c2d0;
 
   /* Surfaces that are not plain colors */
   --color-overlay-surface: rgba(255, 255, 255, 0.72);
@@ -127,7 +131,7 @@
   /* Accent */
   --color-action: #1f6feb;
   --color-action-hover: #164ea6;
-  --color-action-ring: rgba(31, 111, 235, 0.24);
+  --color-action-ring: #1d4ed8;
   --color-selection-ring: #1d4ed8;
 
   /* Radii */
@@ -187,6 +191,7 @@ html[data-theme="night"] {
   --color-text-primary: #f3f4f6;
   --color-text-strong: #e5e7eb;
   --color-text-muted: #aab2c0;
+  --color-text-toolbar-detail: #aab2c0;
   --color-text-secondary: #8a93a3;
   --color-text-faint: #687386;
 
@@ -197,4 +202,8 @@ html[data-theme="night"] {
   --color-border-status: #2d3340;
   --color-border-strong: #4f5969;
   --color-border-placeholder: #343b49;
+  --color-border-dropzone: #4f5969;
+
+  --color-action-ring: #60a5fa;
+  --color-selection-ring: #60a5fa;
 }
