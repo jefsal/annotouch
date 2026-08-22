@@ -1,21 +1,28 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Repository guidance for coding agents working on Annotouch. Keep this file
+factual, durable, and free of credentials or machine-specific details.
 
-## Active Plan
+## Current State
 
-[`plan.md`](plan.md) is the source of truth for the active TypeScript, Preact,
-Tailwind, testing, and Cloudflare deployment roadmap. Keep its checkboxes and
-migration-boundary notes current as work lands.
+Annotouch is a local-first PDF annotation app built with Preact, TypeScript,
+Tailwind CSS, Vite, PDF.js, and pdf-lib. The TypeScript/Preact/Tailwind refactor
+is complete: Preact owns the interface, application state is typed, and
+`src/style.css` intentionally holds browser rules and DOM primitives that
+components do not create.
 
-`CLAUDE.md` and `plan.md` are tracked in Git so the roadmap and these notes
-travel with the repository. Keep them free of credentials and host details.
+PDF bytes and annotations remain in the browser. The app has no upload service.
+
+`plan.md` records the completed refactor and an older Cloudflare deployment
+plan. Treat it as historical context, not an active task list. Confirm the
+current deployment state and requirements with the user before changing any
+infrastructure.
 
 ## Commands
 
 ```sh
-npm run dev            # start Vite dev server (http://127.0.0.1:5173)
-npm run build          # production build to dist/
+npm run dev            # start the Vite development server
+npm run build          # build production assets in dist/
 npm run preview        # serve the production build
 
 npm run typecheck      # TypeScript validation
@@ -23,69 +30,115 @@ npm run lint           # ESLint
 npm run test           # Vitest unit tests
 npm run format:check   # Prettier validation
 
-npx playwright install chromium   # one-time, before first test run
-npm run test:e2e                   # run Playwright e2e suite (auto-starts dev server)
-npm run test:e2e:headed            # same, with a visible browser
-
-npx playwright test tests/e2e/annotouch.spec.js -g "export"   # run a single test by title substring
+npx playwright install chromium   # one-time browser installation
+npm run test:e2e                   # Playwright suite; starts the dev server
+npm run test:e2e:headed            # Playwright with a visible browser
 ```
 
-Commit `playwright.config.js` and everything under `tests/`;
-`playwright-report/` and `test-results/` are git-ignored.
+Run one browser test by title:
+
+```sh
+npx playwright test tests/e2e/annotouch.spec.js -g "export"
+```
+
+Do not commit generated `dist/`, `playwright-report/`, `test-results/`, or
+machine-local files.
 
 ## Architecture
 
-Annotouch is a keyboard-first Preact, TypeScript, Tailwind, and Vite browser app
-for annotating local PDFs. The refactor is incremental: Preact owns the UI
-lifecycle and renders from typed state, all application source is TypeScript,
-and the legacy stylesheet is the remaining migration. The interaction model is osu-inspired: hold a key and **move the
-pointer** rather than clicking — hold `Space` to draw a stroke, hold `E` to
-erase whole annotations under the cursor, press `T` then click to place text.
-All work is in-memory; nothing is uploaded.
+- `src/main.tsx` mounts the application and imports the global style layers.
+- `src/components/App.tsx` owns `AppState`, preferences, application shortcuts,
+  unsaved-work protection, and the document-controller boundary.
+- `src/components/` renders the shell, document viewport, settings, and
+  shortcut dialog from state and callbacks.
+- `src/app/documentController.ts` owns PDF bytes, PDF.js objects, page shells,
+  canvases, lazy rendering, annotation coordination, and export orchestration.
+- `src/annotationStore.ts`, `src/annotator.ts`, and `src/textEditor.ts` own
+  annotation history, pointer interaction, and text-editing sessions.
+- `src/pdfViewer.ts` wraps PDF.js rendering. `src/exporter.ts` is lazy-loaded
+  and writes annotations into a downloaded copy with pdf-lib.
+- `src/domain/` contains annotation types, geometry, canvas mapping, rendering
+  helpers, and typed errors.
+- `src/styles/tailwind.css` owns tokens, themes, and component styling;
+  `src/style.css` owns browser pseudo-elements and controller-created DOM.
 
-### Modules and how they connect
+## Behavioral Invariants
 
-- **`src/main.tsx`** — mounts the app and imports global styles.
-- **`src/components/App.tsx`** — owns `AppState` via `useReducer` and wires it to
-  the document controller, keyboard shortcuts, theme, and preferences. Every
-  side effect uses `useLayoutEffect`; Preact's passive effects run on an
-  animation frame, which is too late for the `beforeunload` guard, page
-  scaling, and the classes on the `#app` mount container.
-- **`src/components/AppShell.tsx`** — renders the toolbar and composes the
-  viewport, settings panel, and shortcut dialog from state and callbacks.
-- **`src/app/state.ts`** — `AppState`, `AppAction`, the reducer, and the
-  selectors that gate the toolbar controls.
-- **`src/app/documentController.ts`** — owns everything that cannot be
-  serializable UI state: PDF bytes, PDF.js objects, page shells/canvases, the
-  lazy-render `IntersectionObserver`, and export. It only talks back through
-  `dispatch`.
-- **`src/pdfViewer.ts`** — typed wrapper over PDF.js: loads the document and renders a page's bitmap into a canvas. Sets the PDF.js worker URL.
-- **`src/annotator.ts`** — all pointer/keyboard interaction for _creating_ annotations. State is one exclusive `InteractionMode` union (`idle`, `drawing`, `erasing`, `placingText`, `editingText`); document-level listeners are attached on creation and removed by `destroy()`. Reports status through `onStatusChange`.
-- **`src/textEditor.ts`** — one text-annotation editing session: the textarea overlay, its measurement against the annotation canvas, and the commit/discard rules.
-- **`src/domain/canvasCoordinates.ts`** — pointer→canvas-pixel conversion and display scale; this is what keeps stored coordinates independent of zoom.
-- **`src/annotationStore.ts`** — the source of truth. Holds a `Map` of page number → page state; each page has one flat `annotations` array mixing `type: "stroke"` and `type: "text"`. Owns the undo/redo stacks and redraws canvases. `getAnnotationsByPage()` feeds the exporter.
-- **`src/exporter.ts`** — uses `pdf-lib` to draw stored annotations back into the original PDF bytes and trigger a download. Runs independently of PDF.js and is loaded lazily when export is requested.
-- **`src/domain/`** — shared annotation types, geometry, rendering helpers, and application errors.
-- **`src/app/`** — also holds typed configuration, preference, and shortcut
-  policies plus `useKeyboardShortcuts`.
+### Coordinates and zoom
 
-### Two distinct scales — do not conflate them
+`renderScale` controls canvas backing resolution and defaults to `1.5`.
+Annotation coordinates are stored in that canvas-pixel space.
 
-- **`renderScale`** (`DEFAULT_RENDER_SCALE = 1.5`): the resolution at which each page canvas is rendered. **Annotation coordinates are stored in this canvas-pixel space.** Export maps them to PDF points via the page's PDF.js `viewport.convertToPdfPoint(...)` (and divides stroke thickness / font size by `scale`).
-- **`viewScale`** (zoom, 0.1–2.0): a purely visual CSS transform on displayed pages. It must **not** affect stored coordinates. `getCanvasPoint` in `src/domain/canvasCoordinates.ts` already divides out the display scale via `getBoundingClientRect`, so drawing stays correct at any zoom.
+`viewScale` ranges from `0.1` to `2.0` and changes displayed page-shell
+dimensions only. It must never rewrite stored coordinates. Use
+`getCanvasPoint()` and `getCanvasDisplayScale()` from
+`src/domain/canvasCoordinates.ts`; both account for the ratio between the
+displayed canvas and its backing store.
 
-### Lazy rendering and version tokens
+### Document lifecycle
 
-Pages render lazily as they approach the viewport using an `IntersectionObserver` (`PAGE_RENDER_ROOT_MARGIN`). Every document load increments a `version` token; async render callbacks check the token and bail if it's stale, so switching PDFs mid-render doesn't paint pages from the old document. `pageViewports` (page → PDF.js viewport) is populated during rendering and consumed by export.
+Every document load increments a version token. Any asynchronous load, render,
+or export continuation must verify that token before publishing state. Keep PDF
+bytes, PDF.js objects, canvases, observers, and page viewports outside
+serializable `AppState`.
 
-### 200-page cap
+Export snapshots its inputs before its first `await`, because a replacement PDF
+may open while the exporter is loading. Do not let a stale operation update the
+replacement document's status.
 
-Only the first `MAX_ANNOTATABLE_PAGES = 200` pages are rendered and annotatable. On export, pages beyond 200 are preserved **unchanged** — the exporter loads the full original document and only draws onto pages that have annotations, so total page count is never altered.
+### Rendering and page limits
 
-### Text export constraint
+Only the first `MAX_ANNOTATABLE_PAGES = 200` pages are rendered and annotatable.
+Export must retain the original total page count and leave later pages
+unchanged.
 
-Text is exported with `pdf-lib`'s standard Helvetica font, which has a limited character set. Before writing anything, `exporter.ts` validates every text character against `font.getCharacterSet()` and throws `UnsupportedTextCharacterError` (surfaced to the user) rather than silently corrupting output. Rotated pages are handled by passing the page's `viewport.rotation` to `drawText`. History (commits touching `text-annotations`) shows this validation-on-export path was the resolution to earlier text-export breakage — keep it intact.
+Page canvases render lazily within `PAGE_RENDER_ROOT_MARGIN`. Rendering is
+currently monotonic: once rendered, a canvas remains mounted. Do not introduce
+eager rendering or remove the version checks.
 
-### Undo/redo model
+### Annotation and export behavior
 
-The store's undo/redo stacks hold typed entries (`add` / `erase`) rather than snapshots, and a single stack spans both strokes and text so operations undo in true chronological order. Erase records the removed annotation and its original index so undo restores it in place.
+The annotation store keeps one ordered array of stroke and text annotations per
+page. Undo and redo span both types chronologically; erasure records original
+indices so undo restores ordering.
+
+Text export uses pdf-lib's standard Helvetica font. Validate characters before
+writing and surface `UnsupportedTextCharacterError` instead of corrupting
+output. Preserve page rotation when exporting text and preserve the PDF.js
+viewport conversion used for all annotation coordinates.
+
+PDF replacement must retain the discard confirmation when unsaved annotations
+or a text draft exist. Malformed, encrypted, truncated, and zero-page PDFs must
+return the app to a usable empty state.
+
+## Implementation Conventions
+
+- `App.tsx`, `ShortcutDialog.tsx`, and `useKeyboardShortcuts.ts` deliberately
+  use `useLayoutEffect` where the next user action or page unload must observe
+  the side effect immediately. Do not replace these with passive effects
+  without proving the timing remains safe.
+- Keep document-level listeners paired with explicit teardown. The annotator
+  and document controller must release listeners, observers, PDF.js objects,
+  and editing sessions from `destroy()` or `close()`.
+- Put declarative component layout and state styling in Tailwind utilities. Use
+  semantic CSS only for pseudo-elements or controller-created DOM where it is
+  clearer.
+- Use `cx()` for conditional utilities. Avoid conflicting utilities from the
+  same family; Tailwind resolves them by generated order, not class-string
+  order.
+- Preact may emit camelCase SVG attributes verbatim. Prefer utilities or valid
+  lowercase SVG attributes for stroke and presentation properties.
+- Keep shortcuts disabled inside editable controls. Update
+  `src/app/shortcuts.ts`, the shortcut dialog, and tests together when adding or
+  changing a command.
+
+## Verification
+
+Add focused unit coverage for domain or component behavior and browser coverage
+for user workflows, keyboard order, focus, rendering, or export changes. Keep
+malformed-document, replacement-during-work, rotated-page, and over-200-page
+regressions intact.
+
+Before handing off a code change, run the checks proportional to its scope. For
+a release or broad refactor, run typecheck, lint, unit tests, formatting, the
+production build, and the complete Playwright suite.
