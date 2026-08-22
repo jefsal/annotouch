@@ -4,6 +4,12 @@ Annotouch is a local-first browser app for marking up PDFs with keyboard-driven
 pointer controls. Files and annotations stay in your browser and are never
 uploaded to a server.
 
+## Why Annotouch
+
+Annotouch began as a way to take class notes without a tablet or repetitive
+trackpad clicks. Its hold-to-draw interaction was inspired by
+[osu!](https://github.com/ppy/osu).
+
 ## Features
 
 - Draw without clicking: hold `Space`, move the pointer, and release to finish.
@@ -53,6 +59,20 @@ npm run preview
 
 ## Architecture
 
+```text
+Browser input + local PDF
+          │
+          ▼
+Preact UI · src/components/
+          │
+          ▼
+State + orchestration · src/app/
+          │
+          ├── Annotation model + geometry · src/domain/
+          ├── Canvas interaction · annotator / textEditor
+          └── PDF rendering + export · pdfViewer / exporter
+```
+
 - `src/components/` renders the Preact interface; `src/components/App.tsx`
   connects application state, preferences, shortcuts, and document actions.
 - `src/app/` owns typed state, configuration, shortcuts, preferences, and the
@@ -66,9 +86,3 @@ npm run preview
 
 Annotouch renders and annotates the first 200 pages of a PDF. When exporting a
 larger document, it preserves every later page unchanged.
-
-## Why Annotouch
-
-Annotouch began as a way to take class notes without a tablet or repetitive
-trackpad clicks. Its hold-to-draw interaction was inspired by
-[osu!](https://github.com/ppy/osu).
