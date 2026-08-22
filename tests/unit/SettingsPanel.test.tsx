@@ -113,7 +113,7 @@ describe("SettingsPanel", () => {
       isOpen: true,
       isBackgroundImageVisible: false,
     });
-    const checkbox = screen.getByLabelText("toggle background image");
+    const checkbox = screen.getByLabelText("show background image");
 
     expect(checkbox).not.toBeChecked();
     expect(checkbox).toHaveAttribute("aria-keyshortcuts", "Shift+I");

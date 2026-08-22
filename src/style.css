@@ -12,6 +12,11 @@
     backdrop-filter: blur(2px);
   }
 
+  .file-control:has(.file-input:focus-visible) {
+    outline: 3px solid var(--color-action-ring);
+    outline-offset: 2px;
+  }
+
   .commands-shortcuts-content {
     scrollbar-color: rgba(104, 115, 134, 0.18) transparent;
     scrollbar-width: thin;
@@ -144,5 +149,11 @@
 
   .text-editor::selection {
     background: rgba(37, 99, 235, 0.28);
+  }
+}
+
+@media (forced-colors: active) {
+  .file-control:has(.file-input:focus-visible) {
+    outline-color: Highlight;
   }
 }

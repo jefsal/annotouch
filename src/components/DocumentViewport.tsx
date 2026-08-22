@@ -50,8 +50,8 @@ export function DocumentViewport({
     <section
       ref={workspaceRef}
       class={cx(
-        "workspace min-h-0 overflow-auto p-7 transition-[background]",
-        "duration-[160ms] ease-[ease] max-compact:p-3.5",
+        "workspace min-h-0 overflow-auto p-7 motion-safe:transition-[background]",
+        "motion-safe:duration-[160ms] motion-safe:ease-[ease] max-compact:p-3.5",
         isDragging && "is-dragging bg-surface-drop"
       )}
       aria-label="pdf annotation workspace"
