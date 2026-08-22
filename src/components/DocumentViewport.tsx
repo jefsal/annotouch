@@ -63,7 +63,7 @@ export function DocumentViewport({
       <label
         id="empty-state"
         class={cx(
-          "empty-state text-text-muted mx-auto mt-[16vh] min-h-[220px] w-[min(520px,100%)] cursor-pointer content-center place-items-center gap-2.5 rounded-control border border-dashed border-border-dropzone bg-(--color-empty-surface) text-center max-compact:mt-[10vh] max-compact:min-h-[200px]",
+          "empty-state text-text-secondary mx-auto mt-[16vh] min-h-[220px] w-[min(520px,100%)] cursor-pointer content-center place-items-center gap-2.5 rounded-control border border-dashed border-[#b9c2d0] bg-(--color-empty-surface) text-center max-compact:mt-[10vh] max-compact:min-h-[200px]",
           // Utilities outrank the layered stylesheet, so [hidden] cannot win
           // against a display utility; drive display from state instead.
           hasDocument ? "hidden" : "grid"
@@ -72,10 +72,10 @@ export function DocumentViewport({
         hidden={hasDocument}
       >
         <span class="empty-title text-text-strong text-[20px] font-bold">
-          open a PDF to start
+          drop a PDF{" "}
         </span>
-        <span class="empty-copy max-w-[34ch] text-[14px]/[1.5] text-pretty">
-          drop one here or choose a file from this device
+        <span class="empty-copy text-[14px] opacity-45">
+          or choose a local file
         </span>
         <span class="empty-action text-text-primary bg-surface mt-1.5 inline-flex h-9 items-center justify-center whitespace-nowrap rounded-control px-3 text-[13px] font-[650]">
           choose PDF

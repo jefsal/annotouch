@@ -104,6 +104,16 @@ test.describe("Annotouch browser QA", () => {
     expect(errors?.pageErrors ?? []).toEqual([]);
   });
 
+  test("uses the original PDF drop card", async ({ page }) => {
+    const emptyState = page.locator("#empty-state");
+
+    await expect(emptyState.getByText("drop a PDF")).toBeVisible();
+    await expect(emptyState.getByText("or choose a local file")).toBeVisible();
+    await expect(emptyState.getByText("choose PDF")).toBeVisible();
+    await expect(emptyState).toHaveAttribute("for", "pdf-input");
+    await expect(emptyState).toHaveCSS("border-style", "dashed");
+  });
+
   test("toggles night mode from the annotouch brand and persists it", async ({
     page,
   }) => {

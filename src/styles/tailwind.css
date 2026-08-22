@@ -111,7 +111,6 @@
   --color-border-status: #e0e5ec;
   --color-border-strong: #8a93a3;
   --color-border-placeholder: #d8dde5;
-  --color-border-dropzone: #b9c2d0;
 
   /* Surfaces that are not plain colors */
   --color-overlay-surface: rgba(255, 255, 255, 0.72);
@@ -202,8 +201,6 @@ html[data-theme="night"] {
   --color-border-status: #2d3340;
   --color-border-strong: #4f5969;
   --color-border-placeholder: #343b49;
-  --color-border-dropzone: #4f5969;
-
   --color-action-ring: #60a5fa;
   --color-selection-ring: #60a5fa;
 }
