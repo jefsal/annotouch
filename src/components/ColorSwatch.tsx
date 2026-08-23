@@ -19,7 +19,7 @@ export function ColorSwatch({
       type="button"
       class={cx(
         "color-swatch text-text-primary size-[26px] cursor-pointer",
-        "max-compact:size-6 max-tight:size-5",
+        "max-compact:size-6",
         "rounded-pill border p-0 bg-(--swatch-color) shadow-swatch",
         "enabled:hover:border-border-strong",
         FOCUS_RING,

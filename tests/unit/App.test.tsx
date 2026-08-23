@@ -197,9 +197,7 @@ describe("App", () => {
 
       expect(document.documentElement.dataset.theme).toBe("light");
 
-      await user.click(
-        screen.getByRole("button", { name: "toggle night mode" })
-      );
+      await user.click(screen.getByRole("button", { name: "night mode" }));
 
       expect(document.documentElement.dataset.theme).toBe("night");
       expect(document.documentElement.style.colorScheme).toBe("dark");
@@ -216,7 +214,7 @@ describe("App", () => {
       expect(document.documentElement.dataset.backgroundImage).toBe("visible");
 
       await user.click(screen.getByRole("button", { name: "settings" }));
-      await user.click(screen.getByLabelText("toggle background image"));
+      await user.click(screen.getByLabelText("show background image"));
 
       expect(document.documentElement.dataset.backgroundImage).toBe("hidden");
       expect(localStorage.getItem("annotouch-background-image")).toBe("false");
@@ -228,9 +226,7 @@ describe("App", () => {
       renderApp();
 
       expect(document.documentElement.dataset.backgroundImage).toBe("hidden");
-      expect(
-        screen.getByLabelText("toggle background image")
-      ).not.toBeChecked();
+      expect(screen.getByLabelText("show background image")).not.toBeChecked();
     });
   });
 

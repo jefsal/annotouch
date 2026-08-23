@@ -28,9 +28,8 @@ export function ShortcutDialog({ isOpen, onClose }: ShortcutDialogProps) {
       id="commands-shortcuts-dialog"
       class="commands-shortcuts-dialog m-auto max-h-[min(680px,calc(100dvh-32px))]
         w-[min(460px,calc(100vw-32px))] overflow-hidden rounded-dialog border
-        border-border-subtle bg-white p-0 text-text-primary shadow-dialog
-        in-data-[theme=night]:border-[#343b49] in-data-[theme=night]:bg-[#171923]
-        in-data-[theme=night]:text-[#f3f4f6] max-tight:max-h-[calc(100dvh-20px)]
+        border-border-subtle bg-surface p-0 text-text-primary shadow-dialog
+        max-tight:max-h-[calc(100dvh-20px)]
         max-tight:w-[calc(100vw-20px)]"
       aria-labelledby="commands-shortcuts-title"
       onClose={onClose}
@@ -43,8 +42,7 @@ export function ShortcutDialog({ isOpen, onClose }: ShortcutDialogProps) {
       <div
         class="commands-shortcuts-header flex items-center justify-between gap-4
           border-b border-border-section px-[18px] py-4
-          in-data-[theme=night]:border-[#343b49] max-tight:px-3.5
-          max-tight:py-[13px]"
+          max-tight:px-3.5 max-tight:py-[13px]"
       >
         <h2 id="commands-shortcuts-title" class="m-0 text-lg/[1.25]">
           keyboard shortcuts
@@ -54,9 +52,8 @@ export function ShortcutDialog({ isOpen, onClose }: ShortcutDialogProps) {
           class={cx(
             "commands-shortcuts-close text-text-secondary size-8 flex-none",
             "cursor-pointer rounded-pill border-none bg-transparent p-0",
-            "text-2xl/none shadow-none in-data-[theme=night]:text-[#aab2c0]",
-            "in-data-[theme=night]:hover:bg-[#242936]",
-            "in-data-[theme=night]:hover:text-[#f3f4f6]",
+            "text-2xl/none shadow-none hover:bg-surface-muted",
+            "hover:text-text-primary",
             FOCUS_RING
           )}
           type="button"
@@ -78,7 +75,7 @@ export function ShortcutDialog({ isOpen, onClose }: ShortcutDialogProps) {
           <section key={group.label} class="commands-shortcuts-group">
             <h3
               class="text-text-secondary mt-4 mb-[7px] text-[11px]/[1.2] font-bold
-                tracking-[0.08em] in-data-[theme=night]:text-text-faint"
+                tracking-[0.08em]"
             >
               {group.label}
             </h3>
@@ -87,13 +84,12 @@ export function ShortcutDialog({ isOpen, onClose }: ShortcutDialogProps) {
                 <div
                   key={command.label}
                   class="commands-shortcuts-row grid grid-cols-[minmax(0,42%)_minmax(0,1fr)]
-                    border-b border-[#eef1f5] in-data-[theme=night]:border-[#2d3340]
+                    border-b border-border-section
                     max-tight:grid-cols-[minmax(0,38%)_minmax(0,1fr)]"
                 >
                   <dt
                     class="text-text-strong m-0 flex min-h-[37px] items-center py-[7px]
-                      pr-2 text-[13px] in-data-[theme=night]:text-[#e5e7eb]
-                      max-tight:pr-1"
+                      pr-2 text-[13px] max-tight:pr-1"
                   >
                     {command.label}
                   </dt>
@@ -105,8 +101,7 @@ export function ShortcutDialog({ isOpen, onClose }: ShortcutDialogProps) {
                     {command.alternateKeys ? (
                       <>
                         <span
-                          class="shortcut-separator text-text-faint mx-[3px] text-[11px]
-                            in-data-[theme=night]:text-text-faint"
+                          class="shortcut-separator text-text-faint mx-[3px] text-[11px]"
                           aria-hidden="true"
                         >
                           /
@@ -132,18 +127,16 @@ function ShortcutKeys({ keys }: { keys: string[] }) {
         <Fragment key={`${index}-${key}`}>
           {index > 0 ? (
             <span
-              class="key-separator text-text-faint text-[11px]
-                in-data-[theme=night]:text-text-faint"
+              class="key-separator text-text-faint text-[11px]"
               aria-hidden="true"
             >
               +
             </span>
           ) : null}
           <kbd
-            class="text-text-faint inline-flex h-[25px] min-w-[26px] items-center
+            class="text-text-muted inline-flex h-[25px] min-w-[26px] items-center
               justify-center rounded-control border-none bg-surface-muted px-[7px]
               text-[11px] font-[650] whitespace-nowrap [font-family:inherit]
-              in-data-[theme=night]:bg-[#242936] in-data-[theme=night]:text-[#aab2c0]
               max-tight:min-w-[23px] max-tight:px-[5px]
               max-tight:text-[10px]"
           >
