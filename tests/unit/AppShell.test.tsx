@@ -47,6 +47,12 @@ describe("AppShell", () => {
   it("renders the accessible empty application state", () => {
     renderShell(createInitialState());
 
+    expect(document.querySelector(".toolbar-reveal-zone")).toBeInTheDocument();
+    expect(document.querySelector(".toolbar")).toHaveClass(
+      "-translate-y-full",
+      "group-hover:translate-y-0",
+      "group-focus-within:translate-y-0"
+    );
     expect(screen.getByRole("status")).toHaveTextContent("no PDF loaded");
     expect(
       screen.getByRole("region", { name: "pdf annotation workspace" })
