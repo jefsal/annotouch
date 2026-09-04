@@ -50,17 +50,30 @@ export function AppShell(props: AppShellProps) {
   const toolbarTimerRef = useRef<number | undefined>(undefined);
 
   useEffect(() => {
+    const pauseToolbarTimer = (): void => {
+      if (toolbarTimerRef.current === undefined) return;
+
+      window.clearTimeout(toolbarTimerRef.current);
+      toolbarTimerRef.current = undefined;
+    };
+
     const restartToolbarTimer = (): void => {
       setIsToolbarVisible(true);
-
-      if (toolbarTimerRef.current !== undefined) {
-        window.clearTimeout(toolbarTimerRef.current);
-      }
+      pauseToolbarTimer();
 
       toolbarTimerRef.current = window.setTimeout(() => {
         toolbarTimerRef.current = undefined;
         setIsToolbarVisible(false);
       }, TOOLBAR_INACTIVITY_MS);
+    };
+
+    const handleVisibilityChange = (): void => {
+      if (document.visibilityState === "hidden") {
+        pauseToolbarTimer();
+        return;
+      }
+
+      restartToolbarTimer();
     };
 
     restartToolbarTimer();
@@ -71,6 +84,9 @@ export function AppShell(props: AppShellProps) {
       passive: true,
     });
     document.addEventListener("scroll", restartToolbarTimer, true);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("blur", pauseToolbarTimer);
+    window.addEventListener("focus", restartToolbarTimer);
 
     return () => {
       document.removeEventListener("keydown", restartToolbarTimer);
@@ -78,10 +94,10 @@ export function AppShell(props: AppShellProps) {
       document.removeEventListener("pointerdown", restartToolbarTimer);
       document.removeEventListener("wheel", restartToolbarTimer);
       document.removeEventListener("scroll", restartToolbarTimer, true);
-
-      if (toolbarTimerRef.current !== undefined) {
-        window.clearTimeout(toolbarTimerRef.current);
-      }
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("blur", pauseToolbarTimer);
+      window.removeEventListener("focus", restartToolbarTimer);
+      pauseToolbarTimer();
     };
   }, []);
 

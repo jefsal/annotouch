@@ -45,6 +45,7 @@ function reduce(state: AppState, ...actions: AppAction[]): AppState {
 
 afterEach(() => {
   vi.useRealTimers();
+  vi.restoreAllMocks();
 });
 
 describe("AppShell", () => {
@@ -127,6 +128,43 @@ describe("AppShell", () => {
     act(() => {
       vi.advanceTimersByTime(30_000);
       fireEvent.scroll(document.body);
+    });
+    expect(toolbar).toHaveClass("translate-y-0", "opacity-100");
+  });
+
+  it("pauses inactivity while away and reveals the toolbar on return", () => {
+    vi.useFakeTimers();
+    let visibilityState: DocumentVisibilityState = "visible";
+    vi.spyOn(document, "visibilityState", "get").mockImplementation(
+      () => visibilityState
+    );
+    renderShell(createInitialState());
+
+    const toolbar = document.querySelector(".toolbar");
+
+    act(() => {
+      vi.advanceTimersByTime(20_000);
+      visibilityState = "hidden";
+      fireEvent(document, new Event("visibilitychange"));
+      vi.advanceTimersByTime(60_000);
+    });
+    expect(toolbar).toHaveClass("translate-y-0", "opacity-100");
+
+    act(() => {
+      visibilityState = "visible";
+      fireEvent(document, new Event("visibilitychange"));
+      vi.advanceTimersByTime(30_000);
+    });
+    expect(toolbar).toHaveClass("-translate-y-full", "opacity-0");
+
+    act(() => {
+      window.dispatchEvent(new Event("focus"));
+    });
+    expect(toolbar).toHaveClass("translate-y-0", "opacity-100");
+
+    act(() => {
+      window.dispatchEvent(new Event("blur"));
+      vi.advanceTimersByTime(60_000);
     });
     expect(toolbar).toHaveClass("translate-y-0", "opacity-100");
   });
