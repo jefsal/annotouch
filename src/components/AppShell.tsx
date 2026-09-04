@@ -427,7 +427,11 @@ function DocumentSummary({ state }: Pick<AppShellProps, "state">) {
   }
 
   const { annotationCount } = state.history;
-  const countLabel = `${document.annotatablePageCount}/${document.totalPageCount} pages | ${annotationCount} annotation${
+  const pageCountLabel =
+    document.annotatablePageCount === document.totalPageCount
+      ? `${document.totalPageCount} page${document.totalPageCount === 1 ? "" : "s"}`
+      : `${document.annotatablePageCount}/${document.totalPageCount} pages`;
+  const countLabel = `${pageCountLabel} | ${annotationCount} annotation${
     annotationCount === 1 ? "" : "s"
   }`;
 
