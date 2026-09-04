@@ -623,6 +623,42 @@ test.describe("Annotouch browser QA", () => {
     await expect(settingsButton).toBeFocused();
   });
 
+  test("keeps the light toolbar legible over a dark PDF page", async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width: 540, height: 720 });
+
+    const fixturePath = await createPdfFixture(testInfo, 1, {
+      fileName: "dark-page.pdf",
+      pageColor: rgb(0, 0, 0),
+    });
+
+    await uploadPdf(page, fixturePath, 1);
+
+    const toolbar = page.locator(".toolbar");
+    const titleBox = await page.locator("#document-name").boundingBox();
+    const pageBox = await shellByPageNumber(page, 1).boundingBox();
+
+    expect(titleBox).not.toBeNull();
+    expect(pageBox).not.toBeNull();
+    expect(titleBox.x + titleBox.width / 2).toBeGreaterThan(pageBox.x);
+    expect(titleBox.x + titleBox.width / 2).toBeLessThan(
+      pageBox.x + pageBox.width
+    );
+    expect(titleBox.y + titleBox.height / 2).toBeGreaterThan(pageBox.y);
+    expect(titleBox.y + titleBox.height / 2).toBeLessThan(
+      pageBox.y + pageBox.height
+    );
+    await expect(toolbar).toHaveCSS(
+      "background-color",
+      "rgba(255, 255, 255, 0.74)"
+    );
+    await expect(page.locator("#document-name")).toHaveCSS(
+      "color",
+      "rgb(23, 25, 35)"
+    );
+  });
+
   test("uses lowercase borderless shortcuts and a dedicated night palette", async ({
     page,
   }) => {
@@ -2028,7 +2064,11 @@ test.describe("Annotouch browser QA", () => {
 async function createPdfFixture(
   testInfo,
   pageCount,
-  { fileName = `fixture-${pageCount}-page.pdf`, rotation = 0 } = {}
+  {
+    fileName = `fixture-${pageCount}-page.pdf`,
+    rotation = 0,
+    pageColor = rgb(0.9, 0.92, 0.95),
+  } = {}
 ) {
   const fixtureDir = testInfo.outputPath("fixtures");
   await mkdir(fixtureDir, { recursive: true });
@@ -2050,7 +2090,7 @@ async function createPdfFixture(
       y: 0,
       width,
       height,
-      color: rgb(0.9, 0.92, 0.95),
+      color: pageColor,
     });
     page.drawText(`Annotouch QA fixture`, {
       x: 36,

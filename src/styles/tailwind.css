@@ -81,15 +81,14 @@
   /*
    * The toolbar's own fill. It is a token rather than a `bg-surface/<alpha>`
    * utility because the two themes want different alphas: light mode carries
-   * no fill at all and is frosted purely by the backdrop blur, while night
-   * mode keeps a little of its own body.
+   * enough white to keep dark PDF pages from becoming the text background,
+   * while night mode keeps a little of its own body.
    *
-   * Contrast is not what bounds these. The page scrim behind the bar is opaque
-   * enough that the worst composited pixel still clears 9:1 against the
-   * primary text with zero fill, so the values are set by how much of the
-   * backdrop should read through, not by legibility.
+   * At 74% opacity, even a black page composites to #bdbdbd. That keeps the
+   * primary filename above 9:1 and the smaller document detail above 4.5:1,
+   * while letting enough of the backdrop through for the blur to stay visible.
    */
-  --color-toolbar-surface: rgba(255, 255, 255, 0);
+  --color-toolbar-surface: rgba(255, 255, 255, 0.74);
   --color-app-background-top: #ffffff;
   --color-app-scrim: rgba(255, 255, 255, 0.78);
   --color-surface-drop: #e8f0fe;
