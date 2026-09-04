@@ -1,4 +1,5 @@
 import type { ComponentChildren, Ref } from "preact";
+import { useEffect, useRef, useState } from "preact/hooks";
 import { PEN_COLORS, PEN_WIDTHS, THEMES } from "../app/config";
 import {
   canExport,
@@ -15,6 +16,8 @@ import { ControlButton } from "./ControlButton";
 import { DocumentViewport } from "./DocumentViewport";
 import { SettingsPanel } from "./SettingsPanel";
 import { ShortcutDialog } from "./ShortcutDialog";
+
+const TOOLBAR_INACTIVITY_MS = 30_000;
 
 export interface AppShellProps {
   state: AppState;
@@ -43,10 +46,66 @@ const TOOLBAR_CONTROL_TEXT = "text-sm";
 
 export function AppShell(props: AppShellProps) {
   const { state } = props;
+  const [isToolbarVisible, setIsToolbarVisible] = useState(true);
+  const toolbarTimerRef = useRef<number | undefined>(undefined);
+
+  useEffect(() => {
+    const pauseToolbarTimer = (): void => {
+      if (toolbarTimerRef.current === undefined) return;
+
+      window.clearTimeout(toolbarTimerRef.current);
+      toolbarTimerRef.current = undefined;
+    };
+
+    const restartToolbarTimer = (): void => {
+      setIsToolbarVisible(true);
+      pauseToolbarTimer();
+
+      toolbarTimerRef.current = window.setTimeout(() => {
+        toolbarTimerRef.current = undefined;
+        setIsToolbarVisible(false);
+      }, TOOLBAR_INACTIVITY_MS);
+    };
+
+    const handleVisibilityChange = (): void => {
+      if (document.visibilityState === "hidden") {
+        pauseToolbarTimer();
+        return;
+      }
+
+      restartToolbarTimer();
+    };
+
+    restartToolbarTimer();
+    document.addEventListener("keydown", restartToolbarTimer);
+    document.addEventListener("pointermove", restartToolbarTimer);
+    document.addEventListener("pointerdown", restartToolbarTimer);
+    document.addEventListener("wheel", restartToolbarTimer, {
+      passive: true,
+    });
+    document.addEventListener("scroll", restartToolbarTimer, true);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    window.addEventListener("blur", pauseToolbarTimer);
+    window.addEventListener("focus", restartToolbarTimer);
+
+    return () => {
+      document.removeEventListener("keydown", restartToolbarTimer);
+      document.removeEventListener("pointermove", restartToolbarTimer);
+      document.removeEventListener("pointerdown", restartToolbarTimer);
+      document.removeEventListener("wheel", restartToolbarTimer);
+      document.removeEventListener("scroll", restartToolbarTimer, true);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      window.removeEventListener("blur", pauseToolbarTimer);
+      window.removeEventListener("focus", restartToolbarTimer);
+      pauseToolbarTimer();
+    };
+  }, []);
 
   return (
-    <main class="app-shell grid h-screen min-h-screen grid-rows-[auto_1fr]">
-      <Toolbar {...props} />
+    <main class="app-shell relative grid h-screen min-h-screen grid-rows-[1fr]">
+      <div class="toolbar-reveal-zone fixed inset-x-0 top-0 z-20 h-3">
+        <Toolbar {...props} isVisible={isToolbarVisible} />
+      </div>
       <DocumentViewport
         workspaceRef={props.workspaceRef}
         pagesRef={props.pagesRef}
@@ -86,7 +145,8 @@ function Toolbar({
   onZoomIn,
   onZoomOut,
   onExport,
-}: AppShellProps) {
+  isVisible,
+}: AppShellProps & { isVisible: boolean }) {
   const isNight = state.theme === THEMES.NIGHT;
   const currentWidth =
     PEN_WIDTHS.find((width) => width.value === state.pen.width) ??
@@ -97,11 +157,17 @@ function Toolbar({
 
   return (
     <header
-      class="toolbar border-border-toolbar bg-toolbar-surface shadow-toolbar sticky
-        top-0 z-10 flex min-h-16 items-end gap-2.5 border-b px-4 py-2.5
-        backdrop-blur-[10px] max-compact:min-h-14 max-compact:gap-1.5
+      class={cx(
+        `toolbar border-border-toolbar bg-toolbar-surface shadow-toolbar absolute
+        inset-x-0 top-0 flex min-h-16 items-end gap-2.5 border-b px-4 py-2.5
+        backdrop-blur-[10px] transition-[transform,opacity] duration-200 ease-out
+        motion-reduce:transition-none max-compact:min-h-14 max-compact:gap-1.5
         max-compact:px-2 max-compact:py-2 max-tight:min-h-12
-        max-tight:gap-[5px] max-tight:px-1.5 max-tight:py-1.5"
+        max-tight:gap-[5px] max-tight:px-1.5 max-tight:py-1.5`,
+        isVisible
+          ? "pointer-events-auto translate-y-0 opacity-100"
+          : "pointer-events-none -translate-y-full opacity-0"
+      )}
     >
       <div
         class={cx(

@@ -19,6 +19,14 @@ const NEARBY_RENDERED_PAGE_LIMIT = 6;
 const SCROLLED_RENDERED_PAGE_LIMIT = 25;
 const errorsByPage = new WeakMap();
 
+async function clickToolbarControl(page, control) {
+  const viewport = page.viewportSize();
+
+  await page.mouse.move(Math.floor((viewport?.width ?? 800) / 2), 4);
+  await expect(page.locator(".toolbar")).toHaveCSS("opacity", "1");
+  await control.click();
+}
+
 /**
  * `pdf-lib` cannot produce any of these: it always writes a well-formed,
  * unencrypted document with at least one page, so each is written by hand.
@@ -114,6 +122,52 @@ test.describe("Annotouch browser QA", () => {
     await expect(emptyState).toHaveCSS("border-style", "dashed");
   });
 
+  test("shows the toolbar at session start and refreshes it from input anywhere", async ({
+    page,
+  }) => {
+    const toolbar = page.locator(".toolbar");
+
+    await expect(toolbar).toHaveCSS("opacity", "1");
+    await page.mouse.move(400, 300);
+    await expect(toolbar).toHaveCSS("opacity", "1");
+
+    await page.keyboard.press("Shift");
+    await expect(toolbar).toHaveCSS("opacity", "1");
+
+    await page.locator("#theme-toggle").focus();
+    await expect(toolbar).toHaveCSS("opacity", "1");
+  });
+
+  test("centers the empty PDF prompt on the inverted light surfaces", async ({
+    page,
+  }) => {
+    const workspace = page.getByRole("region", {
+      name: "pdf annotation workspace",
+    });
+    const emptyState = page.locator("#empty-state");
+    const workspaceBox = await workspace.boundingBox();
+    const emptyStateBox = await emptyState.boundingBox();
+
+    expect(workspaceBox).not.toBeNull();
+    expect(emptyStateBox).not.toBeNull();
+    expect(
+      Math.abs(
+        emptyStateBox.y +
+          emptyStateBox.height / 2 -
+          (workspaceBox.y + workspaceBox.height / 2)
+      )
+    ).toBeLessThanOrEqual(1);
+    await expect(page.locator("body")).toHaveCSS(
+      "background-color",
+      "rgb(255, 255, 255)"
+    );
+    await expect(emptyState).toHaveCSS(
+      "background-color",
+      "rgba(255, 255, 255, 0)"
+    );
+    await expect(emptyState).toHaveCSS("backdrop-filter", "blur(10px)");
+  });
+
   test("toggles night mode from the annotouch brand and persists it", async ({
     page,
   }) => {
@@ -146,7 +200,7 @@ test.describe("Annotouch browser QA", () => {
     await page.keyboard.press("n");
     await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
 
-    await themeToggle.click();
+    await clickToolbarControl(page, themeToggle);
 
     await expect(page.locator("html")).toHaveAttribute("data-theme", "night");
     await expect(themeToggle).toHaveAttribute("aria-pressed", "true");
@@ -569,6 +623,42 @@ test.describe("Annotouch browser QA", () => {
     await expect(settingsButton).toBeFocused();
   });
 
+  test("keeps the light toolbar legible over a dark PDF page", async ({
+    page,
+  }, testInfo) => {
+    await page.setViewportSize({ width: 540, height: 720 });
+
+    const fixturePath = await createPdfFixture(testInfo, 1, {
+      fileName: "dark-page.pdf",
+      pageColor: rgb(0, 0, 0),
+    });
+
+    await uploadPdf(page, fixturePath, 1);
+
+    const toolbar = page.locator(".toolbar");
+    const titleBox = await page.locator("#document-name").boundingBox();
+    const pageBox = await shellByPageNumber(page, 1).boundingBox();
+
+    expect(titleBox).not.toBeNull();
+    expect(pageBox).not.toBeNull();
+    expect(titleBox.x + titleBox.width / 2).toBeGreaterThan(pageBox.x);
+    expect(titleBox.x + titleBox.width / 2).toBeLessThan(
+      pageBox.x + pageBox.width
+    );
+    expect(titleBox.y + titleBox.height / 2).toBeGreaterThan(pageBox.y);
+    expect(titleBox.y + titleBox.height / 2).toBeLessThan(
+      pageBox.y + pageBox.height
+    );
+    await expect(toolbar).toHaveCSS(
+      "background-color",
+      "rgba(255, 255, 255, 0.74)"
+    );
+    await expect(page.locator("#document-name")).toHaveCSS(
+      "color",
+      "rgb(23, 25, 35)"
+    );
+  });
+
   test("uses lowercase borderless shortcuts and a dedicated night palette", async ({
     page,
   }) => {
@@ -644,7 +734,10 @@ test.describe("Annotouch browser QA", () => {
     await uploadPdf(page, fixturePath, 1);
 
     const annotationCanvas = page.locator(".annotation-canvas").first();
-    await page.getByRole("button", { name: "red pen" }).click();
+    await clickToolbarControl(
+      page,
+      page.getByRole("button", { name: "red pen" })
+    );
     await drawStroke(page, annotationCanvas, PEN_COLORS[1].y);
     await expect(page.locator("#document-count")).toHaveText(
       "1/1 pages | 1 annotation"
@@ -810,7 +903,10 @@ test.describe("Annotouch browser QA", () => {
       );
     }
 
-    await page.getByRole("button", { name: "zoom out" }).click();
+    await clickToolbarControl(
+      page,
+      page.getByRole("button", { name: "zoom out" })
+    );
 
     const zoomedShellBox = await pageShell.boundingBox();
 
@@ -820,7 +916,10 @@ test.describe("Annotouch browser QA", () => {
       initialBackingSize
     );
 
-    await page.getByRole("button", { name: "red pen" }).click();
+    await clickToolbarControl(
+      page,
+      page.getByRole("button", { name: "red pen" })
+    );
     await drawStrokeAtCanvasCoordinates(page, annotationCanvas, {
       startX: 110,
       endX: 360,
@@ -830,7 +929,7 @@ test.describe("Annotouch browser QA", () => {
 
     const [download] = await Promise.all([
       page.waitForEvent("download"),
-      page.getByRole("button", { name: "export" }).click(),
+      clickToolbarControl(page, page.getByRole("button", { name: "export" })),
     ]);
 
     const exportedPath = testInfo.outputPath(
@@ -893,7 +992,7 @@ test.describe("Annotouch browser QA", () => {
 
     await Promise.all([
       page.waitForEvent("download"),
-      page.getByRole("button", { name: "export" }).click(),
+      clickToolbarControl(page, page.getByRole("button", { name: "export" })),
     ]);
     await expect(page.getByRole("status")).toHaveText("exported");
 
@@ -918,7 +1017,10 @@ test.describe("Annotouch browser QA", () => {
       };
     });
 
-    await page.getByRole("button", { name: "export" }).click();
+    await clickToolbarControl(
+      page,
+      page.getByRole("button", { name: "export" })
+    );
     await expect(page.getByRole("status")).toHaveText("export failed");
     errorsByPage.get(page).consoleErrors.length = 0;
 
@@ -1050,7 +1152,7 @@ test.describe("Annotouch browser QA", () => {
 
     const [download] = await Promise.all([
       page.waitForEvent("download"),
-      page.getByRole("button", { name: "export" }).click(),
+      clickToolbarControl(page, page.getByRole("button", { name: "export" })),
     ]);
 
     expect(download.suggestedFilename()).toBe("replacement-annotated.pdf");
@@ -1099,7 +1201,10 @@ test.describe("Annotouch browser QA", () => {
     );
 
     const downloadPromise = page.waitForEvent("download");
-    await page.getByRole("button", { name: "export" }).click();
+    await clickToolbarControl(
+      page,
+      page.getByRole("button", { name: "export" })
+    );
     await exporterRequested;
 
     // The picker is disabled while busy, so a drop is the only way in — which
@@ -1204,7 +1309,7 @@ test.describe("Annotouch browser QA", () => {
 
       const [download] = await Promise.all([
         page.waitForEvent("download"),
-        page.getByRole("button", { name: "export" }).click(),
+        clickToolbarControl(page, page.getByRole("button", { name: "export" })),
       ]);
 
       expect(download.suggestedFilename()).toBe(
@@ -1239,7 +1344,7 @@ test.describe("Annotouch browser QA", () => {
 
     const [download] = await Promise.all([
       page.waitForEvent("download"),
-      page.getByRole("button", { name: "export" }).click(),
+      clickToolbarControl(page, page.getByRole("button", { name: "export" })),
     ]);
 
     expect(download.suggestedFilename()).toBe("fixture-205-page-annotated.pdf");
@@ -1325,13 +1430,16 @@ test.describe("Annotouch browser QA", () => {
 
     const page30Canvas = await scrollToRenderedAnnotationCanvas(page, 30);
 
-    await page.getByRole("button", { name: "red pen" }).click();
+    await clickToolbarControl(
+      page,
+      page.getByRole("button", { name: "red pen" })
+    );
     await drawStroke(page, page30Canvas, PEN_COLORS[1].y);
     await expectCanvasHasColor(page30Canvas, PEN_COLORS[1]);
 
     const [download] = await Promise.all([
       page.waitForEvent("download"),
-      page.getByRole("button", { name: "export" }).click(),
+      clickToolbarControl(page, page.getByRole("button", { name: "export" })),
     ]);
 
     expect(download.suggestedFilename()).toBe("fixture-30-page-annotated.pdf");
@@ -1366,7 +1474,10 @@ test.describe("Annotouch browser QA", () => {
     await showHistoryControls.check();
     await page.keyboard.press("Escape");
 
-    await page.getByRole("button", { name: "red pen" }).click();
+    await clickToolbarControl(
+      page,
+      page.getByRole("button", { name: "red pen" })
+    );
     await drawStroke(page, annotationCanvas, PEN_COLORS[1].y);
     await expect(historyControls).toBeVisible();
     await expect(page.getByRole("button", { name: "undo" })).toBeEnabled();
@@ -1411,22 +1522,28 @@ test.describe("Annotouch browser QA", () => {
 
     const annotationCanvas = page.locator(".annotation-canvas").first();
 
-    await page.getByRole("button", { name: "red pen" }).click();
+    await clickToolbarControl(
+      page,
+      page.getByRole("button", { name: "red pen" })
+    );
     await drawStroke(page, annotationCanvas, PEN_COLORS[1].y);
     await expect(page.getByRole("button", { name: "undo" })).toBeEnabled();
     await expectCanvasHasColor(annotationCanvas, PEN_COLORS[1]);
 
-    await page.getByRole("button", { name: "green pen" }).click();
+    await clickToolbarControl(
+      page,
+      page.getByRole("button", { name: "green pen" })
+    );
     await drawStroke(page, annotationCanvas, PEN_COLORS[2].y);
     await expectCanvasHasColor(annotationCanvas, PEN_COLORS[1]);
     await expectCanvasHasColor(annotationCanvas, PEN_COLORS[2]);
 
-    await page.getByRole("button", { name: "undo" }).click();
+    await clickToolbarControl(page, page.getByRole("button", { name: "undo" }));
     await expect(page.getByRole("button", { name: "redo" })).toBeEnabled();
     await expectCanvasHasColor(annotationCanvas, PEN_COLORS[1]);
     await expectCanvasLacksColor(annotationCanvas, PEN_COLORS[2]);
 
-    await page.getByRole("button", { name: "redo" }).click();
+    await clickToolbarControl(page, page.getByRole("button", { name: "redo" }));
     await expect(page.getByRole("button", { name: "redo" })).toBeDisabled();
     await expectCanvasHasColor(annotationCanvas, PEN_COLORS[2]);
 
@@ -1438,7 +1555,7 @@ test.describe("Annotouch browser QA", () => {
     await expect(page.getByRole("button", { name: "redo" })).toBeDisabled();
     await expectCanvasHasColor(annotationCanvas, PEN_COLORS[2]);
 
-    await page.getByRole("button", { name: "undo" }).click();
+    await clickToolbarControl(page, page.getByRole("button", { name: "undo" }));
     await expectCanvasLacksColor(annotationCanvas, PEN_COLORS[2]);
 
     for (const color of [
@@ -1447,7 +1564,10 @@ test.describe("Annotouch browser QA", () => {
       PEN_COLORS[3],
       PEN_COLORS[4],
     ]) {
-      await page.getByRole("button", { name: `${color.label} pen` }).click();
+      await clickToolbarControl(
+        page,
+        page.getByRole("button", { name: `${color.label} pen` })
+      );
       await drawStroke(page, annotationCanvas, color.y);
       await expect(page.getByRole("button", { name: "redo" })).toBeDisabled();
       await expectCanvasHasColor(annotationCanvas, color);
@@ -1459,7 +1579,7 @@ test.describe("Annotouch browser QA", () => {
 
     const [download] = await Promise.all([
       page.waitForEvent("download"),
-      page.getByRole("button", { name: "export" }).click(),
+      clickToolbarControl(page, page.getByRole("button", { name: "export" })),
     ]);
 
     expect(download.suggestedFilename()).toBe("fixture-1-page-annotated.pdf");
@@ -1553,7 +1673,10 @@ test.describe("Annotouch browser QA", () => {
 
     const annotationCanvas = page.locator(".annotation-canvas").first();
 
-    await page.getByRole("button", { name: "red pen" }).click();
+    await clickToolbarControl(
+      page,
+      page.getByRole("button", { name: "red pen" })
+    );
     await page.keyboard.press("t");
     await expect(page.getByRole("status")).toHaveText(
       "click a page to add text"
@@ -1585,7 +1708,10 @@ test.describe("Annotouch browser QA", () => {
     );
     await expectCanvasHasColor(annotationCanvas, PEN_COLORS[1]);
 
-    await page.getByRole("button", { name: "green pen" }).click();
+    await clickToolbarControl(
+      page,
+      page.getByRole("button", { name: "green pen" })
+    );
     await doubleClickCanvasAt(page, annotationCanvas, { x: 140, y: 190 });
 
     const editBox = page.getByRole("textbox", {
@@ -1689,7 +1815,10 @@ test.describe("Annotouch browser QA", () => {
 
     await uploadPdf(page, fixturePath, 1);
     const annotationCanvas = page.locator(".annotation-canvas").first();
-    await page.getByRole("button", { name: "red pen" }).click();
+    await clickToolbarControl(
+      page,
+      page.getByRole("button", { name: "red pen" })
+    );
     await placeText(page, annotationCanvas, {
       x: 120,
       y: PEN_COLORS[1].y,
@@ -1698,7 +1827,7 @@ test.describe("Annotouch browser QA", () => {
 
     const [download] = await Promise.all([
       page.waitForEvent("download"),
-      page.getByRole("button", { name: "export" }).click(),
+      clickToolbarControl(page, page.getByRole("button", { name: "export" })),
     ]);
     const exportedPath = testInfo.outputPath("text-annotated.pdf");
     await download.saveAs(exportedPath);
@@ -1726,7 +1855,10 @@ test.describe("Annotouch browser QA", () => {
 
       await uploadPdf(page, fixturePath, 1);
       const annotationCanvas = page.locator(".annotation-canvas").first();
-      await page.getByRole("button", { name: "red pen" }).click();
+      await clickToolbarControl(
+        page,
+        page.getByRole("button", { name: "red pen" })
+      );
       await placeText(page, annotationCanvas, {
         x: 120,
         y: 180,
@@ -1739,7 +1871,7 @@ test.describe("Annotouch browser QA", () => {
 
       const [download] = await Promise.all([
         page.waitForEvent("download"),
-        page.getByRole("button", { name: "export" }).click(),
+        clickToolbarControl(page, page.getByRole("button", { name: "export" })),
       ]);
       const exportedPath = testInfo.outputPath(
         `text-rotated-${rotation}-annotated.pdf`
@@ -1783,7 +1915,10 @@ test.describe("Annotouch browser QA", () => {
       text: "Cannot export 😀",
     });
 
-    await page.getByRole("button", { name: "export" }).click();
+    await clickToolbarControl(
+      page,
+      page.getByRole("button", { name: "export" })
+    );
 
     await expect(page.getByRole("status")).toHaveText(
       "cannot export “😀” (U+1F600) on page 1; Helvetica does not support this character"
@@ -1803,7 +1938,7 @@ test.describe("Annotouch browser QA", () => {
 
     const [download] = await Promise.all([
       page.waitForEvent("download"),
-      page.getByRole("button", { name: "export" }).click(),
+      clickToolbarControl(page, page.getByRole("button", { name: "export" })),
     ]);
     const exportedPath = testInfo.outputPath("corrected-text-annotated.pdf");
     await download.saveAs(exportedPath);
@@ -1820,9 +1955,15 @@ test.describe("Annotouch browser QA", () => {
     const annotationCanvas = page.locator(".annotation-canvas").first();
     const documentCount = page.locator("#document-count");
 
-    await page.getByRole("button", { name: "red pen" }).click();
+    await clickToolbarControl(
+      page,
+      page.getByRole("button", { name: "red pen" })
+    );
     await drawStroke(page, annotationCanvas, PEN_COLORS[1].y);
-    await page.getByRole("button", { name: "green pen" }).click();
+    await clickToolbarControl(
+      page,
+      page.getByRole("button", { name: "green pen" })
+    );
     await drawStroke(page, annotationCanvas, PEN_COLORS[2].y);
 
     await expect(documentCount).toHaveText("1/1 pages | 2 annotations");
@@ -1863,7 +2004,7 @@ test.describe("Annotouch browser QA", () => {
 
     const [download] = await Promise.all([
       page.waitForEvent("download"),
-      page.getByRole("button", { name: "export" }).click(),
+      clickToolbarControl(page, page.getByRole("button", { name: "export" })),
     ]);
 
     expect(download.suggestedFilename()).toBe("fixture-1-page-annotated.pdf");
@@ -1910,7 +2051,7 @@ test.describe("Annotouch browser QA", () => {
       measuredInk.push(await measureStrokeInk(annotationCanvas, option.y));
       await page.keyboard.press("Control+Z");
       await expectCanvasToBeEmpty(annotationCanvas);
-      await widthButton.click();
+      await clickToolbarControl(page, widthButton);
     }
 
     await expect(widthButton).toHaveText("small");
@@ -1923,7 +2064,11 @@ test.describe("Annotouch browser QA", () => {
 async function createPdfFixture(
   testInfo,
   pageCount,
-  { fileName = `fixture-${pageCount}-page.pdf`, rotation = 0 } = {}
+  {
+    fileName = `fixture-${pageCount}-page.pdf`,
+    rotation = 0,
+    pageColor = rgb(0.9, 0.92, 0.95),
+  } = {}
 ) {
   const fixtureDir = testInfo.outputPath("fixtures");
   await mkdir(fixtureDir, { recursive: true });
@@ -1945,7 +2090,7 @@ async function createPdfFixture(
       y: 0,
       width,
       height,
-      color: rgb(0.9, 0.92, 0.95),
+      color: pageColor,
     });
     page.drawText(`Annotouch QA fixture`, {
       x: 36,
