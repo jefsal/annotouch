@@ -54,8 +54,7 @@ describe("AppShell", () => {
     expect(document.querySelector(".toolbar-reveal-zone")).toBeInTheDocument();
     expect(document.querySelector(".toolbar")).toHaveClass(
       "translate-y-0",
-      "opacity-100",
-      "group-focus-within:translate-y-0"
+      "opacity-100"
     );
     expect(screen.getByRole("status")).toHaveTextContent("no PDF loaded");
     expect(
@@ -72,18 +71,39 @@ describe("AppShell", () => {
     expect(screen.getByRole("button", { name: "undo" })).toBeDisabled();
   });
 
-  it("hides the toolbar after 30 seconds and restarts the timer on top-area activity", () => {
+  it("hides the toolbar after 30 seconds without keyboard or mouse input", () => {
     vi.useFakeTimers();
     renderShell(createInitialState());
 
     const toolbar = document.querySelector(".toolbar");
-    const revealZone = document.querySelector(".toolbar-reveal-zone");
 
     expect(toolbar).toHaveClass("translate-y-0", "opacity-100");
 
     act(() => {
+      vi.advanceTimersByTime(30_000);
+    });
+    expect(toolbar).toHaveClass("-translate-y-full", "opacity-0");
+  });
+
+  it("reveals the toolbar and restarts inactivity timing for any keyboard or mouse input", () => {
+    vi.useFakeTimers();
+    renderShell(createInitialState());
+
+    const toolbar = document.querySelector(".toolbar");
+
+    act(() => {
+      vi.advanceTimersByTime(30_000);
+    });
+    expect(toolbar).toHaveClass("-translate-y-full", "opacity-0");
+
+    act(() => {
+      fireEvent.keyDown(document.body, { key: "Shift" });
+    });
+    expect(toolbar).toHaveClass("translate-y-0", "opacity-100");
+
+    act(() => {
       vi.advanceTimersByTime(29_999);
-      fireEvent.pointerMove(revealZone as Element);
+      fireEvent.pointerMove(document.body);
       vi.advanceTimersByTime(29_999);
     });
     expect(toolbar).toHaveClass("translate-y-0", "opacity-100");
@@ -92,26 +112,17 @@ describe("AppShell", () => {
       vi.advanceTimersByTime(1);
     });
     expect(toolbar).toHaveClass("-translate-y-full", "opacity-0");
-  });
-
-  it("keeps the toolbar visible while the pointer remains in its area", () => {
-    vi.useFakeTimers();
-    renderShell(createInitialState());
-
-    const toolbar = document.querySelector(".toolbar");
-    const revealZone = document.querySelector(".toolbar-reveal-zone");
 
     act(() => {
-      fireEvent.pointerEnter(revealZone as Element);
-      vi.advanceTimersByTime(60_000);
+      fireEvent.pointerDown(document.body);
     });
     expect(toolbar).toHaveClass("translate-y-0", "opacity-100");
 
     act(() => {
-      fireEvent.pointerLeave(revealZone as Element);
       vi.advanceTimersByTime(30_000);
+      fireEvent.wheel(document.body);
     });
-    expect(toolbar).toHaveClass("-translate-y-full", "opacity-0");
+    expect(toolbar).toHaveClass("translate-y-0", "opacity-100");
   });
 
   it("reflects persisted theme and toolbar preferences", () => {

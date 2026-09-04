@@ -122,7 +122,7 @@ test.describe("Annotouch browser QA", () => {
     await expect(emptyState).toHaveCSS("border-style", "dashed");
   });
 
-  test("shows the toolbar at session start and refreshes it from the top edge", async ({
+  test("shows the toolbar at session start and refreshes it from input anywhere", async ({
     page,
   }) => {
     const toolbar = page.locator(".toolbar");
@@ -131,7 +131,7 @@ test.describe("Annotouch browser QA", () => {
     await page.mouse.move(400, 300);
     await expect(toolbar).toHaveCSS("opacity", "1");
 
-    await page.mouse.move(400, 4);
+    await page.keyboard.press("Shift");
     await expect(toolbar).toHaveCSS("opacity", "1");
 
     await page.locator("#theme-toggle").focus();
