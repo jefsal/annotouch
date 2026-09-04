@@ -1,4 +1,5 @@
 import type { ComponentChildren, Ref } from "preact";
+import { useEffect, useRef, useState } from "preact/hooks";
 import { PEN_COLORS, PEN_WIDTHS, THEMES } from "../app/config";
 import {
   canExport,
@@ -15,6 +16,8 @@ import { ControlButton } from "./ControlButton";
 import { DocumentViewport } from "./DocumentViewport";
 import { SettingsPanel } from "./SettingsPanel";
 import { ShortcutDialog } from "./ShortcutDialog";
+
+const TOOLBAR_VISIBLE_DURATION_MS = 30_000;
 
 export interface AppShellProps {
   state: AppState;
@@ -43,11 +46,55 @@ const TOOLBAR_CONTROL_TEXT = "text-sm";
 
 export function AppShell(props: AppShellProps) {
   const { state } = props;
+  const [isToolbarVisible, setIsToolbarVisible] = useState(true);
+  const toolbarTimerRef = useRef<number | undefined>(undefined);
+  const isPointerInToolbarAreaRef = useRef(false);
+
+  const restartToolbarTimer = (): void => {
+    setIsToolbarVisible(true);
+
+    if (toolbarTimerRef.current !== undefined) {
+      window.clearTimeout(toolbarTimerRef.current);
+    }
+
+    toolbarTimerRef.current = window.setTimeout(() => {
+      toolbarTimerRef.current = undefined;
+
+      if (isPointerInToolbarAreaRef.current) {
+        restartToolbarTimer();
+        return;
+      }
+
+      setIsToolbarVisible(false);
+    }, TOOLBAR_VISIBLE_DURATION_MS);
+  };
+
+  useEffect(() => {
+    restartToolbarTimer();
+
+    return () => {
+      if (toolbarTimerRef.current !== undefined) {
+        window.clearTimeout(toolbarTimerRef.current);
+      }
+    };
+  }, []);
 
   return (
     <main class="app-shell relative grid h-screen min-h-screen grid-rows-[1fr]">
-      <div class="toolbar-reveal-zone group fixed inset-x-0 top-0 z-20 h-3">
-        <Toolbar {...props} />
+      <div
+        class="toolbar-reveal-zone group fixed inset-x-0 top-0 z-20 h-3"
+        onPointerEnter={() => {
+          isPointerInToolbarAreaRef.current = true;
+          restartToolbarTimer();
+        }}
+        onPointerMove={restartToolbarTimer}
+        onPointerLeave={() => {
+          isPointerInToolbarAreaRef.current = false;
+          restartToolbarTimer();
+        }}
+        onPointerDown={restartToolbarTimer}
+      >
+        <Toolbar {...props} isVisible={isToolbarVisible} />
       </div>
       <DocumentViewport
         workspaceRef={props.workspaceRef}
@@ -88,7 +135,8 @@ function Toolbar({
   onZoomIn,
   onZoomOut,
   onExport,
-}: AppShellProps) {
+  isVisible,
+}: AppShellProps & { isVisible: boolean }) {
   const isNight = state.theme === THEMES.NIGHT;
   const currentWidth =
     PEN_WIDTHS.find((width) => width.value === state.pen.width) ??
@@ -99,18 +147,19 @@ function Toolbar({
 
   return (
     <header
-      class="toolbar border-border-toolbar bg-toolbar-surface shadow-toolbar pointer-events-none
-        absolute inset-x-0 top-0 flex min-h-16 -translate-y-full items-end gap-2.5
-        border-b px-4 py-2.5 opacity-0 backdrop-blur-[10px]
-        transition-[transform,opacity] duration-200 ease-out
-        group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100
+      class={cx(
+        `toolbar border-border-toolbar bg-toolbar-surface shadow-toolbar absolute
+        inset-x-0 top-0 flex min-h-16 items-end gap-2.5 border-b px-4 py-2.5
+        backdrop-blur-[10px] transition-[transform,opacity] duration-200 ease-out
         group-focus-within:pointer-events-auto group-focus-within:translate-y-0
         group-focus-within:opacity-100 motion-reduce:transition-none
-        [@media(any-hover:none)]:pointer-events-auto
-        [@media(any-hover:none)]:translate-y-0 [@media(any-hover:none)]:opacity-100
-        max-compact:min-h-14 max-compact:gap-1.5
-        max-compact:px-2 max-compact:py-2 max-tight:min-h-12
-        max-tight:gap-[5px] max-tight:px-1.5 max-tight:py-1.5"
+        max-compact:min-h-14 max-compact:gap-1.5 max-compact:px-2
+        max-compact:py-2 max-tight:min-h-12 max-tight:gap-[5px]
+        max-tight:px-1.5 max-tight:py-1.5`,
+        isVisible
+          ? "pointer-events-auto translate-y-0 opacity-100"
+          : "pointer-events-none -translate-y-full opacity-0"
+      )}
     >
       <div
         class={cx(

@@ -122,22 +122,50 @@ test.describe("Annotouch browser QA", () => {
     await expect(emptyState).toHaveCSS("border-style", "dashed");
   });
 
-  test("reveals the toolbar from the top edge and hides it after leaving", async ({
+  test("shows the toolbar at session start and refreshes it from the top edge", async ({
     page,
   }) => {
     const toolbar = page.locator(".toolbar");
 
+    await expect(toolbar).toHaveCSS("opacity", "1");
     await page.mouse.move(400, 300);
-    await expect(toolbar).toHaveCSS("opacity", "0");
+    await expect(toolbar).toHaveCSS("opacity", "1");
 
     await page.mouse.move(400, 4);
     await expect(toolbar).toHaveCSS("opacity", "1");
 
-    await page.mouse.move(400, 300);
-    await expect(toolbar).toHaveCSS("opacity", "0");
-
     await page.locator("#theme-toggle").focus();
     await expect(toolbar).toHaveCSS("opacity", "1");
+  });
+
+  test("centers the empty PDF prompt on the inverted light surfaces", async ({
+    page,
+  }) => {
+    const workspace = page.getByRole("region", {
+      name: "pdf annotation workspace",
+    });
+    const emptyState = page.locator("#empty-state");
+    const workspaceBox = await workspace.boundingBox();
+    const emptyStateBox = await emptyState.boundingBox();
+
+    expect(workspaceBox).not.toBeNull();
+    expect(emptyStateBox).not.toBeNull();
+    expect(
+      Math.abs(
+        emptyStateBox.y +
+          emptyStateBox.height / 2 -
+          (workspaceBox.y + workspaceBox.height / 2)
+      )
+    ).toBeLessThanOrEqual(1);
+    await expect(page.locator("body")).toHaveCSS(
+      "background-color",
+      "rgb(255, 255, 255)"
+    );
+    await expect(emptyState).toHaveCSS(
+      "background-color",
+      "rgba(255, 255, 255, 0)"
+    );
+    await expect(emptyState).toHaveCSS("backdrop-filter", "blur(10px)");
   });
 
   test("toggles night mode from the annotouch brand and persists it", async ({

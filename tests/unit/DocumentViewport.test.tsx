@@ -72,6 +72,7 @@ describe("DocumentViewport", () => {
 
     expect(emptyState).toBeVisible();
     expect(emptyState).toHaveAttribute("for", "pdf-input");
+    expect(getWorkspace()).toHaveClass("grid", "place-items-center");
     expect(getPagesContainer()).not.toBeVisible();
   });
 
@@ -79,6 +80,7 @@ describe("DocumentViewport", () => {
     renderViewport({ hasDocument: true });
 
     expect(screen.getByText("choose PDF").closest("label")).not.toBeVisible();
+    expect(getWorkspace()).not.toHaveClass("grid", "place-items-center");
     expect(getPagesContainer()).toBeVisible();
   });
 

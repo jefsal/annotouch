@@ -74,7 +74,7 @@
  */
 @theme {
   /* Surfaces */
-  --color-app-background: #eef1f5;
+  --color-app-background: #ffffff;
   --color-surface: #ffffff;
   --color-surface-raised: #fafbfe;
   --color-surface-muted: #f8fafc;
@@ -90,8 +90,8 @@
    * backdrop should read through, not by legibility.
    */
   --color-toolbar-surface: rgba(255, 255, 255, 0);
-  --color-app-background-top: #f8fafc;
-  --color-app-scrim: rgba(238, 241, 245, 0.78);
+  --color-app-background-top: #ffffff;
+  --color-app-scrim: rgba(255, 255, 255, 0.78);
   --color-surface-drop: #e8f0fe;
 
   /* Text */
@@ -115,7 +115,7 @@
   /* Surfaces that are not plain colors */
   --color-overlay-surface: rgba(255, 255, 255, 0.72);
   --color-overlay-surface-strong: rgba(255, 255, 255, 0.96);
-  --color-empty-surface: rgba(255, 255, 255, 0.72);
+  --color-empty-surface: rgba(255, 255, 255, 0);
 
   /*
    * Rendered PDF pages keep their own colours in both themes: the page is the
