@@ -70,12 +70,14 @@ export function AppShell(props: AppShellProps) {
     document.addEventListener("wheel", restartToolbarTimer, {
       passive: true,
     });
+    document.addEventListener("scroll", restartToolbarTimer, true);
 
     return () => {
       document.removeEventListener("keydown", restartToolbarTimer);
       document.removeEventListener("pointermove", restartToolbarTimer);
       document.removeEventListener("pointerdown", restartToolbarTimer);
       document.removeEventListener("wheel", restartToolbarTimer);
+      document.removeEventListener("scroll", restartToolbarTimer, true);
 
       if (toolbarTimerRef.current !== undefined) {
         window.clearTimeout(toolbarTimerRef.current);

@@ -123,6 +123,12 @@ describe("AppShell", () => {
       fireEvent.wheel(document.body);
     });
     expect(toolbar).toHaveClass("translate-y-0", "opacity-100");
+
+    act(() => {
+      vi.advanceTimersByTime(30_000);
+      fireEvent.scroll(document.body);
+    });
+    expect(toolbar).toHaveClass("translate-y-0", "opacity-100");
   });
 
   it("reflects persisted theme and toolbar preferences", () => {
