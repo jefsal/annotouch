@@ -52,8 +52,8 @@ describe("AppShell", () => {
   it("renders the accessible empty application state", () => {
     renderShell(createInitialState());
 
-    expect(document.querySelector(".toolbar-reveal-zone")).toBeInTheDocument();
     expect(document.querySelector(".toolbar")).toHaveClass(
+      "fixed",
       "translate-y-0",
       "opacity-100"
     );
@@ -130,6 +130,30 @@ describe("AppShell", () => {
       fireEvent.scroll(document.body);
     });
     expect(toolbar).toHaveClass("translate-y-0", "opacity-100");
+  });
+
+  it("observes activity even when the active control stops event propagation", () => {
+    vi.useFakeTimers();
+    renderShell(createInitialState());
+
+    const toolbar = document.querySelector(".toolbar");
+    const editor = document.createElement("textarea");
+    editor.addEventListener("keydown", (event) => event.stopPropagation());
+    editor.addEventListener("pointerdown", (event) => event.stopPropagation());
+    document.body.append(editor);
+
+    act(() => {
+      vi.advanceTimersByTime(30_000);
+      fireEvent.keyDown(editor, { key: "Escape" });
+    });
+    expect(toolbar).toHaveClass("translate-y-0", "opacity-100");
+
+    act(() => {
+      vi.advanceTimersByTime(30_000);
+      fireEvent.pointerDown(editor);
+    });
+    expect(toolbar).toHaveClass("translate-y-0", "opacity-100");
+    editor.remove();
   });
 
   it("pauses inactivity while away and reveals the toolbar on return", () => {
