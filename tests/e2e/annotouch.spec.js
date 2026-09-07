@@ -149,6 +149,15 @@ test.describe("Annotouch browser QA", () => {
     await expect(toolbar).toHaveClass(/-translate-y-full/);
     await page.mouse.wheel(0, 100);
     await expect(toolbar).toHaveClass(/translate-y-0/);
+
+    await page.evaluate(() => {
+      document.body.style.minHeight = `${window.innerHeight + 1}px`;
+    });
+    await page.clock.fastForward(30_000);
+    await expect(toolbar).toHaveClass(/-translate-y-full/);
+    await page.evaluate(() => window.scrollTo(0, 1));
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(1);
+    await expect(toolbar).toHaveClass(/translate-y-0/);
   });
 
   test("centers the empty PDF prompt on the inverted light surfaces", async ({
