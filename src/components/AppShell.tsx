@@ -77,23 +77,26 @@ export function AppShell(props: AppShellProps) {
     };
 
     restartToolbarTimer();
-    document.addEventListener("keydown", restartToolbarTimer);
-    document.addEventListener("pointermove", restartToolbarTimer);
-    document.addEventListener("pointerdown", restartToolbarTimer);
-    document.addEventListener("wheel", restartToolbarTimer, {
+    // Observe activity during capture so editor/canvas handlers cannot hide it
+    // from the toolbar by stopping propagation.
+    window.addEventListener("keydown", restartToolbarTimer, true);
+    window.addEventListener("pointermove", restartToolbarTimer, true);
+    window.addEventListener("pointerdown", restartToolbarTimer, true);
+    window.addEventListener("wheel", restartToolbarTimer, {
+      capture: true,
       passive: true,
     });
-    document.addEventListener("scroll", restartToolbarTimer, true);
+    window.addEventListener("scroll", restartToolbarTimer, true);
     document.addEventListener("visibilitychange", handleVisibilityChange);
     window.addEventListener("blur", pauseToolbarTimer);
     window.addEventListener("focus", restartToolbarTimer);
 
     return () => {
-      document.removeEventListener("keydown", restartToolbarTimer);
-      document.removeEventListener("pointermove", restartToolbarTimer);
-      document.removeEventListener("pointerdown", restartToolbarTimer);
-      document.removeEventListener("wheel", restartToolbarTimer);
-      document.removeEventListener("scroll", restartToolbarTimer, true);
+      window.removeEventListener("keydown", restartToolbarTimer, true);
+      window.removeEventListener("pointermove", restartToolbarTimer, true);
+      window.removeEventListener("pointerdown", restartToolbarTimer, true);
+      window.removeEventListener("wheel", restartToolbarTimer, true);
+      window.removeEventListener("scroll", restartToolbarTimer, true);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("blur", pauseToolbarTimer);
       window.removeEventListener("focus", restartToolbarTimer);
@@ -103,9 +106,7 @@ export function AppShell(props: AppShellProps) {
 
   return (
     <main class="app-shell relative grid h-screen min-h-screen grid-rows-[1fr]">
-      <div class="toolbar-reveal-zone fixed inset-x-0 top-0 z-20 h-3">
-        <Toolbar {...props} isVisible={isToolbarVisible} />
-      </div>
+      <Toolbar {...props} isVisible={isToolbarVisible} />
       <DocumentViewport
         workspaceRef={props.workspaceRef}
         pagesRef={props.pagesRef}
@@ -158,8 +159,8 @@ function Toolbar({
   return (
     <header
       class={cx(
-        `toolbar border-border-toolbar bg-toolbar-surface shadow-toolbar absolute
-        inset-x-0 top-0 flex min-h-16 items-end gap-2.5 border-b px-4 py-2.5
+        `toolbar border-border-toolbar bg-toolbar-surface shadow-toolbar fixed
+        inset-x-0 top-0 z-20 flex min-h-16 items-end gap-2.5 border-b px-4 py-2.5
         backdrop-blur-[10px] transition-[transform,opacity] duration-200 ease-out
         motion-reduce:transition-none max-compact:min-h-14 max-compact:gap-1.5
         max-compact:px-2 max-compact:py-2 max-tight:min-h-12

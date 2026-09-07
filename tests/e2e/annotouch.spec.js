@@ -22,7 +22,10 @@ const errorsByPage = new WeakMap();
 async function clickToolbarControl(page, control) {
   const viewport = page.viewportSize();
 
-  await page.mouse.move(Math.floor((viewport?.width ?? 800) / 2), 4);
+  await page.mouse.move(
+    Math.floor((viewport?.width ?? 800) / 2),
+    Math.floor((viewport?.height ?? 600) / 2)
+  );
   await expect(page.locator(".toolbar")).toHaveCSS("opacity", "1");
   await control.click();
 }
@@ -125,17 +128,36 @@ test.describe("Annotouch browser QA", () => {
   test("shows the toolbar at session start and refreshes it from input anywhere", async ({
     page,
   }) => {
+    await page.clock.install();
+    await page.reload();
+
     const toolbar = page.locator(".toolbar");
 
-    await expect(toolbar).toHaveCSS("opacity", "1");
-    await page.mouse.move(400, 300);
-    await expect(toolbar).toHaveCSS("opacity", "1");
+    await expect(toolbar).toHaveClass(/translate-y-0/);
+    await page.clock.fastForward(30_000);
+    await expect(toolbar).toHaveClass(/-translate-y-full/);
 
     await page.keyboard.press("Shift");
-    await expect(toolbar).toHaveCSS("opacity", "1");
+    await expect(toolbar).toHaveClass(/translate-y-0/);
 
-    await page.locator("#theme-toggle").focus();
-    await expect(toolbar).toHaveCSS("opacity", "1");
+    await page.clock.fastForward(30_000);
+    await expect(toolbar).toHaveClass(/-translate-y-full/);
+    await page.mouse.move(400, 300);
+    await expect(toolbar).toHaveClass(/translate-y-0/);
+
+    await page.clock.fastForward(30_000);
+    await expect(toolbar).toHaveClass(/-translate-y-full/);
+    await page.mouse.wheel(0, 100);
+    await expect(toolbar).toHaveClass(/translate-y-0/);
+
+    await page.evaluate(() => {
+      document.body.style.minHeight = `${window.innerHeight + 1}px`;
+    });
+    await page.clock.fastForward(30_000);
+    await expect(toolbar).toHaveClass(/-translate-y-full/);
+    await page.evaluate(() => window.scrollTo(0, 1));
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(1);
+    await expect(toolbar).toHaveClass(/translate-y-0/);
   });
 
   test("centers the empty PDF prompt on the inverted light surfaces", async ({
