@@ -207,10 +207,29 @@ describe("AppShell", () => {
 
     expect(screen.getByRole("status")).toHaveTextContent("4 pages ready");
     expect(screen.getByText("notes.pdf")).toBeInTheDocument();
-    expect(screen.getByText("4/4 pages | 1 annotation")).toBeInTheDocument();
+    expect(screen.getByText("4 pages | 1 annotation")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "export" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "undo" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "redo" })).toBeDisabled();
+  });
+
+  it("shows annotatable and total page counts when the document is capped", () => {
+    const state = reduce(
+      createInitialState(),
+      { type: "document/loading", fileName: "long-notes.pdf" },
+      {
+        type: "document/loaded",
+        fileName: "long-notes.pdf",
+        totalPageCount: 300,
+        annotatablePageCount: 200,
+      }
+    );
+
+    renderShell(state);
+
+    expect(
+      screen.getByText("200/300 pages | 0 annotations")
+    ).toBeInTheDocument();
   });
 
   it("marks the selected pen color and current stroke width", () => {

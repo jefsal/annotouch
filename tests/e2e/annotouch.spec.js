@@ -740,7 +740,7 @@ test.describe("Annotouch browser QA", () => {
     );
     await drawStroke(page, annotationCanvas, PEN_COLORS[1].y);
     await expect(page.locator("#document-count")).toHaveText(
-      "1/1 pages | 1 annotation"
+      "1 page | 1 annotation"
     );
 
     await page.getByRole("button", { name: "settings" }).click();
@@ -769,7 +769,7 @@ test.describe("Annotouch browser QA", () => {
       initialBackgroundImage
     );
     await expect(page.locator("#document-count")).toHaveText(
-      "1/1 pages | 1 annotation"
+      "1 page | 1 annotation"
     );
     await expectCanvasHasColor(annotationCanvas, PEN_COLORS[1]);
     await expect(page.getByRole("status")).toHaveText("ready");
@@ -857,7 +857,7 @@ test.describe("Annotouch browser QA", () => {
     await expect(page.locator("#document-name")).toHaveCSS("font-size", "13px");
     await expect(page.locator("#document-count")).toBeVisible();
     await expect(page.locator("#document-count")).toHaveText(
-      "1/1 pages | 0 annotations"
+      "1 page | 0 annotations"
     );
   });
 
@@ -963,7 +963,7 @@ test.describe("Annotouch browser QA", () => {
     expect(refreshDialogs).toEqual([{ type: "beforeunload", message: "" }]);
     await expectCanvasHasColor(annotationCanvas, PEN_COLORS[1]);
     await expect(page.locator("#document-count")).toHaveText(
-      "1/1 pages | 1 annotation"
+      "1 page | 1 annotation"
     );
     await page.close();
   });
@@ -1074,7 +1074,7 @@ test.describe("Annotouch browser QA", () => {
 
     await expect(page.locator("#document-name")).toHaveText("second.pdf");
     await expect(page.locator("#document-count")).toHaveText(
-      "1/1 pages | 0 annotations"
+      "1 page | 0 annotations"
     );
   });
 
@@ -1115,7 +1115,7 @@ test.describe("Annotouch browser QA", () => {
 
     await expect(page.locator("#document-name")).toHaveText("drop-second.pdf");
     await expect(page.locator("#document-count")).toHaveText(
-      "1/1 pages | 0 annotations"
+      "1 page | 0 annotations"
     );
   });
 
@@ -1147,7 +1147,7 @@ test.describe("Annotouch browser QA", () => {
     await expect(page.locator("#document-name")).toHaveText("replacement.pdf");
     await expect(page.locator(".page-shell")).toHaveCount(1);
     await expect(page.locator("#document-count")).toHaveText(
-      "1/1 pages | 0 annotations"
+      "1 page | 0 annotations"
     );
 
     const [download] = await Promise.all([
@@ -1219,7 +1219,7 @@ test.describe("Annotouch browser QA", () => {
     // is allowed to read anything.
     await expect(page.locator("#document-name")).toHaveText("replacement.pdf");
     await expect(page.locator("#document-count")).toHaveText(
-      "1/1 pages | 0 annotations"
+      "1 page | 0 annotations"
     );
 
     releaseExporter();
@@ -1292,7 +1292,7 @@ test.describe("Annotouch browser QA", () => {
 
     await expect(page.locator(".page-shell")).toHaveCount(2);
     await expect(page.locator("#document-count")).toHaveText(
-      "2/2 pages | 0 annotations"
+      "2 pages | 0 annotations"
     );
     await expect(page.getByRole("button", { name: "export" })).toBeEnabled();
   });
@@ -1332,6 +1332,9 @@ test.describe("Annotouch browser QA", () => {
 
     await uploadPdf(page, fixturePath, 205);
 
+    await expect(page.locator("#document-count")).toHaveText(
+      "200/205 pages | 0 annotations"
+    );
     await expect(page.locator(".page-shell")).toHaveCount(
       MAX_ANNOTATABLE_PAGES
     );
@@ -1704,7 +1707,7 @@ test.describe("Annotouch browser QA", () => {
 
     await expect(editor).toBeHidden();
     await expect(page.locator("#document-count")).toHaveText(
-      "1/1 pages | 1 annotation"
+      "1 page | 1 annotation"
     );
     await expectCanvasHasColor(annotationCanvas, PEN_COLORS[1]);
 
@@ -1723,7 +1726,7 @@ test.describe("Annotouch browser QA", () => {
 
     await expect(editBox).toBeHidden();
     await expect(page.locator("#document-count")).toHaveText(
-      "1/1 pages | 1 annotation"
+      "1 page | 1 annotation"
     );
     await expectCanvasHasColor(annotationCanvas, PEN_COLORS[1]);
     await expectCanvasLacksColor(annotationCanvas, PEN_COLORS[2]);
@@ -1756,7 +1759,7 @@ test.describe("Annotouch browser QA", () => {
     await page.getByRole("textbox", { name: "new text annotation" }).fill("  ");
     await page.keyboard.press("Escape");
     await expect(page.locator("#document-count")).toHaveText(
-      "1/1 pages | 0 annotations"
+      "1 page | 0 annotations"
     );
 
     await placeText(page, annotationCanvas, {
@@ -1765,19 +1768,19 @@ test.describe("Annotouch browser QA", () => {
       text: "Delete me",
     });
     await expect(page.locator("#document-count")).toHaveText(
-      "1/1 pages | 1 annotation"
+      "1 page | 1 annotation"
     );
 
     await doubleClickCanvasAt(page, annotationCanvas, { x: 140, y: 190 });
     await page.getByRole("textbox", { name: "edit text annotation" }).fill("");
     await page.keyboard.press("Escape");
     await expect(page.locator("#document-count")).toHaveText(
-      "1/1 pages | 0 annotations"
+      "1 page | 0 annotations"
     );
 
     await page.keyboard.press("Control+Z");
     await expect(page.locator("#document-count")).toHaveText(
-      "1/1 pages | 1 annotation"
+      "1 page | 1 annotation"
     );
 
     await moveCanvasPointerTo(page, annotationCanvas, { x: 140, y: 190 });
@@ -1785,7 +1788,7 @@ test.describe("Annotouch browser QA", () => {
     await expect(page.getByRole("status")).toHaveText("erasing");
     await page.keyboard.up("e");
     await expect(page.locator("#document-count")).toHaveText(
-      "1/1 pages | 0 annotations"
+      "1 page | 0 annotations"
     );
     await expectCanvasToBeEmpty(annotationCanvas);
   });
@@ -1925,7 +1928,7 @@ test.describe("Annotouch browser QA", () => {
     );
     expect(downloadCount).toBe(0);
     await expect(page.locator("#document-count")).toHaveText(
-      "1/1 pages | 1 annotation"
+      "1 page | 1 annotation"
     );
 
     await doubleClickCanvasAt(page, annotationCanvas, { x: 140, y: 190 });
@@ -1966,7 +1969,7 @@ test.describe("Annotouch browser QA", () => {
     );
     await drawStroke(page, annotationCanvas, PEN_COLORS[2].y);
 
-    await expect(documentCount).toHaveText("1/1 pages | 2 annotations");
+    await expect(documentCount).toHaveText("1 page | 2 annotations");
     await expectCanvasHasColor(annotationCanvas, PEN_COLORS[1]);
     await expectCanvasHasColor(annotationCanvas, PEN_COLORS[2]);
 
@@ -1979,26 +1982,26 @@ test.describe("Annotouch browser QA", () => {
     await page.evaluate(() => document.activeElement?.blur());
 
     await eraseStroke(page, annotationCanvas, PEN_COLORS[1].y);
-    await expect(documentCount).toHaveText("1/1 pages | 1 annotation");
+    await expect(documentCount).toHaveText("1 page | 1 annotation");
     await expectCanvasLacksColor(annotationCanvas, PEN_COLORS[1]);
     await expectCanvasHasColor(annotationCanvas, PEN_COLORS[2]);
 
     await page.keyboard.press("Control+Z");
-    await expect(documentCount).toHaveText("1/1 pages | 2 annotations");
+    await expect(documentCount).toHaveText("1 page | 2 annotations");
     await expectCanvasHasColor(annotationCanvas, PEN_COLORS[1]);
     await expectCanvasHasColor(annotationCanvas, PEN_COLORS[2]);
 
     await page.keyboard.press("Control+Shift+Z");
-    await expect(documentCount).toHaveText("1/1 pages | 1 annotation");
+    await expect(documentCount).toHaveText("1 page | 1 annotation");
     await expectCanvasLacksColor(annotationCanvas, PEN_COLORS[1]);
     await expectCanvasHasColor(annotationCanvas, PEN_COLORS[2]);
 
     await eraseStroke(page, annotationCanvas, PEN_COLORS[2].y);
-    await expect(documentCount).toHaveText("1/1 pages | 0 annotations");
+    await expect(documentCount).toHaveText("1 page | 0 annotations");
     await expectCanvasToBeEmpty(annotationCanvas);
 
     await page.keyboard.press("Control+Z");
-    await expect(documentCount).toHaveText("1/1 pages | 1 annotation");
+    await expect(documentCount).toHaveText("1 page | 1 annotation");
     await expectCanvasLacksColor(annotationCanvas, PEN_COLORS[1]);
     await expectCanvasHasColor(annotationCanvas, PEN_COLORS[2]);
 
