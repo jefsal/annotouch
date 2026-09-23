@@ -24,6 +24,8 @@ export const PEN_WIDTHS = [
   { label: "large", value: 10 },
 ] as const;
 
+export const HIGHLIGHT_COLOR = "#facc15";
+
 export const DEFAULT_PEN_SETTINGS: PenSettings = {
   color: "#e11d48",
   width: PEN_WIDTHS[0].value,

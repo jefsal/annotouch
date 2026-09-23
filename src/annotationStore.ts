@@ -1,9 +1,15 @@
-import { drawAnnotation, drawStroke } from "./domain/annotationRenderer";
+import {
+  drawAnnotation,
+  drawHighlight,
+  drawStroke,
+} from "./domain/annotationRenderer";
 import { isPointInAnnotation, isPointInText } from "./domain/geometry";
 import type {
   Annotation,
   AnnotationHistoryAction,
   AnnotationId,
+  HighlightAnnotation,
+  HighlightDraft,
   Point,
   StrokeAnnotation,
   StrokeDraft,
@@ -45,6 +51,10 @@ export interface AnnotationStore {
   reset(): void;
   addStroke(pageNumber: number, stroke: StrokeDraft): StrokeAnnotation;
   addText(pageNumber: number, annotation: TextAnnotationDraft): TextAnnotation;
+  addHighlight(
+    pageNumber: number,
+    highlight: HighlightDraft
+  ): HighlightAnnotation;
   updateText(
     pageNumber: number,
     annotationId: AnnotationId,
@@ -65,7 +75,7 @@ export interface AnnotationStore {
   redo(): void;
   redrawPage(
     pageNumber: number,
-    draftStroke?: StrokeDraft | null,
+    draft?: StrokeDraft | HighlightDraft | null,
     excludedAnnotationId?: AnnotationId | null
   ): void;
   redrawAll(): void;
@@ -155,6 +165,18 @@ export function createAnnotationStore({
       });
 
       return cloneText(annotation);
+    },
+
+    addHighlight(pageNumber, highlight) {
+      const annotation = appendAnnotation<HighlightAnnotation>(pageNumber, {
+        id: highlight.id ?? nextId(),
+        type: "highlight",
+        color: highlight.color,
+        rects: highlight.rects.map((rect) => ({ ...rect })),
+        text: highlight.text,
+      });
+
+      return cloneHighlight(annotation);
     },
 
     updateText(pageNumber, annotationId, updates) {
@@ -292,7 +314,7 @@ export function createAnnotationStore({
       notifyChange();
     },
 
-    redrawPage(pageNumber, draftStroke = null, excludedAnnotationId = null) {
+    redrawPage(pageNumber, draft = null, excludedAnnotationId = null) {
       const pageState = pages.get(pageNumber);
       if (!pageState?.canvas || !pageState.context) return;
 
@@ -307,8 +329,10 @@ export function createAnnotationStore({
         drawAnnotation(context, annotation);
       }
 
-      if (draftStroke) {
-        drawStroke(context, draftStroke);
+      if (draft?.type === "highlight") {
+        drawHighlight(context, draft);
+      } else if (draft) {
+        drawStroke(context, draft);
       }
     },
 
@@ -501,8 +525,20 @@ function cloneText(annotation: TextAnnotation): TextAnnotation {
   return { ...annotation };
 }
 
+function cloneHighlight(annotation: HighlightAnnotation): HighlightAnnotation {
+  return {
+    ...annotation,
+    rects: annotation.rects.map((rect) => ({ ...rect })),
+  };
+}
+
 function cloneAnnotation(annotation: Annotation): Annotation {
-  return annotation.type === "text"
-    ? cloneText(annotation)
-    : cloneStroke(annotation);
+  switch (annotation.type) {
+    case "text":
+      return cloneText(annotation);
+    case "highlight":
+      return cloneHighlight(annotation);
+    case "stroke":
+      return cloneStroke(annotation);
+  }
 }

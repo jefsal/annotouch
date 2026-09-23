@@ -22,6 +22,7 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
       { label: "draw", keys: ["space"] },
       { label: "erase", keys: ["e"] },
       { label: "text", keys: ["t"] },
+      { label: "highlight text", keys: ["h"] },
       { label: "stroke width", keys: ["w"] },
     ],
   },
@@ -63,6 +64,10 @@ export function isUndoRedoShortcut(event: KeyboardEvent): boolean {
 
 export function isTextShortcut(event: KeyboardEvent): boolean {
   return isUnmodifiedKey(event, "t");
+}
+
+export function isHighlightShortcut(event: KeyboardEvent): boolean {
+  return isUnmodifiedKey(event, "h");
 }
 
 export function getColorShortcut(event: KeyboardEvent): PenColor | null {

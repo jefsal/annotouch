@@ -11,13 +11,20 @@ import {
   EmptyPdfDocumentError,
   UnsupportedTextCharacterError,
 } from "../domain/errors";
+import {
+  layoutPageText,
+  type PageText,
+  type TextRun,
+} from "../domain/textSelection";
 import type { PenSettings } from "../domain/types";
 import {
+  createCanvasTextMeasurer,
+  getPdfPageTextRuns,
   getPdfPageViewport,
   loadPdfDocument,
   renderPdfPage,
 } from "../pdfViewer";
-import type { PDFDocumentProxy, PageViewport } from "pdfjs-dist";
+import type { PDFDocumentProxy, PDFPageProxy, PageViewport } from "pdfjs-dist";
 
 const DEFAULT_EXPORT_FILE_NAME = "annotated.pdf";
 /** How often page preparation reports progress, in pages. */
@@ -48,6 +55,8 @@ export interface DocumentController {
   setViewScale(scale: number): void;
   toggleTextMode(): void;
   cancelTextMode(): boolean;
+  toggleHighlightMode(): void;
+  cancelHighlightMode(): boolean;
   undo(): void;
   redo(): void;
   destroy(): void;
@@ -70,6 +79,11 @@ export function createDocumentController({
 }: DocumentControllerOptions): DocumentController {
   const pageViewports = new Map<number, PageViewport>();
   const pageViews = new Map<number, PageView>();
+  /** Raw text runs, loaded once a page renders. */
+  const pageTextRuns = new Map<number, TextRun[]>();
+  /** Glyph layouts, built from the runs the first time a page is highlighted. */
+  const pageTextLayouts = new Map<number, PageText>();
+  const measureText = createCanvasTextMeasurer();
 
   let originalPdfBytes: ArrayBuffer | null = null;
   let pdfDocument: PDFDocumentProxy | null = null;
@@ -92,7 +106,41 @@ export function createDocumentController({
     onTextModeChange: (isActive: boolean) => {
       dispatch({ type: "text/setMode", isActive });
     },
+    onHighlightModeChange: (isActive: boolean) => {
+      dispatch({ type: "highlight/setMode", isActive });
+    },
+    getPageText,
   });
+
+  function getPageText(pageNumber: number): PageText | null {
+    const cached = pageTextLayouts.get(pageNumber);
+    if (cached) return cached;
+
+    const runs = pageTextRuns.get(pageNumber);
+    if (!runs) return null;
+
+    const layout = layoutPageText(runs, measureText);
+    pageTextLayouts.set(pageNumber, layout);
+    return layout;
+  }
+
+  async function loadPageText(
+    pageNumber: number,
+    page: PDFPageProxy,
+    viewport: PageViewport,
+    version: number
+  ): Promise<void> {
+    try {
+      const runs = await getPdfPageTextRuns({ page, viewport });
+      if (version !== documentVersion) return;
+
+      pageTextRuns.set(pageNumber, runs);
+    } catch (error) {
+      // A page without readable text can still be drawn on; highlighting it
+      // reports that there is no text instead.
+      if (version === documentVersion) console.error(error);
+    }
+  }
 
   function setStatus(message: string): void {
     dispatch({ type: "status/set", message });
@@ -119,6 +167,8 @@ export function createDocumentController({
     viewScale = DEFAULT_VIEW_SCALE;
     pageViewports.clear();
     pageViews.clear();
+    pageTextRuns.clear();
+    pageTextLayouts.clear();
     annotator.setPages([]);
     pagesContainer.replaceChildren();
     totalPageCount = 0;
@@ -398,6 +448,12 @@ export function createDocumentController({
         pageShell: pageView.pageShell,
         annotationCanvas,
       });
+      void loadPageText(
+        pageView.pageNumber,
+        result.page,
+        result.viewport,
+        version
+      );
     } catch (error) {
       if (version !== documentVersion) {
         return;
@@ -446,6 +502,14 @@ export function createDocumentController({
 
     cancelTextMode() {
       return annotator.cancelTextMode();
+    },
+
+    toggleHighlightMode() {
+      annotator.toggleHighlightMode();
+    },
+
+    cancelHighlightMode() {
+      return annotator.cancelHighlightMode();
     },
 
     undo() {

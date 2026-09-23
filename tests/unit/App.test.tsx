@@ -37,6 +37,10 @@ const { controllers, createDocumentController } = vi.hoisted(() => {
         cancelTextMode: vi.fn<DocumentController["cancelTextMode"]>(
           () => false
         ),
+        toggleHighlightMode: vi.fn<DocumentController["toggleHighlightMode"]>(),
+        cancelHighlightMode: vi.fn<DocumentController["cancelHighlightMode"]>(
+          () => false
+        ),
         undo: vi.fn<DocumentController["undo"]>(),
         redo: vi.fn<DocumentController["redo"]>(),
         destroy: vi.fn<DocumentController["destroy"]>(),
@@ -540,6 +544,12 @@ describe("App", () => {
 
       await user.keyboard("t");
       expect(controller.toggleTextMode).toHaveBeenCalledTimes(1);
+
+      await user.keyboard("h");
+      expect(controller.toggleHighlightMode).toHaveBeenCalledTimes(1);
+
+      await user.keyboard("{Escape}");
+      expect(controller.cancelHighlightMode).toHaveBeenCalledTimes(1);
 
       await user.keyboard("{Control>}z{/Control}");
       expect(controller.undo).toHaveBeenCalledTimes(1);

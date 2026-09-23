@@ -87,6 +87,7 @@ describe("document lifecycle", () => {
       loadedState(),
       { type: "view/zoomIn" },
       { type: "text/setMode", isActive: true },
+      { type: "highlight/setMode", isActive: true },
       { type: "text/setDraft", hasDraft: true },
       {
         type: "history/sync",
@@ -101,6 +102,7 @@ describe("document lifecycle", () => {
     });
     expect(state.viewScale).toBe(1);
     expect(state.isTextMode).toBe(false);
+    expect(state.isHighlightMode).toBe(false);
     expect(state.history.annotationCount).toBe(0);
     expect(hasUnsavedWork(state)).toBe(false);
     expect(state.isBusy).toBe(true);

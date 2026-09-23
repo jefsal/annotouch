@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef } from "preact/hooks";
 import {
   getColorShortcut,
   isBackgroundImageShortcut,
+  isHighlightShortcut,
   isKeyboardShortcutsShortcut,
   isNightModeShortcut,
   isTextShortcut,
@@ -15,6 +16,7 @@ export interface KeyboardShortcutHandlers {
   onUndo: () => void;
   onRedo: () => void;
   onToggleTextMode: () => void;
+  onToggleHighlightMode: () => void;
   onSelectColor: (color: string) => void;
   onCycleWidth: () => void;
   onToggleTheme: () => void;
@@ -59,6 +61,12 @@ export function useKeyboardShortcuts(handlers: KeyboardShortcutHandlers): void {
       if (isTextShortcut(event) && current.hasDocument) {
         event.preventDefault();
         current.onToggleTextMode();
+        return;
+      }
+
+      if (isHighlightShortcut(event) && current.hasDocument) {
+        event.preventDefault();
+        current.onToggleHighlightMode();
         return;
       }
 

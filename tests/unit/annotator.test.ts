@@ -1,7 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createAnnotationStore } from "../../src/annotationStore";
-import { createAnnotator, type Annotator } from "../../src/annotator";
+import {
+  createAnnotator,
+  HIGHLIGHT_MODE_STATUS_MESSAGE,
+  NO_PAGE_TEXT_STATUS_MESSAGE,
+  type Annotator,
+} from "../../src/annotator";
+import { layoutPageText, type PageText } from "../../src/domain/textSelection";
 
 const PEN_SETTINGS = { color: "#e11d48", width: 5 };
 
@@ -31,9 +37,29 @@ function createPage(pageNumber: number, { zoom = 1 } = {}) {
   return { pageNumber, pageShell, annotationCanvas };
 }
 
-function setup({ zoom = 1 } = {}) {
+/** "hello world" on one line, ten canvas pixels per glyph from x = 100. */
+const PAGE_TEXT = layoutPageText([
+  {
+    text: "hello world",
+    x: 100,
+    y: 100,
+    dirX: 1,
+    dirY: 0,
+    length: 110,
+    ascent: 8,
+    descent: 2,
+    fontFamily: "sans-serif",
+    hasEOL: false,
+  },
+]);
+
+function setup({
+  zoom = 1,
+  pageText = PAGE_TEXT,
+}: { zoom?: number; pageText?: PageText | null } = {}) {
   const statuses: string[] = [];
   const onTextModeChange = vi.fn();
+  const onHighlightModeChange = vi.fn();
   const onTextDraftChange = vi.fn();
   const store = createAnnotationStore();
   const page = createPage(1, { zoom });
@@ -43,6 +69,8 @@ function setup({ zoom = 1 } = {}) {
     onStatusChange: (message) => statuses.push(message),
     onTextDraftChange,
     onTextModeChange,
+    onHighlightModeChange,
+    getPageText: () => pageText,
   });
 
   activeAnnotator = annotator;
@@ -50,7 +78,14 @@ function setup({ zoom = 1 } = {}) {
   annotator.registerPage(page);
   store.registerPage({ pageNumber: 1, canvas: page.annotationCanvas });
 
-  return { annotator, store, statuses, page, onTextModeChange };
+  return {
+    annotator,
+    store,
+    statuses,
+    page,
+    onTextModeChange,
+    onHighlightModeChange,
+  };
 }
 
 /**
@@ -64,6 +99,19 @@ function movePointer(clientX: number, clientY: number): void {
   target.dispatchEvent(
     new MouseEvent("pointermove", { clientX, clientY, bubbles: true })
   );
+}
+
+function pointer(type: string, clientX: number, clientY: number): void {
+  (activeCanvas ?? document).dispatchEvent(
+    new MouseEvent(type, { clientX, clientY, button: 0, bubbles: true })
+  );
+}
+
+function dragHighlight(fromX: number, toX: number, y = 96): void {
+  pointer("pointerdown", fromX, y);
+  pointer("pointermove", (fromX + toX) / 2, y);
+  pointer("pointermove", toX, y);
+  pointer("pointerup", toX, y);
 }
 
 function pressKey(code: string, { repeat = false } = {}): void {
@@ -240,5 +288,109 @@ describe("annotator interaction modes", () => {
 
     expect(store.getAnnotationCount()).toBe(0);
     expect(statuses).toEqual([]);
+  });
+
+  it("highlights the text dragged across while highlight mode is armed", () => {
+    const { annotator, store, statuses, onHighlightModeChange } = setup();
+
+    // Unarmed, a drag does nothing.
+    dragHighlight(100, 150);
+    expect(store.getAnnotationCount()).toBe(0);
+
+    expect(annotator.toggleHighlightMode()).toBe(true);
+    expect(onHighlightModeChange).toHaveBeenLastCalledWith(true);
+    expect(statuses.at(-1)).toBe(HIGHLIGHT_MODE_STATUS_MESSAGE);
+
+    dragHighlight(101, 149);
+
+    const [highlight] = store.getAnnotationsByPage().get(1) ?? [];
+    expect(highlight).toMatchObject({
+      type: "highlight",
+      color: "#facc15",
+      text: "hello",
+      rects: [{ x: 100, y: 92, width: 50, height: 10 }],
+    });
+
+    // Stays armed for the next passage, and undo/redo walk the history.
+    dragHighlight(161, 209);
+    expect(store.getAnnotationCount()).toBe(2);
+    store.undo();
+    expect(store.getAnnotationCount()).toBe(1);
+    store.redo();
+    expect(store.getAnnotationsByPage().get(1)?.[1]).toMatchObject({
+      text: "world",
+    });
+
+    expect(annotator.toggleHighlightMode()).toBe(false);
+    expect(onHighlightModeChange).toHaveBeenLastCalledWith(false);
+    dragHighlight(100, 150);
+    expect(store.getAnnotationCount()).toBe(2);
+  });
+
+  it("keeps extending the selection after the pointer leaves the page", () => {
+    const { annotator, store } = setup();
+
+    annotator.toggleHighlightMode();
+    pointer("pointerdown", 101, 96);
+    document.dispatchEvent(
+      new MouseEvent("pointermove", { clientX: 900, clientY: 96 })
+    );
+    document.dispatchEvent(new MouseEvent("pointerup"));
+
+    expect(store.getAnnotationsByPage().get(1)?.[0]).toMatchObject({
+      text: "hello world",
+    });
+  });
+
+  it("ignores a click that selects nothing", () => {
+    const { annotator, store } = setup();
+
+    annotator.toggleHighlightMode();
+    dragHighlight(101, 101);
+    // Far from any text, a drag never starts.
+    dragHighlight(400, 500, 600);
+
+    expect(store.getAnnotationCount()).toBe(0);
+  });
+
+  it("reports a page without selectable text", () => {
+    const { annotator, store, statuses } = setup({ pageText: null });
+
+    annotator.toggleHighlightMode();
+    dragHighlight(101, 149);
+
+    expect(store.getAnnotationCount()).toBe(0);
+    expect(statuses.at(-1)).toBe(NO_PAGE_TEXT_STATUS_MESSAGE);
+  });
+
+  it("keeps highlighting and text placement mutually exclusive", () => {
+    const { annotator, onTextModeChange, onHighlightModeChange } = setup();
+
+    annotator.toggleHighlightMode();
+    annotator.toggleTextMode();
+    expect(onHighlightModeChange).toHaveBeenLastCalledWith(false);
+    expect(annotator.cancelHighlightMode()).toBe(false);
+
+    annotator.toggleHighlightMode();
+    expect(onTextModeChange).toHaveBeenLastCalledWith(false);
+    expect(annotator.cancelTextMode()).toBe(false);
+
+    pressKey("KeyE");
+    releaseKey("KeyE");
+    expect(onHighlightModeChange).toHaveBeenLastCalledWith(false);
+    expect(annotator.cancelHighlightMode()).toBe(false);
+  });
+
+  it("discards an in-flight selection when the window loses focus", () => {
+    const { annotator, store } = setup();
+
+    annotator.toggleHighlightMode();
+    pointer("pointerdown", 101, 96);
+    pointer("pointermove", 149, 96);
+    window.dispatchEvent(new Event("blur"));
+    pointer("pointerup", 149, 96);
+
+    expect(store.getAnnotationCount()).toBe(0);
+    expect(annotator.cancelHighlightMode()).toBe(true);
   });
 });

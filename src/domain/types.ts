@@ -29,7 +29,26 @@ export interface TextAnnotation extends BaseAnnotation {
   lineHeight: number;
 }
 
-export type Annotation = StrokeAnnotation | TextAnnotation;
+/** An axis-aligned rectangle in canvas-pixel space. */
+export interface Rect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * A translucent band over selected PDF text. One rect per line fragment; the
+ * selected text is kept so export can write it into the PDF annotation.
+ */
+export interface HighlightAnnotation extends BaseAnnotation {
+  type: "highlight";
+  rects: Rect[];
+  text: string;
+}
+
+export type Annotation =
+  StrokeAnnotation | TextAnnotation | HighlightAnnotation;
 
 export type StrokeDraft = Omit<StrokeAnnotation, "id" | "type"> & {
   id?: AnnotationId;
@@ -39,6 +58,10 @@ export type StrokeDraft = Omit<StrokeAnnotation, "id" | "type"> & {
 export type TextAnnotationDraft = Omit<TextAnnotation, "id" | "type"> & {
   id?: AnnotationId;
   type?: "text";
+};
+
+export type HighlightDraft = Omit<HighlightAnnotation, "id"> & {
+  id?: AnnotationId;
 };
 
 export interface PageAnnotations {

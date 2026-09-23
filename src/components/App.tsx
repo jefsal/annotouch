@@ -88,9 +88,10 @@ export function App({ root }: AppProps) {
 
   useLayoutEffect(() => {
     // The only state the component tree cannot express: the annotation canvases
-    // are created by the document controller, so their text-mode cursor has to
-    // be reached through a class on the mount container.
+    // are created by the document controller, so their tool cursors have to be
+    // reached through classes on the mount container.
     root.classList.toggle("is-text-mode", state.isTextMode);
+    root.classList.toggle("is-highlight-mode", state.isHighlightMode);
   });
 
   const hasUnsavedAnnotations = hasUnsavedWork(state);
@@ -178,14 +179,16 @@ export function App({ root }: AppProps) {
     onUndo: () => controllerRef.current?.undo(),
     onRedo: () => controllerRef.current?.redo(),
     onToggleTextMode: () => controllerRef.current?.toggleTextMode(),
+    onToggleHighlightMode: () => controllerRef.current?.toggleHighlightMode(),
     onSelectColor: (color) => dispatch({ type: "pen/setColor", color }),
     onCycleWidth: () => dispatch({ type: "pen/cycleWidth" }),
     onToggleTheme: toggleTheme,
     onToggleBackgroundImage: toggleBackgroundImage,
     onOpenShortcuts: openShortcuts,
     onEscape: () => {
-      const didCancelTextMode = Boolean(
-        controllerRef.current?.cancelTextMode()
+      const didCancelToolMode = Boolean(
+        controllerRef.current?.cancelTextMode() ||
+        controllerRef.current?.cancelHighlightMode()
       );
 
       if (stateRef.current.isSettingsOpen) {
@@ -193,7 +196,7 @@ export function App({ root }: AppProps) {
         settingsButtonRef.current?.focus();
       }
 
-      return didCancelTextMode;
+      return didCancelToolMode;
     },
   });
 

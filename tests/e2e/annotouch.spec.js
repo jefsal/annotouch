@@ -2,7 +2,10 @@ import { expect, test } from "@playwright/test";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { degrees, PDFDocument, StandardFonts, rgb } from "pdf-lib";
-import { getDocument as getPdfDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
+import {
+  getDocument as getPdfDocument,
+  Util,
+} from "pdfjs-dist/legacy/build/pdf.mjs";
 
 const PEN_COLORS = [
   { label: "black", hex: "#111827", y: 140 },
@@ -558,6 +561,7 @@ test.describe("Annotouch browser QA", () => {
           { command: "draw", keys: ["space"] },
           { command: "erase", keys: ["e"] },
           { command: "text", keys: ["t"] },
+          { command: "highlight text", keys: ["h"] },
           { command: "stroke width", keys: ["w"] },
         ],
       },
@@ -589,7 +593,7 @@ test.describe("Annotouch browser QA", () => {
         ],
       },
     ]);
-    await expect(dialog.locator(".commands-shortcuts-row")).toHaveCount(14);
+    await expect(dialog.locator(".commands-shortcuts-row")).toHaveCount(15);
     await expect(dialog.locator(".commands-shortcuts-row button")).toHaveCount(
       0
     );
@@ -701,7 +705,7 @@ test.describe("Annotouch browser QA", () => {
 
     await expect(dialog).toHaveCSS("background-color", "rgb(23, 25, 35)");
     await expect(dialog).toHaveCSS("color", "rgb(243, 244, 246)");
-    await expect(shortcutKeys).toHaveCount(24);
+    await expect(shortcutKeys).toHaveCount(25);
     await expect(shortcutKeys.first()).toHaveCSS("border-top-style", "none");
     await expect(shortcutKeys.first()).toHaveCSS("color", "rgb(170, 178, 192)");
     await expect(
@@ -1684,7 +1688,7 @@ test.describe("Annotouch browser QA", () => {
       name: "keyboard shortcuts",
     });
     await expect(
-      shortcutsDialog.locator("dt", { hasText: "text" })
+      shortcutsDialog.locator("dt", { hasText: /^text$/ })
     ).toBeVisible();
     await expect(
       shortcutsDialog.locator("kbd", { hasText: /^t$/ })
@@ -1864,6 +1868,129 @@ test.describe("Annotouch browser QA", () => {
       PEN_COLORS[1]
     );
   });
+
+  test("highlights selected PDF text with H, undo, redo, erase, and export", async ({
+    page,
+  }, testInfo) => {
+    const fixturePath = await createPdfFixture(testInfo, 1);
+
+    await uploadPdf(page, fixturePath, 1);
+    const annotationCanvas = page.locator(".annotation-canvas").first();
+    // "Annotouch QA fixture" sits at x 54, baseline y 81 in canvas pixels.
+    const band = { x: 60, y: 60, width: 150, height: 24 };
+
+    await page.keyboard.press("h");
+    await expect(page.getByRole("status")).toHaveText(
+      "drag across text to highlight"
+    );
+    await expect(page.locator("#app")).toHaveClass(/is-highlight-mode/);
+
+    await dragCanvas(
+      page,
+      annotationCanvas,
+      { x: 56, y: 74 },
+      { x: 200, y: 74 }
+    );
+    expect(await getCanvasCoverage(annotationCanvas, band)).toBeGreaterThan(
+      0.5
+    );
+
+    await page.keyboard.press("ControlOrMeta+z");
+    expect(await getCanvasCoverage(annotationCanvas, band)).toBe(0);
+    await page.keyboard.press("ControlOrMeta+Shift+z");
+    expect(await getCanvasCoverage(annotationCanvas, band)).toBeGreaterThan(
+      0.5
+    );
+
+    await page.keyboard.press("h");
+    await expect(page.getByRole("status")).toHaveText("ready");
+    await expect(page.locator("#app")).not.toHaveClass(/is-highlight-mode/);
+
+    await moveCanvasPointerTo(page, annotationCanvas, { x: 120, y: 74 });
+    await page.keyboard.down("e");
+    await page.keyboard.up("e");
+    expect(await getCanvasCoverage(annotationCanvas, band)).toBe(0);
+    await page.keyboard.press("ControlOrMeta+z");
+    expect(await getCanvasCoverage(annotationCanvas, band)).toBeGreaterThan(
+      0.5
+    );
+
+    const [download] = await Promise.all([
+      page.waitForEvent("download"),
+      clickToolbarControl(page, page.getByRole("button", { name: "export" })),
+    ]);
+    const exportedPath = testInfo.outputPath("highlight-annotated.pdf");
+    await download.saveAs(exportedPath);
+
+    const [highlight] = await getPdfAnnotations(exportedPath);
+    expect(highlight).toMatchObject({ subtype: "Highlight" });
+    expect(highlight.contentsObj.str).toMatch(/^Annotouch/);
+    expect(highlight.quadPoints.length).toBeGreaterThan(0);
+
+    // PDF.js paints the exported highlight into the page bitmap.
+    page.once("dialog", (dialog) => dialog.accept());
+    await uploadPdf(page, exportedPath, 1);
+    const tint = await page
+      .locator(".pdf-canvas")
+      .first()
+      .evaluate((element, { x, y, width, height }) => {
+        const data = element
+          .getContext("2d")
+          .getImageData(x, y, width, height).data;
+        let yellowest = 0;
+        for (let index = 0; index < data.length; index += 4) {
+          yellowest = Math.max(yellowest, data[index] - data[index + 2]);
+        }
+        return yellowest;
+      }, band);
+    expect(tint).toBeGreaterThan(40);
+  });
+
+  for (const rotation of [90, 180, 270]) {
+    test(`exports a highlight in place on a ${rotation}-degree page`, async ({
+      page,
+    }, testInfo) => {
+      const fixturePath = await createPdfFixture(testInfo, 1, {
+        fileName: `fixture-highlight-rotated-${rotation}.pdf`,
+        rotation,
+      });
+      const { start, end } = await getFirstTextLine(fixturePath);
+
+      // Rotation can put the title near the bottom of the rendered page.
+      await page.setViewportSize({ width: 1280, height: 1100 });
+      await uploadPdf(page, fixturePath, 1);
+      const annotationCanvas = page.locator(".annotation-canvas").first();
+
+      await page.keyboard.press("h");
+      await dragCanvas(page, annotationCanvas, start, end);
+      await page.keyboard.press("h");
+      const sourceBounds = await getPaintedBounds(annotationCanvas, "painted");
+
+      const [download] = await Promise.all([
+        page.waitForEvent("download"),
+        clickToolbarControl(page, page.getByRole("button", { name: "export" })),
+      ]);
+      const exportedPath = testInfo.outputPath(
+        `highlight-rotated-${rotation}-annotated.pdf`
+      );
+      await download.saveAs(exportedPath);
+      const [highlight] = await getPdfAnnotations(exportedPath);
+      expect(highlight.contentsObj.str).toBe("Annotouch QA fixture");
+
+      page.once("dialog", (dialog) => dialog.accept());
+      await uploadPdf(page, exportedPath, 1);
+      const exportedBounds = await getPaintedBounds(
+        page.locator(".pdf-canvas").first(),
+        "yellow"
+      );
+
+      for (const key of ["left", "top", "right", "bottom"]) {
+        expect(Math.abs(exportedBounds[key] - sourceBounds[key])).toBeLessThan(
+          4
+        );
+      }
+    });
+  }
 
   for (const rotation of [90, 180, 270]) {
     test(`preserves text placement and orientation on a ${rotation}-degree page`, async ({
@@ -2401,6 +2528,117 @@ async function doubleClickCanvasAt(page, canvas, point) {
 async function moveCanvasPointerTo(page, canvas, point) {
   const clientPoint = await canvasPointToClient(canvas, point);
   await page.mouse.move(clientPoint.x, clientPoint.y);
+}
+
+async function dragCanvas(page, canvas, from, to) {
+  const start = await canvasPointToClient(canvas, from);
+  const end = await canvasPointToClient(canvas, to);
+
+  await page.mouse.move(start.x, start.y);
+  await page.mouse.down();
+  await page.mouse.move(end.x, end.y, { steps: 10 });
+  await page.mouse.up();
+}
+
+/** The share of pixels in a canvas-space region with any paint. */
+async function getCanvasCoverage(canvas, region) {
+  return canvas.evaluate((element, { x, y, width, height }) => {
+    const data = element
+      .getContext("2d")
+      .getImageData(x, y, width, height).data;
+    let painted = 0;
+    for (let index = 3; index < data.length; index += 4) {
+      if (data[index] > 0) painted += 1;
+    }
+    return painted / (width * height);
+  }, region);
+}
+
+/**
+ * Canvas-pixel points just inside both ends of the first text run, read with
+ * PDF.js the way the app lays out a page, so the drag follows any rotation.
+ */
+async function getFirstTextLine(filePath) {
+  const bytes = await readFile(filePath);
+  const pdf = await getPdfDocument({
+    data: new Uint8Array(bytes),
+    disableWorker: true,
+    standardFontDataUrl:
+      path.resolve("node_modules/pdfjs-dist/standard_fonts") + path.sep,
+  }).promise;
+
+  try {
+    const pdfPage = await pdf.getPage(1);
+    const viewport = pdfPage.getViewport({ scale: 1.5 });
+    const [item] = (await pdfPage.getTextContent()).items;
+    const [a, b, c, d, x, y] = Util.transform(
+      viewport.transform,
+      item.transform
+    );
+    const length = Math.hypot(a, b);
+    const dir = { x: a / length, y: b / length };
+    const up = { x: dir.y, y: -dir.x };
+    const lift = Math.hypot(c, d) * 0.3;
+    const at = (offset) => ({
+      x: x + dir.x * offset + up.x * lift,
+      y: y + dir.y * offset + up.y * lift,
+    });
+
+    return { start: at(2), end: at(item.width * viewport.scale - 2) };
+  } finally {
+    await pdf.destroy();
+  }
+}
+
+/** Bounds of painted (any alpha) or yellow-tinted pixels on a canvas. */
+async function getPaintedBounds(canvas, mode) {
+  const bounds = await canvas.evaluate((element, mode) => {
+    const { width, height } = element;
+    const data = element
+      .getContext("2d")
+      .getImageData(0, 0, width, height).data;
+    let left = width;
+    let top = height;
+    let right = -1;
+    let bottom = -1;
+
+    for (let index = 0; index < data.length; index += 4) {
+      const isHit =
+        mode === "painted"
+          ? data[index + 3] > 0
+          : data[index] - data[index + 2] > 40;
+      if (!isHit) continue;
+
+      const pixel = index / 4;
+      const px = pixel % width;
+      const py = Math.floor(pixel / width);
+      left = Math.min(left, px);
+      top = Math.min(top, py);
+      right = Math.max(right, px);
+      bottom = Math.max(bottom, py);
+    }
+
+    return right < 0 ? null : { left, top, right, bottom };
+  }, mode);
+
+  expect(bounds).not.toBeNull();
+  return bounds;
+}
+
+async function getPdfAnnotations(filePath) {
+  const bytes = await readFile(filePath);
+  const pdf = await getPdfDocument({
+    data: new Uint8Array(bytes),
+    disableWorker: true,
+    standardFontDataUrl:
+      path.resolve("node_modules/pdfjs-dist/standard_fonts") + path.sep,
+  }).promise;
+
+  try {
+    return await (await pdf.getPage(1)).getAnnotations();
+  } finally {
+    await pdf.destroy();
+  }
 }
 
 async function canvasPointToClient(canvas, point) {

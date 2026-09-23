@@ -295,7 +295,7 @@ describe("AppShell", () => {
     expect(dialog).not.toBeNull();
     expect(dialog).not.toHaveAttribute("open");
     expect(dialog?.querySelectorAll(".commands-shortcuts-row")).toHaveLength(
-      14
+      15
     );
   });
 });

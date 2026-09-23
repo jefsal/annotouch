@@ -122,7 +122,8 @@
     touch-action: none;
   }
 
-  .is-text-mode .annotation-canvas {
+  .is-text-mode .annotation-canvas,
+  .is-highlight-mode .annotation-canvas {
     cursor: text;
   }
 

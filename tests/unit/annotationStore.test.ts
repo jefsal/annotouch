@@ -1,7 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { createAnnotationStore } from "../../src/annotationStore";
-import type { StrokeDraft, TextAnnotationDraft } from "../../src/domain/types";
+import type {
+  HighlightDraft,
+  StrokeDraft,
+  TextAnnotationDraft,
+} from "../../src/domain/types";
 
 describe("annotation store", () => {
   const stroke: StrokeDraft = {
@@ -65,6 +69,36 @@ describe("annotation store", () => {
       addedText,
     ]);
     expect(onChange).toHaveBeenCalledTimes(6);
+  });
+
+  it("undoes, redoes, and erases highlights in order with other types", () => {
+    const highlight: HighlightDraft = {
+      type: "highlight",
+      color: "#facc15",
+      rects: [{ x: 100, y: 100, width: 80, height: 12 }],
+      text: "highlighted",
+    };
+    const store = createAnnotationStore();
+    const addedStroke = store.addStroke(1, stroke);
+    const addedHighlight = store.addHighlight(1, highlight);
+
+    expect(addedHighlight).toMatchObject({ id: "annotation-2", ...highlight });
+
+    store.undo();
+    expect(store.getAnnotationsByPage().get(1)).toEqual([addedStroke]);
+    store.redo();
+    expect(store.getAnnotationsByPage().get(1)).toEqual([
+      addedStroke,
+      addedHighlight,
+    ]);
+
+    expect(store.eraseAnnotationAt(1, { x: 140, y: 106 })).toBe(true);
+    expect(store.getAnnotationsByPage().get(1)).toEqual([addedStroke]);
+    store.undo();
+    expect(store.getAnnotationsByPage().get(1)).toEqual([
+      addedStroke,
+      addedHighlight,
+    ]);
   });
 
   it("tracks text edits through undo and redo", () => {

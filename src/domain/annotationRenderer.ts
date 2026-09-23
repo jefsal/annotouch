@@ -1,5 +1,7 @@
 import type {
   Annotation,
+  HighlightAnnotation,
+  HighlightDraft,
   StrokeAnnotation,
   StrokeDraft,
   TextAnnotation,
@@ -11,6 +13,11 @@ export function drawAnnotation(
 ): void {
   if (annotation.type === "text") {
     drawText(context, annotation);
+    return;
+  }
+
+  if (annotation.type === "highlight") {
+    drawHighlight(context, annotation);
     return;
   }
 
@@ -43,6 +50,24 @@ export function drawStroke(
   }
 
   context.stroke();
+  context.restore();
+}
+
+/** How much of the highlight colour covers the text beneath it. */
+export const HIGHLIGHT_OPACITY = 0.35;
+
+export function drawHighlight(
+  context: CanvasRenderingContext2D,
+  highlight: HighlightAnnotation | HighlightDraft
+): void {
+  context.save();
+  context.globalAlpha = HIGHLIGHT_OPACITY;
+  context.fillStyle = highlight.color;
+
+  for (const rect of highlight.rects) {
+    context.fillRect(rect.x, rect.y, rect.width, rect.height);
+  }
+
   context.restore();
 }
 

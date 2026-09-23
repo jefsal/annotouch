@@ -1,14 +1,29 @@
 import {
+  closePath,
   degrees,
+  fill,
+  lineTo,
+  moveTo,
   PDFDocument,
+  PDFHexString,
+  popGraphicsState,
+  pushGraphicsState,
+  setFillingRgbColor,
+  setGraphicsState,
   StandardFonts,
   rgb,
   type PDFFont,
+  type PDFOperator,
   type PDFPage,
   type RGB,
 } from "pdf-lib";
 
-import type { Annotation, TextAnnotation } from "./domain/types";
+import { HIGHLIGHT_OPACITY } from "./domain/annotationRenderer";
+import type {
+  Annotation,
+  HighlightAnnotation,
+  TextAnnotation,
+} from "./domain/types";
 import { UnsupportedTextCharacterError } from "./domain/errors";
 
 export { UnsupportedTextCharacterError } from "./domain/errors";
@@ -68,6 +83,18 @@ export async function buildAnnotatedPdf({
           color,
           font: textFont,
           page,
+          scale,
+          viewport,
+        });
+        continue;
+      }
+
+      if (annotation.type === "highlight") {
+        addHighlightAnnotation({
+          annotation,
+          color,
+          page,
+          pdfDoc,
           scale,
           viewport,
         });
@@ -182,6 +209,96 @@ function drawTextAnnotation({
       rotate: rotation,
     });
   });
+}
+
+interface AddHighlightAnnotationInput extends DrawAnnotationInput<HighlightAnnotation> {
+  pdfDoc: PDFDocument;
+}
+
+/**
+ * Writes a real PDF highlight annotation rather than painting into the page,
+ * so other readers list it, can edit or remove it, and extract its text. The
+ * appearance stream multiplies the colour over the page so viewers that do
+ * not synthesize one still show the text through the band.
+ */
+function addHighlightAnnotation({
+  annotation,
+  color,
+  page,
+  pdfDoc,
+  viewport,
+}: AddHighlightAnnotationInput): void {
+  // QuadPoints use the order readers expect in practice: top-left, top-right,
+  // bottom-left, bottom-right of each band as displayed. Converting the
+  // displayed corners keeps that order correct on rotated pages.
+  const quads = annotation.rects.map((rect) =>
+    [
+      [rect.x, rect.y],
+      [rect.x + rect.width, rect.y],
+      [rect.x, rect.y + rect.height],
+      [rect.x + rect.width, rect.y + rect.height],
+    ].map(([x = 0, y = 0]) => convertToPdfPoint(viewport, x, y))
+  );
+  const points = quads.flat();
+  if (points.length === 0) return;
+
+  const xs = points.map(([x]) => x);
+  const ys = points.map(([, y]) => y);
+  const bounds = [
+    Math.min(...xs),
+    Math.min(...ys),
+    Math.max(...xs),
+    Math.max(...ys),
+  ];
+
+  const operators: PDFOperator[] = [
+    pushGraphicsState(),
+    setGraphicsState("GS0"),
+    setFillingRgbColor(color.red, color.green, color.blue),
+  ];
+  for (const [topLeft, topRight, bottomLeft, bottomRight] of quads) {
+    if (!topLeft || !topRight || !bottomLeft || !bottomRight) continue;
+
+    operators.push(
+      moveTo(...topLeft),
+      lineTo(...topRight),
+      lineTo(...bottomRight),
+      lineTo(...bottomLeft),
+      closePath()
+    );
+  }
+  operators.push(fill(), popGraphicsState());
+
+  const { context } = pdfDoc;
+  const appearance = context.register(
+    context.formXObject(operators, {
+      BBox: bounds,
+      Resources: {
+        ExtGState: {
+          GS0: { Type: "ExtGState", BM: "Multiply" },
+        },
+      },
+    })
+  );
+
+  const highlight = context.obj({
+    Type: "Annot",
+    Subtype: "Highlight",
+    Rect: bounds,
+    QuadPoints: points.flat(),
+    C: [color.red, color.green, color.blue],
+    CA: HIGHLIGHT_OPACITY,
+    // Print, so the highlight survives printing like the rest of the export.
+    F: 4,
+    NM: PDFHexString.fromText(annotation.id),
+    AP: { N: appearance },
+    P: page.ref,
+    ...(annotation.text
+      ? { Contents: PDFHexString.fromText(annotation.text) }
+      : {}),
+  });
+
+  page.node.addAnnot(context.register(highlight));
 }
 
 export function hexToRgb(hex: string): RGB {

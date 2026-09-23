@@ -15,12 +15,14 @@ trackpad clicks. Its hold-to-draw interaction was inspired by
 - Draw without clicking: hold `Space`, move the pointer, and release to finish.
 - Add editable multiline text, erase whole annotations, and use colors, stroke
   widths, undo, and redo.
+- Highlight PDF text: press `H`, then drag across the words. Highlights export
+  as standard PDF highlight annotations.
 - Work with local PDFs in light or night mode, with an optional workspace
   background.
 - Export an annotated copy without changing the source PDF.
 
-Press `E` to erase, `T` to add text, `W` to cycle stroke widths, or `⌘ K` to
-view every keyboard shortcut.
+Press `E` to erase, `T` to add text, `H` to highlight, `W` to cycle stroke
+widths, or `⌘ K` to view every keyboard shortcut.
 
 ## Development
 
