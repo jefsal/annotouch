@@ -23,6 +23,14 @@ const HIGHLIGHT_START_TOLERANCE = 24;
 
 export const HIGHLIGHT_MODE_STATUS_MESSAGE = "drag across text to highlight";
 export const NO_PAGE_TEXT_STATUS_MESSAGE = "no selectable text on this page";
+export const PAGE_TEXT_PENDING_STATUS_MESSAGE =
+  "page text is still loading; try again";
+
+/**
+ * A page's text layout; `"pending"` while it is still being read, or null when
+ * the page has none.
+ */
+export type PageTextLookup = PageText | "pending" | null;
 
 export interface AnnotatorPage {
   pageNumber: number;
@@ -37,8 +45,7 @@ export interface AnnotatorOptions {
   onTextDraftChange?: (hasDraft: boolean) => void;
   onTextModeChange?: (isActive: boolean) => void;
   onHighlightModeChange?: (isActive: boolean) => void;
-  /** The page's text layout, or null while it is unavailable. */
-  getPageText?: (pageNumber: number) => PageText | null;
+  getPageText?: (pageNumber: number) => PageTextLookup;
 }
 
 export interface Annotator {
@@ -63,8 +70,21 @@ interface ActiveStroke {
   points: Point[];
 }
 
+/**
+ * A drag in progress. The pointer positions are kept alongside the carets so a
+ * drag that starts before the page's text has loaded can resolve against it
+ * once it arrives, instead of being dropped.
+ */
 interface ActiveSelection {
+  /** The pointer that started the drag; no other pointer may move or end it. */
+  pointerId: number;
   pageNumber: number;
+  anchorPoint: Point;
+  focusPoint: Point;
+  resolved: ResolvedSelection | null;
+}
+
+interface ResolvedSelection {
   pageText: PageText;
   anchor: TextCaret;
   focus: TextCaret;
@@ -246,6 +266,7 @@ export function createAnnotator({
   function handleHighlightPointerDown(event: PointerEvent): void {
     if (
       mode.type !== "highlighting" ||
+      mode.selection ||
       event.button !== 0 ||
       isInteractiveTarget(event.target)
     ) {
@@ -258,26 +279,53 @@ export function createAnnotator({
     // Suppresses the browser's own text selection and drag behaviour.
     event.preventDefault();
 
-    const pageText = getPageText(pointer.pageNumber);
-    if (!pageText || pageText.glyphs.length === 0) {
+    const selection: ActiveSelection = {
+      pointerId: event.pointerId,
+      pageNumber: pointer.pageNumber,
+      anchorPoint: pointer.point,
+      focusPoint: pointer.point,
+      resolved: null,
+    };
+
+    const outcome = resolveSelection(selection);
+    if (outcome === "unavailable") {
       setStatus(NO_PAGE_TEXT_STATUS_MESSAGE);
       return;
     }
+    if (outcome === "missed") return;
 
-    const caret = getCaretAtPoint(
-      pageText,
-      pointer.point,
-      HIGHLIGHT_START_TOLERANCE
-    );
-    if (caret === null) return;
-
-    mode.selection = {
-      pageNumber: pointer.pageNumber,
-      pageText,
-      anchor: caret,
-      focus: caret,
-    };
+    mode.selection = selection;
     setStatus(HIGHLIGHT_MODE_STATUS_MESSAGE);
+  }
+
+  /**
+   * Maps the selection's pointer positions onto the page's text. Once the
+   * anchor resolves it is kept; only the focus follows the pointer.
+   */
+  function resolveSelection(
+    selection: ActiveSelection
+  ): "resolved" | "pending" | "unavailable" | "missed" {
+    const pageText =
+      selection.resolved?.pageText ?? getPageText(selection.pageNumber);
+
+    if (pageText === "pending") return "pending";
+    if (!pageText || pageText.glyphs.length === 0) return "unavailable";
+
+    const anchor =
+      selection.resolved?.anchor ??
+      getCaretAtPoint(
+        pageText,
+        selection.anchorPoint,
+        HIGHLIGHT_START_TOLERANCE
+      );
+    if (anchor === null) return "missed";
+
+    selection.resolved = {
+      pageText,
+      anchor,
+      focus: getCaretAtPoint(pageText, selection.focusPoint) ?? anchor,
+    };
+    return "resolved";
   }
 
   /**
@@ -295,33 +343,56 @@ export function createAnnotator({
     const point = getClampedCanvasPoint(page.annotationCanvas, event);
     if (!point) return;
 
-    const focus = getCaretAtPoint(selection.pageText, point);
-    if (focus === null || focus === selection.focus) return;
+    const previousFocus = selection.resolved?.focus;
+    selection.focusPoint = point;
+    if (resolveSelection(selection) !== "resolved" || !selection.resolved) {
+      return;
+    }
 
-    selection.focus = focus;
+    const { pageText, anchor, focus } = selection.resolved;
+    if (focus === previousFocus) return;
+
     annotationStore.redrawPage(selection.pageNumber, {
       type: "highlight",
       color: HIGHLIGHT_COLOR,
-      rects: getSelectionRects(selection.pageText, selection.anchor, focus),
+      rects: getSelectionRects(pageText, anchor, focus),
       text: "",
     });
   }
 
-  function handlePointerUp(): void {
-    if (mode.type !== "highlighting" || !mode.selection) {
+  function handlePointerUp(event: PointerEvent): void {
+    if (
+      mode.type !== "highlighting" ||
+      !mode.selection ||
+      event.pointerId !== mode.selection.pointerId
+    ) {
       return;
     }
 
-    const { pageNumber, pageText, anchor, focus } = mode.selection;
+    const selection = mode.selection;
     mode.selection = null;
 
-    const rects = getSelectionRects(pageText, anchor, focus);
-    if (rects.length === 0) {
-      annotationStore.redrawPage(pageNumber);
+    const outcome = resolveSelection(selection);
+    if (outcome === "pending") {
+      setStatus(PAGE_TEXT_PENDING_STATUS_MESSAGE);
+    } else if (outcome === "unavailable") {
+      setStatus(NO_PAGE_TEXT_STATUS_MESSAGE);
+    }
+
+    const rects = selection.resolved
+      ? getSelectionRects(
+          selection.resolved.pageText,
+          selection.resolved.anchor,
+          selection.resolved.focus
+        )
+      : [];
+    if (!selection.resolved || rects.length === 0) {
+      annotationStore.redrawPage(selection.pageNumber);
       return;
     }
 
-    annotationStore.addHighlight(pageNumber, {
+    const { pageText, anchor, focus } = selection.resolved;
+    annotationStore.addHighlight(selection.pageNumber, {
       type: "highlight",
       color: HIGHLIGHT_COLOR,
       rects,
@@ -330,8 +401,12 @@ export function createAnnotator({
   }
 
   /** Drops an in-flight selection without leaving highlight mode. */
-  function cancelSelection(): void {
-    if (mode.type !== "highlighting" || !mode.selection) {
+  function handlePointerCancel(event: PointerEvent): void {
+    if (
+      mode.type !== "highlighting" ||
+      !mode.selection ||
+      event.pointerId !== mode.selection.pointerId
+    ) {
       return;
     }
 
@@ -366,7 +441,9 @@ export function createAnnotator({
 
   function handlePointerMove(event: PointerEvent): void {
     if (mode.type === "highlighting" && mode.selection) {
-      extendSelection(mode.selection, event);
+      if (event.pointerId === mode.selection.pointerId) {
+        extendSelection(mode.selection, event);
+      }
       return;
     }
 
@@ -644,7 +721,7 @@ export function createAnnotator({
   document.addEventListener("pointerdown", handlePointerDown);
   document.addEventListener("pointermove", handlePointerMove);
   document.addEventListener("pointerup", handlePointerUp);
-  document.addEventListener("pointercancel", cancelSelection);
+  document.addEventListener("pointercancel", handlePointerCancel);
   document.addEventListener("dblclick", handleDoubleClick);
   document.addEventListener("keydown", handleKeyDown);
   document.addEventListener("keyup", handleKeyUp);
@@ -702,7 +779,7 @@ export function createAnnotator({
       document.removeEventListener("pointerdown", handlePointerDown);
       document.removeEventListener("pointermove", handlePointerMove);
       document.removeEventListener("pointerup", handlePointerUp);
-      document.removeEventListener("pointercancel", cancelSelection);
+      document.removeEventListener("pointercancel", handlePointerCancel);
       document.removeEventListener("dblclick", handleDoubleClick);
       document.removeEventListener("keydown", handleKeyDown);
       document.removeEventListener("keyup", handleKeyUp);

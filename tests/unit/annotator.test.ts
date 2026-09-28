@@ -5,9 +5,11 @@ import {
   createAnnotator,
   HIGHLIGHT_MODE_STATUS_MESSAGE,
   NO_PAGE_TEXT_STATUS_MESSAGE,
+  PAGE_TEXT_PENDING_STATUS_MESSAGE,
+  type PageTextLookup,
   type Annotator,
 } from "../../src/annotator";
-import { layoutPageText, type PageText } from "../../src/domain/textSelection";
+import { layoutPageText } from "../../src/domain/textSelection";
 
 const PEN_SETTINGS = { color: "#e11d48", width: 5 };
 
@@ -56,7 +58,12 @@ const PAGE_TEXT = layoutPageText([
 function setup({
   zoom = 1,
   pageText = PAGE_TEXT,
-}: { zoom?: number; pageText?: PageText | null } = {}) {
+  getPageText = () => pageText,
+}: {
+  zoom?: number;
+  pageText?: PageTextLookup;
+  getPageText?: () => PageTextLookup;
+} = {}) {
   const statuses: string[] = [];
   const onTextModeChange = vi.fn();
   const onHighlightModeChange = vi.fn();
@@ -70,7 +77,7 @@ function setup({
     onTextDraftChange,
     onTextModeChange,
     onHighlightModeChange,
-    getPageText: () => pageText,
+    getPageText,
   });
 
   activeAnnotator = annotator;
@@ -101,10 +108,22 @@ function movePointer(clientX: number, clientY: number): void {
   );
 }
 
-function pointer(type: string, clientX: number, clientY: number): void {
-  (activeCanvas ?? document).dispatchEvent(
-    new MouseEvent(type, { clientX, clientY, button: 0, bubbles: true })
-  );
+/** jsdom has no PointerEvent, so a MouseEvent carries the pointer ID. */
+function pointer(
+  type: string,
+  clientX: number,
+  clientY: number,
+  pointerId = 1,
+  target: EventTarget = activeCanvas ?? document
+): void {
+  const event = new MouseEvent(type, {
+    clientX,
+    clientY,
+    button: 0,
+    bubbles: true,
+  });
+  Object.defineProperty(event, "pointerId", { value: pointerId });
+  target.dispatchEvent(event);
 }
 
 function dragHighlight(fromX: number, toX: number, y = 96): void {
@@ -332,10 +351,8 @@ describe("annotator interaction modes", () => {
 
     annotator.toggleHighlightMode();
     pointer("pointerdown", 101, 96);
-    document.dispatchEvent(
-      new MouseEvent("pointermove", { clientX: 900, clientY: 96 })
-    );
-    document.dispatchEvent(new MouseEvent("pointerup"));
+    pointer("pointermove", 900, 96, 1, document);
+    pointer("pointerup", 900, 96, 1, document);
 
     expect(store.getAnnotationsByPage().get(1)?.[0]).toMatchObject({
       text: "hello world",
@@ -392,5 +409,55 @@ describe("annotator interaction modes", () => {
 
     expect(store.getAnnotationCount()).toBe(0);
     expect(annotator.cancelHighlightMode()).toBe(true);
+  });
+
+  it("completes a drag that starts before the page text has loaded", () => {
+    let pageText: PageTextLookup = "pending";
+    const { annotator, store, statuses } = setup({
+      getPageText: () => pageText,
+    });
+
+    annotator.toggleHighlightMode();
+    pointer("pointerdown", 101, 96);
+    pointer("pointermove", 120, 96);
+    expect(statuses.at(-1)).toBe(HIGHLIGHT_MODE_STATUS_MESSAGE);
+
+    pageText = PAGE_TEXT;
+    pointer("pointermove", 149, 96);
+    pointer("pointerup", 149, 96);
+
+    expect(store.getAnnotationsByPage().get(1)?.[0]).toMatchObject({
+      text: "hello",
+    });
+  });
+
+  it("asks for a retry when the page text is still loading on release", () => {
+    const { annotator, store, statuses } = setup({ pageText: "pending" });
+
+    annotator.toggleHighlightMode();
+    dragHighlight(101, 149);
+
+    expect(store.getAnnotationCount()).toBe(0);
+    expect(statuses.at(-1)).toBe(PAGE_TEXT_PENDING_STATUS_MESSAGE);
+  });
+
+  it("lets only the pointer that started a selection move or end it", () => {
+    const { annotator, store } = setup();
+
+    annotator.toggleHighlightMode();
+    pointer("pointerdown", 101, 96, 1);
+    pointer("pointermove", 149, 96, 1);
+
+    // A second touch neither starts its own selection nor steers this one.
+    pointer("pointerdown", 161, 96, 2);
+    pointer("pointermove", 209, 96, 2);
+    pointer("pointerup", 209, 96, 2);
+    pointer("pointercancel", 209, 96, 2);
+    expect(store.getAnnotationCount()).toBe(0);
+
+    pointer("pointerup", 149, 96, 1);
+    expect(store.getAnnotationsByPage().get(1)).toEqual([
+      expect.objectContaining({ text: "hello" }),
+    ]);
   });
 });

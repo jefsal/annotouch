@@ -6,7 +6,7 @@ import {
 } from "./config";
 import { PREPARING_STATUS_PREFIX, type AppAction } from "./state";
 import { createAnnotationStore } from "../annotationStore";
-import { createAnnotator } from "../annotator";
+import { createAnnotator, type PageTextLookup } from "../annotator";
 import {
   EmptyPdfDocumentError,
   UnsupportedTextCharacterError,
@@ -79,8 +79,8 @@ export function createDocumentController({
 }: DocumentControllerOptions): DocumentController {
   const pageViewports = new Map<number, PageViewport>();
   const pageViews = new Map<number, PageView>();
-  /** Raw text runs, loaded once a page renders. */
-  const pageTextRuns = new Map<number, TextRun[]>();
+  /** Raw text runs, read once a page renders; `"pending"` until they arrive. */
+  const pageTextRuns = new Map<number, TextRun[] | "pending">();
   /** Glyph layouts, built from the runs the first time a page is highlighted. */
   const pageTextLayouts = new Map<number, PageText>();
   const measureText = createCanvasTextMeasurer();
@@ -112,12 +112,12 @@ export function createDocumentController({
     getPageText,
   });
 
-  function getPageText(pageNumber: number): PageText | null {
+  function getPageText(pageNumber: number): PageTextLookup {
     const cached = pageTextLayouts.get(pageNumber);
     if (cached) return cached;
 
     const runs = pageTextRuns.get(pageNumber);
-    if (!runs) return null;
+    if (!runs || runs === "pending") return runs ?? null;
 
     const layout = layoutPageText(runs, measureText);
     pageTextLayouts.set(pageNumber, layout);
@@ -130,15 +130,22 @@ export function createDocumentController({
     viewport: PageViewport,
     version: number
   ): Promise<void> {
+    // Set before the first await: the page is already registered with the
+    // annotator, and a drag that lands now must wait rather than be refused.
+    pageTextRuns.set(pageNumber, "pending");
+
     try {
       const runs = await getPdfPageTextRuns({ page, viewport });
       if (version !== documentVersion) return;
 
       pageTextRuns.set(pageNumber, runs);
     } catch (error) {
+      if (version !== documentVersion) return;
+
       // A page without readable text can still be drawn on; highlighting it
       // reports that there is no text instead.
-      if (version === documentVersion) console.error(error);
+      pageTextRuns.delete(pageNumber);
+      console.error(error);
     }
   }
 
