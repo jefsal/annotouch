@@ -18,10 +18,8 @@ components do not create.
 
 PDF bytes and annotations remain in the browser. The app has no upload service.
 
-`plan.md` records the completed refactor and an older Cloudflare deployment
-plan. Treat it as historical context, not an active task list. Confirm the
-current deployment state and requirements with the user before changing any
-infrastructure.
+Confirm the current deployment state and requirements with the user before
+changing any infrastructure.
 
 ## Commands
 
