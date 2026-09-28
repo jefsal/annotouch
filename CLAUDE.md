@@ -3,6 +3,11 @@
 Repository guidance for coding agents working on Annotouch. Keep this file
 factual, durable, and free of credentials or machine-specific details.
 
+`CONTRIBUTING.md` is the source of truth for contributor setup, workflow,
+testing expectations, pull requests, and AI-assisted contributions. This file
+only supplements it with implementation invariants for coding agents; do not
+duplicate contributor policy here.
+
 ## Current State
 
 Annotouch is a local-first PDF annotation app built with Preact, TypeScript,
@@ -13,10 +18,8 @@ components do not create.
 
 PDF bytes and annotations remain in the browser. The app has no upload service.
 
-`plan.md` records the completed refactor and an older Cloudflare deployment
-plan. Treat it as historical context, not an active task list. Confirm the
-current deployment state and requirements with the user before changing any
-infrastructure.
+Confirm the current deployment state and requirements with the user before
+changing any infrastructure.
 
 ## Commands
 
