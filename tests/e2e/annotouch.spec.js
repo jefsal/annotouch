@@ -730,6 +730,54 @@ test.describe("Annotouch browser QA", () => {
     );
   });
 
+  test("keeps the night toolbar legible over a bright PDF page", async ({
+    page,
+  }, testInfo) => {
+    await page.evaluate(() => {
+      localStorage.setItem("annotouch-theme", "night");
+    });
+    await page.reload();
+    await page.setViewportSize({ width: 540, height: 720 });
+
+    const fixturePath = await createPdfFixture(testInfo, 1, {
+      fileName: "bright-page.pdf",
+      pageColor: rgb(1, 1, 1),
+    });
+
+    await uploadPdf(page, fixturePath, 1);
+
+    // The shade under the toolbar is what seats light text on a white page.
+    expect(
+      await measureToolbarTextContrast(page, page.locator("#document-name"))
+    ).toBeGreaterThanOrEqual(4.5);
+  });
+
+  test("gives the toolbar a solid surface in forced colors", async ({
+    page,
+  }, testInfo) => {
+    await page.emulateMedia({ forcedColors: "active" });
+    await page.setViewportSize({ width: 540, height: 720 });
+
+    const fixturePath = await createPdfFixture(testInfo, 1, {
+      fileName: "dark-page.pdf",
+      pageColor: rgb(0, 0, 0),
+    });
+
+    await uploadPdf(page, fixturePath, 1);
+
+    await expect(page.locator(".toolbar")).not.toHaveCSS(
+      "background-color",
+      "rgba(0, 0, 0, 0)"
+    );
+    await expect(page.locator(".toolbar-progressive-blur")).toHaveCSS(
+      "display",
+      "none"
+    );
+    expect(
+      await measureToolbarTextContrast(page, page.locator("#document-name"))
+    ).toBeGreaterThanOrEqual(4.5);
+  });
+
   test("uses lowercase borderless shortcuts and a dedicated night palette", async ({
     page,
   }) => {
@@ -2131,6 +2179,63 @@ test.describe("Annotouch browser QA", () => {
     expect(measuredInk[2]).toBeGreaterThan(measuredInk[1] * 1.6);
   });
 });
+
+/**
+ * Contrast between a toolbar label's colour and the rendered toolbar backdrop
+ * behind it. The toolbar content is hidden before the screenshot so the sample
+ * is the frost, shade, and page alone.
+ */
+async function measureToolbarTextContrast(page, label) {
+  await expect(page.locator(".toolbar")).toHaveClass(/translate-y-0/);
+
+  const textColor = await label.evaluate((element) =>
+    getComputedStyle(element)
+      .color.match(/\d+(\.\d+)?/g)
+      .slice(0, 3)
+      .map(Number)
+  );
+  const box = await label.boundingBox();
+  expect(box).not.toBeNull();
+
+  await page.addStyleTag({
+    content:
+      ".toolbar > :not(.toolbar-progressive-blur) { visibility: hidden !important; }",
+  });
+  const screenshot = await page.screenshot({ clip: box });
+  const backdrop = await page.evaluate(async (base64) => {
+    const image = new Image();
+    image.src = `data:image/png;base64,${base64}`;
+    await image.decode();
+    const canvas = document.createElement("canvas");
+    canvas.width = image.width;
+    canvas.height = image.height;
+    const context = canvas.getContext("2d");
+    context.drawImage(image, 0, 0);
+    const { data } = context.getImageData(0, 0, image.width, image.height);
+    const sum = [0, 0, 0];
+    for (let index = 0; index < data.length; index += 4) {
+      sum[0] += data[index];
+      sum[1] += data[index + 1];
+      sum[2] += data[index + 2];
+    }
+    const pixels = data.length / 4;
+    return sum.map((channel) => channel / pixels);
+  }, screenshot.toString("base64"));
+
+  const luminance = ([red, green, blue]) => {
+    const [r, g, b] = [red, green, blue].map((channel) => {
+      const value = channel / 255;
+      return value <= 0.03928
+        ? value / 12.92
+        : ((value + 0.055) / 1.055) ** 2.4;
+    });
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  };
+  const [lighter, darker] = [luminance(textColor), luminance(backdrop)].sort(
+    (a, b) => b - a
+  );
+  return (lighter + 0.05) / (darker + 0.05);
+}
 
 async function createPdfFixture(
   testInfo,

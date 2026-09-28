@@ -249,6 +249,18 @@
 }
 
 @media (forced-colors: active) {
+  /*
+   * Forced colors discard gradients, which leaves the frost with no surface.
+   * Give the toolbar a solid system background its forced text can sit on.
+   */
+  .toolbar {
+    background-color: Canvas;
+  }
+
+  .toolbar-progressive-blur {
+    display: none;
+  }
+
   .file-control:has(.file-input:focus-visible) {
     outline-color: Highlight;
   }
