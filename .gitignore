@@ -18,3 +18,9 @@ Thumbs.db
 .idea/
 .vscode/
 *.swp
+
+# Inspo
+skills/
+
+# Plans
+plan.md
