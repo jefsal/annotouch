@@ -31,15 +31,19 @@ export function SettingsPanel({
         id="settings-button"
         class={cx(
           "fixed right-3.5 bottom-3.5 z-30 grid size-9 cursor-pointer",
-          "place-items-center rounded-pill border border-border-default",
+          "place-items-center rounded-pill border-none",
           "bg-(--color-overlay-surface) p-0 text-text-secondary",
-          "shadow-floating motion-safe:transition-[background,border-color,color]",
-          "motion-safe:duration-[140ms] motion-safe:ease-[ease] hover:border-border-strong",
+          // The token form rather than `shadow-floating`: Tailwind inlines a
+          // named shadow's literal value into the utility, so only
+          // `var(--shadow-floating)` picks up the night theme's darker
+          // elevation. Without a border that is the button's only edge.
+          "shadow-(--shadow-floating)",
+          "motion-safe:transition-[background,box-shadow,color]",
+          "motion-safe:duration-[140ms] motion-safe:ease-[ease]",
           "hover:bg-(--color-overlay-surface-strong) hover:text-text-primary",
-          "focus-visible:border-border-strong",
           "focus-visible:bg-(--color-overlay-surface-strong)",
           "focus-visible:text-text-primary",
-          "aria-expanded:border-border-strong aria-expanded:text-text-primary",
+          "aria-expanded:text-text-primary",
           "aria-expanded:bg-(--color-overlay-surface-strong)",
           "max-tight:right-4 max-tight:bottom-2.5 max-tight:size-10",
           FOCUS_RING

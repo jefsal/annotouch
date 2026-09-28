@@ -40,14 +40,14 @@ describe("preferences", () => {
     });
   });
 
-  it("defaults the background image on and validates its stored visibility", () => {
-    expect(getInitialBackgroundImageVisibility()).toBe(true);
-
-    localStorage.setItem("annotouch-background-image", "false");
+  it("defaults the background image off and validates its stored visibility", () => {
     expect(getInitialBackgroundImageVisibility()).toBe(false);
 
-    localStorage.setItem("annotouch-background-image", "invalid");
+    localStorage.setItem("annotouch-background-image", "true");
     expect(getInitialBackgroundImageVisibility()).toBe(true);
+
+    localStorage.setItem("annotouch-background-image", "invalid");
+    expect(getInitialBackgroundImageVisibility()).toBe(false);
   });
 
   it("persists the stable storage contract", () => {

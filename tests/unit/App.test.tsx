@@ -211,22 +211,22 @@ describe("App", () => {
 
       renderApp();
 
-      expect(document.documentElement.dataset.backgroundImage).toBe("visible");
+      expect(document.documentElement.dataset.backgroundImage).toBe("hidden");
 
       await user.click(screen.getByRole("button", { name: "settings" }));
       await user.click(screen.getByLabelText("show background image"));
 
-      expect(document.documentElement.dataset.backgroundImage).toBe("hidden");
-      expect(localStorage.getItem("annotouch-background-image")).toBe("false");
+      expect(document.documentElement.dataset.backgroundImage).toBe("visible");
+      expect(localStorage.getItem("annotouch-background-image")).toBe("true");
     });
 
     it("applies the stored background image preference", () => {
-      localStorage.setItem("annotouch-background-image", "false");
+      localStorage.setItem("annotouch-background-image", "true");
 
       renderApp();
 
-      expect(document.documentElement.dataset.backgroundImage).toBe("hidden");
-      expect(screen.getByLabelText("show background image")).not.toBeChecked();
+      expect(document.documentElement.dataset.backgroundImage).toBe("visible");
+      expect(screen.getByLabelText("show background image")).toBeChecked();
     });
   });
 
@@ -566,8 +566,8 @@ describe("App", () => {
 
       await user.keyboard("{Shift>}i{/Shift}");
 
-      expect(document.documentElement.dataset.backgroundImage).toBe("hidden");
-      expect(localStorage.getItem("annotouch-background-image")).toBe("false");
+      expect(document.documentElement.dataset.backgroundImage).toBe("visible");
+      expect(localStorage.getItem("annotouch-background-image")).toBe("true");
     });
 
     it("closes the settings panel on Escape and returns focus", async () => {

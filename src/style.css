@@ -7,6 +7,102 @@
  * can still override it.
  */
 @layer components {
+  /*
+   * A real blur radius cannot be interpolated over an element, so the toolbar
+   * crossfades overlapping backdrop-filter layers. Their soft masks keep the
+   * transitions continuous: strong at the top, clear at the bottom.
+   *
+   * The frost hangs past the toolbar's bottom edge so the fill, shade, and blur
+   * have room to ease out instead of stopping at a seam. Stops follow an
+   * ease-out curve; a linear ramp to zero still reads as an edge.
+   */
+  .toolbar > :not(.toolbar-progressive-blur) {
+    position: relative;
+    z-index: 1;
+  }
+
+  .toolbar-progressive-blur {
+    --toolbar-fade-overhang: 34px;
+
+    position: absolute;
+    z-index: 0;
+    inset: 0 0 calc(-1 * var(--toolbar-fade-overhang));
+    overflow: hidden;
+    pointer-events: none;
+    background:
+      linear-gradient(
+        to bottom,
+        var(--color-toolbar-shade) 0%,
+        var(--color-toolbar-shade) 30%,
+        color-mix(in srgb, var(--color-toolbar-shade) 82%, transparent) 45%,
+        color-mix(in srgb, var(--color-toolbar-shade) 55%, transparent) 60%,
+        color-mix(in srgb, var(--color-toolbar-shade) 28%, transparent) 75%,
+        color-mix(in srgb, var(--color-toolbar-shade) 10%, transparent) 88%,
+        transparent 100%
+      ),
+      linear-gradient(
+        to bottom,
+        var(--color-toolbar-surface) 0%,
+        color-mix(in srgb, var(--color-toolbar-surface) 78%, transparent) 35%,
+        color-mix(in srgb, var(--color-toolbar-surface) 45%, transparent) 58%,
+        color-mix(in srgb, var(--color-toolbar-surface) 18%, transparent) 78%,
+        color-mix(in srgb, var(--color-toolbar-surface) 5%, transparent) 90%,
+        transparent 100%
+      );
+  }
+
+  .toolbar-progressive-blur__layer {
+    position: absolute;
+    inset: -18px 0 0;
+    -webkit-backdrop-filter: blur(var(--toolbar-blur-radius));
+    backdrop-filter: blur(var(--toolbar-blur-radius));
+    -webkit-mask-image: var(--toolbar-blur-mask);
+    mask-image: var(--toolbar-blur-mask);
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+  }
+
+  .toolbar-progressive-blur__layer--strong {
+    --toolbar-blur-radius: 18px;
+    --toolbar-blur-mask: linear-gradient(
+      to bottom,
+      #000 0%,
+      #000 30%,
+      transparent 52%
+    );
+  }
+
+  .toolbar-progressive-blur__layer--medium {
+    --toolbar-blur-radius: 9px;
+    --toolbar-blur-mask: linear-gradient(
+      to bottom,
+      transparent 24%,
+      #000 42%,
+      #000 50%,
+      transparent 68%
+    );
+  }
+
+  .toolbar-progressive-blur__layer--soft {
+    --toolbar-blur-radius: 4px;
+    --toolbar-blur-mask: linear-gradient(
+      to bottom,
+      transparent 46%,
+      #000 62%,
+      transparent 82%
+    );
+  }
+
+  .toolbar-progressive-blur__layer--faint {
+    --toolbar-blur-radius: 1.5px;
+    --toolbar-blur-mask: linear-gradient(
+      to bottom,
+      transparent 64%,
+      #000 78%,
+      transparent 98%
+    );
+  }
+
   .commands-shortcuts-dialog::backdrop {
     background: rgba(23, 25, 35, 0.42);
     backdrop-filter: blur(2px);
