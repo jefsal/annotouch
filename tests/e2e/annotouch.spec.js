@@ -1922,7 +1922,11 @@ test.describe("Annotouch browser QA", () => {
     const exportedPath = testInfo.outputPath("highlight-annotated.pdf");
     await download.saveAs(exportedPath);
 
-    const [highlight] = await getPdfAnnotations(exportedPath);
+    const highlights = await getPdfAnnotations(exportedPath);
+
+    expect(highlights).toHaveLength(1);
+
+    const [highlight] = highlights;
     expect(highlight).toMatchObject({ subtype: "Highlight" });
     expect(highlight.contentsObj.str).toMatch(/^Annotouch/);
     expect(highlight.quadPoints.length).toBeGreaterThan(0);
@@ -2012,7 +2016,9 @@ test.describe("Annotouch browser QA", () => {
       );
 
       const exportedPath = await exportPdf(page, testInfo, "fox-reverse.pdf");
-      const [highlight] = await getPdfAnnotations(exportedPath);
+      const highlights = await getPdfAnnotations(exportedPath);
+      expect(highlights).toHaveLength(1);
+      const [highlight] = highlights;
       expect(highlight.contentsObj.str).toBe("fox");
       expectQuadsOverWords(highlight.quadPoints, [fox]);
     });
@@ -2062,7 +2068,9 @@ test.describe("Annotouch browser QA", () => {
       }
 
       const exportedPath = await exportPdf(page, testInfo, "passage.pdf");
-      const [highlight] = await getPdfAnnotations(exportedPath);
+      const highlights = await getPdfAnnotations(exportedPath);
+      expect(highlights).toHaveLength(1);
+      const [highlight] = highlights;
       expect(highlight.contentsObj.str).toBe(
         "brown fox jumps over the lazy dog"
       );
@@ -2144,7 +2152,9 @@ test.describe("Annotouch browser QA", () => {
         `highlight-rotated-${rotation}-annotated.pdf`
       );
       await download.saveAs(exportedPath);
-      const [highlight] = await getPdfAnnotations(exportedPath);
+      const highlights = await getPdfAnnotations(exportedPath);
+      expect(highlights).toHaveLength(1);
+      const [highlight] = highlights;
       expect(highlight.contentsObj.str).toBe("Annotouch QA fixture");
 
       page.once("dialog", (dialog) => dialog.accept());
