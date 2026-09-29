@@ -55,3 +55,33 @@ export function getCanvasPoint(
     y: y * (canvas.height / rect.height),
   };
 }
+
+/**
+ * Like `getCanvasPoint`, but clamps a pointer outside the canvas to its nearest
+ * edge, so a drag that started on a page keeps tracking after leaving it.
+ */
+export function getClampedCanvasPoint(
+  canvas: HTMLCanvasElement,
+  position: PointerPosition
+): Point | null {
+  if (canvas.width === 0 || canvas.height === 0) {
+    return null;
+  }
+
+  const rect = canvas.getBoundingClientRect();
+  if (rect.width === 0 || rect.height === 0) {
+    return null;
+  }
+
+  const x = clamp(position.clientX - rect.left, 0, rect.width);
+  const y = clamp(position.clientY - rect.top, 0, rect.height);
+
+  return {
+    x: x * (canvas.width / rect.width),
+    y: y * (canvas.height / rect.height),
+  };
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
+}

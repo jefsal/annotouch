@@ -1,12 +1,36 @@
 import type { AnnotationStore } from "./annotationStore";
+import { HIGHLIGHT_COLOR } from "./app/config";
 import { READY_STATUS_MESSAGE } from "./app/state";
-import { getCanvasPoint } from "./domain/canvasCoordinates";
+import {
+  getCanvasPoint,
+  getClampedCanvasPoint,
+} from "./domain/canvasCoordinates";
 import { distance } from "./domain/geometry";
+import {
+  getCaretAtPoint,
+  getSelectionRects,
+  getSelectionText,
+  type PageText,
+  type TextCaret,
+} from "./domain/textSelection";
 import type { PenSettings, Point, TextAnnotation } from "./domain/types";
 import { openTextEditor, type TextEditorSession } from "./textEditor";
 
 const MIN_POINT_DISTANCE = 0.75;
 const ERASER_TOLERANCE = 8;
+/** How far from the nearest glyph, in canvas pixels, a highlight may start. */
+const HIGHLIGHT_START_TOLERANCE = 24;
+
+export const HIGHLIGHT_MODE_STATUS_MESSAGE = "drag across text to highlight";
+export const NO_PAGE_TEXT_STATUS_MESSAGE = "no selectable text on this page";
+export const PAGE_TEXT_PENDING_STATUS_MESSAGE =
+  "page text is still loading; try again";
+
+/**
+ * A page's text layout; `"pending"` while it is still being read, or null when
+ * the page has none.
+ */
+export type PageTextLookup = PageText | "pending" | null;
 
 export interface AnnotatorPage {
   pageNumber: number;
@@ -20,6 +44,8 @@ export interface AnnotatorOptions {
   onStatusChange?: (message: string) => void;
   onTextDraftChange?: (hasDraft: boolean) => void;
   onTextModeChange?: (isActive: boolean) => void;
+  onHighlightModeChange?: (isActive: boolean) => void;
+  getPageText?: (pageNumber: number) => PageTextLookup;
 }
 
 export interface Annotator {
@@ -30,6 +56,10 @@ export interface Annotator {
   toggleTextMode(): boolean;
   /** Disarms text placement; returns whether anything was disarmed. */
   cancelTextMode(): boolean;
+  /** Arms or disarms text highlighting; returns whether it is now armed. */
+  toggleHighlightMode(): boolean;
+  /** Disarms text highlighting; returns whether anything was disarmed. */
+  cancelHighlightMode(): boolean;
   destroy(): void;
 }
 
@@ -38,6 +68,26 @@ interface ActiveStroke {
   color: string;
   width: number;
   points: Point[];
+}
+
+/**
+ * A drag in progress. The pointer positions are kept alongside the carets so a
+ * drag that starts before the page's text has loaded can resolve against it
+ * once it arrives, instead of being dropped.
+ */
+interface ActiveSelection {
+  /** The pointer that started the drag; no other pointer may move or end it. */
+  pointerId: number;
+  pageNumber: number;
+  anchorPoint: Point;
+  focusPoint: Point;
+  resolved: ResolvedSelection | null;
+}
+
+interface ResolvedSelection {
+  pageText: PageText;
+  anchor: TextCaret;
+  focus: TextCaret;
 }
 
 interface PagePointer {
@@ -54,14 +104,16 @@ interface PointerLike {
 
 /**
  * The interaction modes are mutually exclusive: holding the eraser ends a
- * stroke, drawing or erasing disarms text placement, and an open editor
- * swallows every other interaction.
+ * stroke, drawing or erasing disarms text placement and highlighting, and an
+ * open editor swallows every other interaction. Highlighting stays armed
+ * between selections until it is toggled off.
  */
 type InteractionMode =
   | { type: "idle" }
   | { type: "drawing"; stroke: ActiveStroke | null }
   | { type: "erasing" }
   | { type: "placingText" }
+  | { type: "highlighting"; selection: ActiveSelection | null }
   | { type: "editingText"; session: TextEditorSession };
 
 export function createAnnotator({
@@ -70,6 +122,8 @@ export function createAnnotator({
   onStatusChange,
   onTextDraftChange,
   onTextModeChange,
+  onHighlightModeChange,
+  getPageText = () => null,
 }: AnnotatorOptions): Annotator {
   const pages = new Map<number, AnnotatorPage>();
   /** The same pages keyed by shell, so a pointer target resolves without a scan. */
@@ -106,6 +160,7 @@ export function createAnnotator({
     { updateStatus = true } = {}
   ): void {
     if (isActive) {
+      disarmHighlighting();
       mode = { type: "placingText" };
     } else if (mode.type === "placingText") {
       mode = { type: "idle" };
@@ -137,7 +192,62 @@ export function createAnnotator({
     return true;
   }
 
+  function setHighlightModeActive(
+    isActive: boolean,
+    { updateStatus = true } = {}
+  ): void {
+    if (isActive) {
+      disarmTextPlacement();
+      mode = { type: "highlighting", selection: null };
+    } else if (mode.type === "highlighting") {
+      const { selection } = mode;
+      mode = { type: "idle" };
+
+      if (selection) {
+        annotationStore.redrawPage(selection.pageNumber);
+      }
+    }
+
+    onHighlightModeChange?.(isActive);
+
+    if (updateStatus) {
+      setStatus(
+        isActive ? HIGHLIGHT_MODE_STATUS_MESSAGE : READY_STATUS_MESSAGE
+      );
+    }
+  }
+
+  function toggleHighlightMode(): boolean {
+    if (pages.size === 0 || mode.type === "editingText") {
+      return false;
+    }
+
+    const nextActive = mode.type !== "highlighting";
+    setHighlightModeActive(nextActive);
+    return nextActive;
+  }
+
+  function cancelHighlightMode(): boolean {
+    if (mode.type !== "highlighting") {
+      return false;
+    }
+
+    setHighlightModeActive(false);
+    return true;
+  }
+
+  function disarmHighlighting(): void {
+    if (mode.type === "highlighting") {
+      setHighlightModeActive(false, { updateStatus: false });
+    }
+  }
+
   function handlePointerDown(event: PointerEvent): void {
+    if (mode.type === "highlighting") {
+      handleHighlightPointerDown(event);
+      return;
+    }
+
     if (
       mode.type !== "placingText" ||
       event.button !== 0 ||
@@ -153,9 +263,162 @@ export function createAnnotator({
     startTextEditor(pointer);
   }
 
+  function handleHighlightPointerDown(event: PointerEvent): void {
+    if (
+      mode.type !== "highlighting" ||
+      mode.selection ||
+      event.button !== 0 ||
+      isInteractiveTarget(event.target)
+    ) {
+      return;
+    }
+
+    const pointer = getPagePointer(event);
+    if (!pointer) return;
+
+    // Suppresses the browser's own text selection and drag behaviour.
+    event.preventDefault();
+
+    const selection: ActiveSelection = {
+      pointerId: event.pointerId,
+      pageNumber: pointer.pageNumber,
+      anchorPoint: pointer.point,
+      focusPoint: pointer.point,
+      resolved: null,
+    };
+
+    const outcome = resolveSelection(selection);
+    if (outcome === "unavailable") {
+      setStatus(NO_PAGE_TEXT_STATUS_MESSAGE);
+      return;
+    }
+    if (outcome === "missed") return;
+
+    mode.selection = selection;
+    setStatus(HIGHLIGHT_MODE_STATUS_MESSAGE);
+  }
+
+  /**
+   * Maps the selection's pointer positions onto the page's text. Once the
+   * anchor resolves it is kept; only the focus follows the pointer.
+   */
+  function resolveSelection(
+    selection: ActiveSelection
+  ): "resolved" | "pending" | "unavailable" | "missed" {
+    const pageText =
+      selection.resolved?.pageText ?? getPageText(selection.pageNumber);
+
+    if (pageText === "pending") return "pending";
+    if (!pageText || pageText.glyphs.length === 0) return "unavailable";
+
+    const anchor =
+      selection.resolved?.anchor ??
+      getCaretAtPoint(
+        pageText,
+        selection.anchorPoint,
+        HIGHLIGHT_START_TOLERANCE
+      );
+    if (anchor === null) return "missed";
+
+    selection.resolved = {
+      pageText,
+      anchor,
+      focus: getCaretAtPoint(pageText, selection.focusPoint) ?? anchor,
+    };
+    return "resolved";
+  }
+
+  /**
+   * Extends the selection on its own page even when the pointer has left it:
+   * the pointer is clamped to the page edge, so a drag past the last line
+   * still selects through the end of the page.
+   */
+  function extendSelection(
+    selection: ActiveSelection,
+    event: PointerEvent
+  ): void {
+    const page = pages.get(selection.pageNumber);
+    if (!page) return;
+
+    const point = getClampedCanvasPoint(page.annotationCanvas, event);
+    if (!point) return;
+
+    const previousFocus = selection.resolved?.focus;
+    selection.focusPoint = point;
+    if (resolveSelection(selection) !== "resolved" || !selection.resolved) {
+      return;
+    }
+
+    const { pageText, anchor, focus } = selection.resolved;
+    if (focus === previousFocus) return;
+
+    annotationStore.redrawPage(selection.pageNumber, {
+      type: "highlight",
+      color: HIGHLIGHT_COLOR,
+      rects: getSelectionRects(pageText, anchor, focus),
+      text: "",
+    });
+  }
+
+  function handlePointerUp(event: PointerEvent): void {
+    if (
+      mode.type !== "highlighting" ||
+      !mode.selection ||
+      event.pointerId !== mode.selection.pointerId
+    ) {
+      return;
+    }
+
+    const selection = mode.selection;
+    mode.selection = null;
+
+    const outcome = resolveSelection(selection);
+    if (outcome === "pending") {
+      setStatus(PAGE_TEXT_PENDING_STATUS_MESSAGE);
+    } else if (outcome === "unavailable") {
+      setStatus(NO_PAGE_TEXT_STATUS_MESSAGE);
+    }
+
+    const rects = selection.resolved
+      ? getSelectionRects(
+          selection.resolved.pageText,
+          selection.resolved.anchor,
+          selection.resolved.focus
+        )
+      : [];
+    if (!selection.resolved || rects.length === 0) {
+      annotationStore.redrawPage(selection.pageNumber);
+      return;
+    }
+
+    const { pageText, anchor, focus } = selection.resolved;
+    annotationStore.addHighlight(selection.pageNumber, {
+      type: "highlight",
+      color: HIGHLIGHT_COLOR,
+      rects,
+      text: getSelectionText(pageText, anchor, focus),
+    });
+  }
+
+  /** Drops an in-flight selection without leaving highlight mode. */
+  function handlePointerCancel(event: PointerEvent): void {
+    if (
+      mode.type !== "highlighting" ||
+      !mode.selection ||
+      event.pointerId !== mode.selection.pointerId
+    ) {
+      return;
+    }
+
+    const { pageNumber } = mode.selection;
+    mode.selection = null;
+    annotationStore.redrawPage(pageNumber);
+  }
+
   function handleDoubleClick(event: MouseEvent): void {
     if (
       mode.type === "placingText" ||
+      mode.type === "highlighting" ||
       mode.type === "editingText" ||
       event.button !== 0 ||
       isInteractiveTarget(event.target)
@@ -177,6 +440,13 @@ export function createAnnotator({
   }
 
   function handlePointerMove(event: PointerEvent): void {
+    if (mode.type === "highlighting" && mode.selection) {
+      if (event.pointerId === mode.selection.pointerId) {
+        extendSelection(mode.selection, event);
+      }
+      return;
+    }
+
     const pointer = getPagePointer(event);
 
     if (!pointer) {
@@ -220,12 +490,14 @@ export function createAnnotator({
 
     if (event.code === "Space") {
       disarmTextPlacement();
+      disarmHighlighting();
       handleDrawKeyDown(event);
       return;
     }
 
     if (event.code === "KeyE") {
       disarmTextPlacement();
+      disarmHighlighting();
       handleEraserKeyDown(event);
     }
   }
@@ -399,6 +671,10 @@ export function createAnnotator({
       mode = { type: "idle" };
     }
 
+    if (mode.type === "highlighting") {
+      mode.selection = null;
+    }
+
     annotationStore.redrawAll();
 
     if (mode.type === "idle") {
@@ -444,6 +720,8 @@ export function createAnnotator({
 
   document.addEventListener("pointerdown", handlePointerDown);
   document.addEventListener("pointermove", handlePointerMove);
+  document.addEventListener("pointerup", handlePointerUp);
+  document.addEventListener("pointercancel", handlePointerCancel);
   document.addEventListener("dblclick", handleDoubleClick);
   document.addEventListener("keydown", handleKeyDown);
   document.addEventListener("keyup", handleKeyUp);
@@ -456,7 +734,11 @@ export function createAnnotator({
     },
 
     unregisterPage(pageNumber) {
-      if (mode.type === "drawing" && mode.stroke?.pageNumber === pageNumber) {
+      if (
+        (mode.type === "drawing" && mode.stroke?.pageNumber === pageNumber) ||
+        (mode.type === "highlighting" &&
+          mode.selection?.pageNumber === pageNumber)
+      ) {
         cancelInteraction();
       }
 
@@ -480,10 +762,13 @@ export function createAnnotator({
 
       cancelInteraction();
       setTextModeActive(false, { updateStatus: false });
+      setHighlightModeActive(false, { updateStatus: false });
     },
 
     toggleTextMode,
     cancelTextMode,
+    toggleHighlightMode,
+    cancelHighlightMode,
 
     destroy() {
       closeEditor({ commit: false });
@@ -493,6 +778,8 @@ export function createAnnotator({
 
       document.removeEventListener("pointerdown", handlePointerDown);
       document.removeEventListener("pointermove", handlePointerMove);
+      document.removeEventListener("pointerup", handlePointerUp);
+      document.removeEventListener("pointercancel", handlePointerCancel);
       document.removeEventListener("dblclick", handleDoubleClick);
       document.removeEventListener("keydown", handleKeyDown);
       document.removeEventListener("keyup", handleKeyUp);

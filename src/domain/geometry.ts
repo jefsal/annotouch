@@ -1,3 +1,4 @@
+import { distanceToRect } from "./textSelection";
 import type {
   Annotation,
   Point,
@@ -15,6 +16,12 @@ export function isPointInAnnotation(
 ): boolean {
   if (annotation.type === "text") {
     return isPointInText(point, annotation, Math.min(tolerance, 4));
+  }
+
+  if (annotation.type === "highlight") {
+    return annotation.rects.some(
+      (rect) => distanceToRect(point, rect) <= tolerance
+    );
   }
 
   return isPointNearStroke(point, annotation, annotation.width / 2 + tolerance);

@@ -1,4 +1,11 @@
-import { PDFDocument } from "pdf-lib";
+import {
+  PDFArray,
+  PDFDict,
+  PDFHexString,
+  PDFName,
+  PDFNumber,
+  PDFDocument,
+} from "pdf-lib";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -73,6 +80,49 @@ describe("PDF export", () => {
     const exported = await PDFDocument.load(bytes);
     expect(exported.getPageCount()).toBe(1);
     expect(bytes.byteLength).toBeGreaterThan(0);
+  });
+
+  it("writes highlights as PDF highlight annotations", async () => {
+    // Flips y the way a PDF.js viewport does, so quad order is observable.
+    const flippedViewport: PdfViewport = {
+      rotation: 0,
+      convertToPdfPoint: (x, y) => [x, 300 - y],
+    };
+    const highlight: Annotation = {
+      id: "highlight-1",
+      type: "highlight",
+      color: "#facc15",
+      rects: [{ x: 10, y: 20, width: 100, height: 12 }],
+      // Contents is a Unicode string, so the Helvetica limit does not apply.
+      text: "naïve 😀",
+    };
+
+    const bytes = await buildAnnotatedPdf({
+      originalBytes: await createSourcePdf(),
+      annotationsByPage: new Map([[1, [highlight]]]),
+      pageViewports: new Map([[1, flippedViewport]]),
+      scale: 1,
+    });
+
+    const [page] = (await PDFDocument.load(bytes)).getPages();
+    const annotation = page?.node.Annots()?.lookup(0, PDFDict);
+    const numbers = (key: string) =>
+      annotation
+        ?.lookup(PDFName.of(key), PDFArray)
+        .asArray()
+        .map((value) => (value as PDFNumber).asNumber());
+
+    expect(annotation?.get(PDFName.of("Subtype"))).toBe(
+      PDFName.of("Highlight")
+    );
+    expect(numbers("QuadPoints")).toEqual([
+      10, 280, 110, 280, 10, 268, 110, 268,
+    ]);
+    expect(numbers("Rect")).toEqual([10, 268, 110, 280]);
+    expect(
+      annotation?.lookup(PDFName.of("Contents"), PDFHexString).decodeText()
+    ).toBe("naïve 😀");
+    expect(annotation?.lookup(PDFName.of("AP"), PDFDict)).toBeDefined();
   });
 
   it("rejects text outside the standard export font", async () => {

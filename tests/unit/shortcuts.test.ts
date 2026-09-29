@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   getColorShortcut,
   isBackgroundImageShortcut,
+  isHighlightShortcut,
   isKeyboardShortcutsShortcut,
   isNightModeShortcut,
   isTextShortcut,
@@ -67,5 +68,17 @@ describe("keyboard shortcuts", () => {
         keyboardEvent("I", { shiftKey: true, metaKey: true })
       )
     ).toBe(false);
+  });
+});
+
+describe("highlight shortcut", () => {
+  it("toggles on an unmodified h outside editable controls", () => {
+    const input = document.createElement("input");
+
+    expect(isHighlightShortcut(keyboardEvent("h"))).toBe(true);
+    expect(isHighlightShortcut(keyboardEvent("h", { metaKey: true }))).toBe(
+      false
+    );
+    expect(isHighlightShortcut(keyboardEvent("h", {}, input))).toBe(false);
   });
 });

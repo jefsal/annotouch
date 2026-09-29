@@ -41,6 +41,7 @@ export interface AppState {
   isSettingsOpen: boolean;
   isShortcutDialogOpen: boolean;
   isTextMode: boolean;
+  isHighlightMode: boolean;
   hasTextDraft: boolean;
   history: HistoryState;
 }
@@ -71,6 +72,7 @@ export type AppAction =
   | { type: "shortcuts/setOpen"; isOpen: boolean }
   | { type: "text/setMode"; isActive: boolean }
   | { type: "text/setDraft"; hasDraft: boolean }
+  | { type: "highlight/setMode"; isActive: boolean }
   | { type: "history/sync"; history: HistoryState };
 
 export const IDLE_STATUS_MESSAGE = "no PDF loaded";
@@ -134,6 +136,7 @@ export function createInitialState(
     isSettingsOpen: false,
     isShortcutDialogOpen: false,
     isTextMode: false,
+    isHighlightMode: false,
     hasTextDraft: false,
     history: { ...EMPTY_HISTORY },
   };
@@ -251,6 +254,11 @@ export function appReducer(state: AppState, action: AppAction): AppState {
         ? state
         : { ...state, isTextMode: action.isActive };
 
+    case "highlight/setMode":
+      return state.isHighlightMode === action.isActive
+        ? state
+        : { ...state, isHighlightMode: action.isActive };
+
     case "text/setDraft":
       return state.hasTextDraft === action.hasDraft
         ? state
@@ -271,6 +279,7 @@ function closeDocument(state: AppState): AppState {
     document: { status: "idle" },
     viewScale: DEFAULT_VIEW_SCALE,
     isTextMode: false,
+    isHighlightMode: false,
     hasTextDraft: false,
     history: { ...EMPTY_HISTORY },
   };
