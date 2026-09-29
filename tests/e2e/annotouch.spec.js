@@ -211,6 +211,12 @@ test.describe("Annotouch browser QA", () => {
     );
     await expect(themeToggle).toHaveCSS("cursor", "pointer");
     expect(themeToggleBox?.x).toBeLessThan(32);
+    // The progressive frost ends without a border or shadow seam.
+    await expect(page.locator(".toolbar")).toHaveCSS(
+      "border-bottom-width",
+      "0px"
+    );
+    await expect(page.locator(".toolbar")).toHaveCSS("box-shadow", "none");
 
     await page.keyboard.press("n");
     await expect(page.locator("html")).toHaveAttribute("data-theme", "night");
@@ -231,6 +237,12 @@ test.describe("Annotouch browser QA", () => {
       "color",
       "rgb(243, 244, 246)"
     );
+    await expect(page.locator(".toolbar")).toHaveCSS(
+      "border-bottom-width",
+      "0px"
+    );
+    await expect(page.locator(".toolbar")).toHaveCSS("box-shadow", "none");
+
     await expect(page.locator("body")).toHaveCSS(
       "background-color",
       "rgb(17, 24, 39)"
@@ -278,29 +290,17 @@ test.describe("Annotouch browser QA", () => {
     const body = page.locator("body");
     const backgroundImageToggle = page.getByLabel("show background image");
 
-    await expect(html).toHaveAttribute("data-background-image", "visible");
-    await expect(body).toHaveCSS("background-image", /url\(/);
+    // A first visit opens on the plain surface; the backdrop is opt-in.
+    await expect(html).toHaveAttribute("data-background-image", "hidden");
+    await expect(body).not.toHaveCSS("background-image", /url\(/);
 
     await page.getByRole("button", { name: "settings" }).click();
-    await expect(backgroundImageToggle).toBeChecked();
+    await expect(backgroundImageToggle).not.toBeChecked();
     await expect(backgroundImageToggle).toHaveAttribute(
       "aria-keyshortcuts",
       "Shift+I"
     );
-    await backgroundImageToggle.uncheck();
-
-    await expect(html).toHaveAttribute("data-background-image", "hidden");
-    await expect(body).not.toHaveCSS("background-image", /url\(/);
-    await expect
-      .poll(() =>
-        page.evaluate(() => localStorage.getItem("annotouch-background-image"))
-      )
-      .toBe("false");
-
-    await page.reload();
-    await expect(html).toHaveAttribute("data-background-image", "hidden");
-
-    await page.keyboard.press("Shift+i");
+    await backgroundImageToggle.check();
 
     await expect(html).toHaveAttribute("data-background-image", "visible");
     await expect(body).toHaveCSS("background-image", /url\(/);
@@ -309,6 +309,19 @@ test.describe("Annotouch browser QA", () => {
         page.evaluate(() => localStorage.getItem("annotouch-background-image"))
       )
       .toBe("true");
+
+    await page.reload();
+    await expect(html).toHaveAttribute("data-background-image", "visible");
+
+    await page.keyboard.press("Shift+i");
+
+    await expect(html).toHaveAttribute("data-background-image", "hidden");
+    await expect(body).not.toHaveCSS("background-image", /url\(/);
+    await expect
+      .poll(() =>
+        page.evaluate(() => localStorage.getItem("annotouch-background-image"))
+      )
+      .toBe("false");
   });
 
   test("opens and closes the settings overlay", async ({ page }) => {
@@ -324,7 +337,7 @@ test.describe("Annotouch browser QA", () => {
     await expect(settingsPanel).toBeVisible();
     await expect(settingsButton).toHaveAttribute("aria-expanded", "true");
     await expect(page.getByLabel("show undo/redo")).not.toBeChecked();
-    await expect(page.getByLabel("show background image")).toBeChecked();
+    await expect(page.getByLabel("show background image")).not.toBeChecked();
     await expect(settingsPanel.locator(".keyboard-shortcuts")).toHaveCount(0);
     await expect(
       settingsPanel.getByRole("button", {
@@ -645,6 +658,31 @@ test.describe("Annotouch browser QA", () => {
     await expect(settingsButton).toBeFocused();
   });
 
+  test("separates buttons with elevation instead of borders", async ({
+    page,
+  }, testInfo) => {
+    const fixturePath = await createPdfFixture(testInfo, 1);
+
+    await uploadPdf(page, fixturePath, 1);
+    await page.mouse.move(page.viewportSize().width / 2, 4);
+    await expect(page.locator(".toolbar")).toHaveCSS("opacity", "1");
+
+    // A filled control reads as raised: no outline, and a shadow that is
+    // actually painted rather than the composed no-op Tailwind starts from.
+    const exportButton = page.locator("#export-button");
+    await expect(exportButton).toHaveCSS("border-top-style", "none");
+    await expect(exportButton).toHaveCSS("box-shadow", /0px 1px 2px/);
+
+    const settingsButton = page.locator("#settings-button");
+    await expect(settingsButton).toHaveCSS("border-top-style", "none");
+    await expect(settingsButton).toHaveCSS("box-shadow", /0px 2px 8px/);
+
+    // Toolbar controls stay flat so the frosted backdrop reads through them.
+    const widthButton = page.locator("#width-button");
+    await expect(widthButton).toHaveCSS("border-top-style", "none");
+    await expect(widthButton).toHaveCSS("box-shadow", "none");
+  });
+
   test("keeps the light toolbar legible over a dark PDF page", async ({
     page,
   }, testInfo) => {
@@ -671,14 +709,73 @@ test.describe("Annotouch browser QA", () => {
     expect(titleBox.y + titleBox.height / 2).toBeLessThan(
       pageBox.y + pageBox.height
     );
-    await expect(toolbar).toHaveCSS(
-      "background-color",
-      "rgba(255, 255, 255, 0.74)"
-    );
+    await expect(toolbar).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+    const blurLayers = toolbar.locator(".toolbar-progressive-blur__layer");
+    await expect(blurLayers).toHaveCount(4);
+    await expect(
+      toolbar.locator(".toolbar-progressive-blur__layer--strong")
+    ).toHaveCSS("backdrop-filter", "blur(18px)");
+    await expect(
+      toolbar.locator(".toolbar-progressive-blur__layer--medium")
+    ).toHaveCSS("backdrop-filter", "blur(9px)");
+    await expect(
+      toolbar.locator(".toolbar-progressive-blur__layer--soft")
+    ).toHaveCSS("backdrop-filter", "blur(4px)");
+    await expect(
+      toolbar.locator(".toolbar-progressive-blur__layer--faint")
+    ).toHaveCSS("backdrop-filter", "blur(1.5px)");
     await expect(page.locator("#document-name")).toHaveCSS(
       "color",
       "rgb(23, 25, 35)"
     );
+  });
+
+  test("keeps the night toolbar legible over a bright PDF page", async ({
+    page,
+  }, testInfo) => {
+    await page.evaluate(() => {
+      localStorage.setItem("annotouch-theme", "night");
+    });
+    await page.reload();
+    await page.setViewportSize({ width: 540, height: 720 });
+
+    const fixturePath = await createPdfFixture(testInfo, 1, {
+      fileName: "bright-page.pdf",
+      pageColor: rgb(1, 1, 1),
+    });
+
+    await uploadPdf(page, fixturePath, 1);
+
+    // The shade under the toolbar is what seats light text on a white page.
+    expect(
+      await measureToolbarTextContrast(page, page.locator("#document-name"))
+    ).toBeGreaterThanOrEqual(4.5);
+  });
+
+  test("gives the toolbar a solid surface in forced colors", async ({
+    page,
+  }, testInfo) => {
+    await page.emulateMedia({ forcedColors: "active" });
+    await page.setViewportSize({ width: 540, height: 720 });
+
+    const fixturePath = await createPdfFixture(testInfo, 1, {
+      fileName: "dark-page.pdf",
+      pageColor: rgb(0, 0, 0),
+    });
+
+    await uploadPdf(page, fixturePath, 1);
+
+    await expect(page.locator(".toolbar")).not.toHaveCSS(
+      "background-color",
+      "rgba(0, 0, 0, 0)"
+    );
+    await expect(page.locator(".toolbar-progressive-blur")).toHaveCSS(
+      "display",
+      "none"
+    );
+    expect(
+      await measureToolbarTextContrast(page, page.locator("#document-name"))
+    ).toBeGreaterThanOrEqual(4.5);
   });
 
   test("uses lowercase borderless shortcuts and a dedicated night palette", async ({
@@ -2082,6 +2179,63 @@ test.describe("Annotouch browser QA", () => {
     expect(measuredInk[2]).toBeGreaterThan(measuredInk[1] * 1.6);
   });
 });
+
+/**
+ * Contrast between a toolbar label's colour and the rendered toolbar backdrop
+ * behind it. The toolbar content is hidden before the screenshot so the sample
+ * is the frost, shade, and page alone.
+ */
+async function measureToolbarTextContrast(page, label) {
+  await expect(page.locator(".toolbar")).toHaveClass(/translate-y-0/);
+
+  const textColor = await label.evaluate((element) =>
+    getComputedStyle(element)
+      .color.match(/\d+(\.\d+)?/g)
+      .slice(0, 3)
+      .map(Number)
+  );
+  const box = await label.boundingBox();
+  expect(box).not.toBeNull();
+
+  await page.addStyleTag({
+    content:
+      ".toolbar > :not(.toolbar-progressive-blur) { visibility: hidden !important; }",
+  });
+  const screenshot = await page.screenshot({ clip: box });
+  const backdrop = await page.evaluate(async (base64) => {
+    const image = new Image();
+    image.src = `data:image/png;base64,${base64}`;
+    await image.decode();
+    const canvas = document.createElement("canvas");
+    canvas.width = image.width;
+    canvas.height = image.height;
+    const context = canvas.getContext("2d");
+    context.drawImage(image, 0, 0);
+    const { data } = context.getImageData(0, 0, image.width, image.height);
+    const sum = [0, 0, 0];
+    for (let index = 0; index < data.length; index += 4) {
+      sum[0] += data[index];
+      sum[1] += data[index + 1];
+      sum[2] += data[index + 2];
+    }
+    const pixels = data.length / 4;
+    return sum.map((channel) => channel / pixels);
+  }, screenshot.toString("base64"));
+
+  const luminance = ([red, green, blue]) => {
+    const [r, g, b] = [red, green, blue].map((channel) => {
+      const value = channel / 255;
+      return value <= 0.03928
+        ? value / 12.92
+        : ((value + 0.055) / 1.055) ** 2.4;
+    });
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  };
+  const [lighter, darker] = [luminance(textColor), luminance(backdrop)].sort(
+    (a, b) => b - a
+  );
+  return (lighter + 0.05) / (darker + 0.05);
+}
 
 async function createPdfFixture(
   testInfo,

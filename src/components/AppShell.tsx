@@ -159,9 +159,9 @@ function Toolbar({
   return (
     <header
       class={cx(
-        `toolbar border-border-toolbar bg-toolbar-surface shadow-toolbar fixed
-        inset-x-0 top-0 z-20 flex min-h-16 items-end gap-2.5 border-b px-4 py-2.5
-        backdrop-blur-[10px] transition-[transform,opacity] duration-200 ease-out
+        `toolbar isolate fixed inset-x-0 top-0 z-20 flex min-h-16 items-end
+        gap-2.5 px-4 py-2.5
+        transition-[transform,opacity] duration-200 ease-out
         motion-reduce:transition-none max-compact:min-h-14 max-compact:gap-1.5
         max-compact:px-2 max-compact:py-2 max-tight:min-h-12
         max-tight:gap-[5px] max-tight:px-1.5 max-tight:py-1.5`,
@@ -170,6 +170,12 @@ function Toolbar({
           : "pointer-events-none -translate-y-full opacity-0"
       )}
     >
+      <div class="toolbar-progressive-blur" aria-hidden="true">
+        <span class="toolbar-progressive-blur__layer toolbar-progressive-blur__layer--strong" />
+        <span class="toolbar-progressive-blur__layer toolbar-progressive-blur__layer--medium" />
+        <span class="toolbar-progressive-blur__layer toolbar-progressive-blur__layer--soft" />
+        <span class="toolbar-progressive-blur__layer toolbar-progressive-blur__layer--faint" />
+      </div>
       <div
         class={cx(
           // Every toolbar item is one control height with its content centred,
@@ -204,7 +210,7 @@ function Toolbar({
       <label
         class={cx(
           "file-control text-text-muted grid size-9 flex-none cursor-pointer",
-          "place-items-center rounded-control border border-transparent bg-transparent",
+          "place-items-center rounded-control border-none bg-transparent",
           "hover:bg-surface/45 hover:text-text-primary max-tight:size-[34px]",
           state.isBusy && "cursor-default opacity-50"
         )}
@@ -377,8 +383,8 @@ function ZoomButton({
       id={id}
       variant="glass"
       class={cx(
-        "zoom-button h-[34px] w-7 min-w-0 rounded-none border-0 p-0",
-        "shadow-none hover:z-1 focus-visible:z-1",
+        "zoom-button h-[34px] w-7 min-w-0 rounded-none p-0",
+        "hover:z-1 focus-visible:z-1",
         TOOLBAR_CONTROL_TEXT
       )}
       title={label}

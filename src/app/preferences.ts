@@ -13,7 +13,12 @@ export const DEFAULT_TOOLBAR_SETTINGS: ToolbarSettings = {
   showHistoryControls: false,
 };
 
-export const DEFAULT_BACKGROUND_IMAGE_VISIBILITY = true;
+/**
+ * The photographic backdrop starts off. A first visit should open on the plain
+ * application surface; the image is opt-in from the settings panel and the
+ * choice persists from then on.
+ */
+export const DEFAULT_BACKGROUND_IMAGE_VISIBILITY = false;
 
 export function getInitialTheme(): Theme {
   const savedTheme = readStoredTheme();

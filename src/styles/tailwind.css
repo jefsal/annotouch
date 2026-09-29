@@ -89,6 +89,12 @@
    * while letting enough of the backdrop through for the blur to stay visible.
    */
   --color-toolbar-surface: rgba(255, 255, 255, 0.74);
+  /*
+   * A shade laid over the toolbar fill that is darkest at the top edge and fades
+   * out along with the blur. Light mode's white fill already carries dark text,
+   * so only night mode uses it, to seat light text on bright pages.
+   */
+  --color-toolbar-shade: transparent;
   --color-app-background-top: #ffffff;
   --color-app-scrim: rgba(255, 255, 255, 0.78);
   --color-surface-drop: #e8f0fe;
@@ -106,7 +112,6 @@
   --color-border-default: #c8cfda;
   --color-border-subtle: #d7dde6;
   --color-border-section: #e3e7ee;
-  --color-border-toolbar: #d9dee7;
   --color-border-status: #e0e5ec;
   --color-border-strong: #8a93a3;
   --color-border-placeholder: #d8dde5;
@@ -151,8 +156,15 @@
   --breakpoint-summary: 560px;
 
   /* Elevation */
-  --shadow-control: 0 1px 1px rgba(16, 24, 40, 0.03);
-  --shadow-toolbar: 0 1px 2px rgba(16, 24, 40, 0.04);
+  /*
+   * Buttons have no border, so `--shadow-control` is the only thing separating
+   * a filled control from the surface behind it. It has to stay readable on
+   * its own, and `--shadow-control-raised` is its hover state.
+   */
+  --shadow-control:
+    0 1px 2px rgba(16, 24, 40, 0.1), 0 1px 1px rgba(16, 24, 40, 0.06);
+  --shadow-control-raised:
+    0 2px 6px rgba(16, 24, 40, 0.14), 0 1px 2px rgba(16, 24, 40, 0.08);
   --shadow-swatch:
     inset 0 0 0 1px rgba(255, 255, 255, 0.36), 0 1px 2px rgba(16, 24, 40, 0.08);
   --shadow-floating: 0 2px 8px rgba(16, 24, 40, 0.08);
@@ -178,6 +190,7 @@ html[data-theme="night"] {
   --color-surface-raised: #1d212c;
   --color-surface-muted: #242936;
   --color-toolbar-surface: rgba(23, 25, 35, 0.25);
+  --color-toolbar-shade: rgba(5, 7, 12, 0.63);
   --color-app-background-top: #161d2b;
   --color-app-scrim: rgba(17, 24, 39, 0.82);
   --color-surface-drop: #1b2a44;
@@ -196,10 +209,19 @@ html[data-theme="night"] {
   --color-border-default: #343b49;
   --color-border-subtle: #2d3340;
   --color-border-section: #2d3340;
-  --color-border-toolbar: #343b49;
   --color-border-status: #2d3340;
   --color-border-strong: #4f5969;
   --color-border-placeholder: #343b49;
   --color-action-ring: #60a5fa;
   --color-selection-ring: #60a5fa;
+
+  /*
+   * Elevation is the only edge a button has, and the light-theme shadows are
+   * tuned against white. Over the dark surfaces they disappear, so night mode
+   * swaps in denser blacks for the tokens that carry a control's outline.
+   */
+  --shadow-control: 0 1px 2px rgba(0, 0, 0, 0.5), 0 1px 1px rgba(0, 0, 0, 0.32);
+  --shadow-control-raised:
+    0 2px 6px rgba(0, 0, 0, 0.55), 0 1px 2px rgba(0, 0, 0, 0.38);
+  --shadow-floating: 0 2px 8px rgba(0, 0, 0, 0.45);
 }

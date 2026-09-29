@@ -52,6 +52,13 @@ describe("AppShell", () => {
   it("renders the accessible empty application state", () => {
     renderShell(createInitialState());
 
+    expect(
+      document.querySelectorAll(".toolbar-progressive-blur__layer")
+    ).toHaveLength(4);
+    expect(document.querySelector(".toolbar-progressive-blur")).toHaveAttribute(
+      "aria-hidden",
+      "true"
+    );
     expect(document.querySelector(".toolbar")).toHaveClass(
       "fixed",
       "translate-y-0",
@@ -62,7 +69,7 @@ describe("AppShell", () => {
       screen.getByRole("region", { name: "pdf annotation workspace" })
     ).toBeInTheDocument();
     expect(screen.getByLabelText("show undo/redo")).not.toBeChecked();
-    expect(screen.getByLabelText("show background image")).toBeChecked();
+    expect(screen.getByLabelText("show background image")).not.toBeChecked();
     expect(screen.getByLabelText("open PDF")).toHaveAttribute(
       "accept",
       "application/pdf"
