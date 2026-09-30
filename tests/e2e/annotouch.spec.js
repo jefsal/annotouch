@@ -2019,7 +2019,11 @@ test.describe("Annotouch browser QA", () => {
     const exportedPath = testInfo.outputPath("highlight-annotated.pdf");
     await download.saveAs(exportedPath);
 
-    const [highlight] = await getPdfAnnotations(exportedPath);
+    const highlights = await getPdfAnnotations(exportedPath);
+
+    expect(highlights).toHaveLength(1);
+
+    const [highlight] = highlights;
     expect(highlight).toMatchObject({ subtype: "Highlight" });
     expect(highlight.contentsObj.str).toMatch(/^Annotouch/);
     expect(highlight.quadPoints.length).toBeGreaterThan(0);
@@ -2041,6 +2045,180 @@ test.describe("Annotouch browser QA", () => {
         return yellowest;
       }, band);
     expect(tint).toBeGreaterThan(40);
+  });
+
+  test.describe("highlight accuracy", () => {
+    test("highlights and exports only the selected word", async ({
+      page,
+    }, testInfo) => {
+      const passage = await createPassageFixture(testInfo);
+      await uploadPdf(page, passage.filePath, 1);
+      const word = await passage.measure(page);
+      const annotationCanvas = page.locator(".annotation-canvas").first();
+      const fox = word(0, "fox");
+
+      await page.keyboard.press("h");
+      await dragCanvas(page, annotationCanvas, fox.startPoint, fox.endPoint);
+
+      expectBandOverWord(
+        await getPaintedBounds(annotationCanvas, "painted"),
+        fox
+      );
+      for (const neighbour of [word(0, "brown"), word(0, "jumps")]) {
+        expect(await getCanvasCoverage(annotationCanvas, neighbour.box)).toBe(
+          0
+        );
+      }
+
+      const exportedPath = await exportPdf(page, testInfo, "fox.pdf");
+      const highlights = await getPdfAnnotations(exportedPath);
+      expect(highlights).toHaveLength(1);
+      expect(highlights[0].contentsObj.str).toBe("fox");
+      expectQuadsOverWords(highlights[0].quadPoints, [fox]);
+
+      // The exported annotation itself paints over the same word.
+      page.once("dialog", (dialog) => dialog.accept());
+      await uploadPdf(page, exportedPath, 1);
+      expectBandOverWord(
+        await getPaintedBounds(page.locator(".pdf-canvas").first(), "yellow"),
+        fox
+      );
+    });
+
+    test("trims the spaces around a word dragged right to left", async ({
+      page,
+    }, testInfo) => {
+      const passage = await createPassageFixture(testInfo);
+      await uploadPdf(page, passage.filePath, 1);
+      const word = await passage.measure(page);
+      const annotationCanvas = page.locator(".annotation-canvas").first();
+      const brown = word(0, "brown");
+      const fox = word(0, "fox");
+      const jumps = word(0, "jumps");
+      const midline = fox.startPoint.y;
+
+      // From the middle of the gap after "fox" back to the middle of the gap
+      // before it: both spaces are grabbed, and both must be trimmed.
+      await page.keyboard.press("h");
+      await dragCanvas(
+        page,
+        annotationCanvas,
+        { x: (fox.box.x + fox.box.width + jumps.box.x) / 2, y: midline },
+        { x: (brown.box.x + brown.box.width + fox.box.x) / 2, y: midline }
+      );
+
+      expectBandOverWord(
+        await getPaintedBounds(annotationCanvas, "painted"),
+        fox
+      );
+
+      const exportedPath = await exportPdf(page, testInfo, "fox-reverse.pdf");
+      const highlights = await getPdfAnnotations(exportedPath);
+      expect(highlights).toHaveLength(1);
+      const [highlight] = highlights;
+      expect(highlight.contentsObj.str).toBe("fox");
+      expectQuadsOverWords(highlight.quadPoints, [fox]);
+    });
+
+    test("highlights and exports exactly a passage that spans lines", async ({
+      page,
+    }, testInfo) => {
+      const passage = await createPassageFixture(testInfo);
+      await uploadPdf(page, passage.filePath, 1);
+      const word = await passage.measure(page);
+      const annotationCanvas = page.locator(".annotation-canvas").first();
+      const firstLine = spanWords(word(0, "brown"), word(0, "over"));
+      const secondLine = spanWords(word(1, "the"), word(1, "dog"));
+
+      await page.keyboard.press("h");
+      await dragCanvas(
+        page,
+        annotationCanvas,
+        word(0, "brown").startPoint,
+        word(1, "dog").endPoint
+      );
+
+      expectBandOverWord(
+        await getPaintedBounds(
+          annotationCanvas,
+          "painted",
+          passage.lineStrip(0)
+        ),
+        firstLine
+      );
+      expectBandOverWord(
+        await getPaintedBounds(
+          annotationCanvas,
+          "painted",
+          passage.lineStrip(1)
+        ),
+        secondLine
+      );
+      for (const unselected of [
+        word(0, "quick"),
+        word(1, "while"),
+        word(2, "highlights"),
+      ]) {
+        expect(await getCanvasCoverage(annotationCanvas, unselected.box)).toBe(
+          0
+        );
+      }
+
+      const exportedPath = await exportPdf(page, testInfo, "passage.pdf");
+      const highlights = await getPdfAnnotations(exportedPath);
+      expect(highlights).toHaveLength(1);
+      const [highlight] = highlights;
+      expect(highlight.contentsObj.str).toBe(
+        "brown fox jumps over the lazy dog"
+      );
+      expectQuadsOverWords(highlight.quadPoints, [firstLine, secondLine]);
+    });
+
+    test("exports each highlight with its own text, in order", async ({
+      page,
+    }, testInfo) => {
+      const passage = await createPassageFixture(testInfo);
+      await uploadPdf(page, passage.filePath, 1);
+      const word = await passage.measure(page);
+      const annotationCanvas = page.locator(".annotation-canvas").first();
+      const selections = [
+        word(2, "passage"),
+        word(0, "quick"),
+        word(1, "lazy"),
+      ];
+
+      await page.keyboard.press("h");
+      for (const selection of selections) {
+        await dragCanvas(
+          page,
+          annotationCanvas,
+          selection.startPoint,
+          selection.endPoint
+        );
+      }
+
+      // Undo drops only the latest highlight, and redo restores it.
+      await page.keyboard.press("ControlOrMeta+z");
+      expect(await getCanvasCoverage(annotationCanvas, selections[2].box)).toBe(
+        0
+      );
+      expect(
+        await getCanvasCoverage(annotationCanvas, selections[1].box)
+      ).toBeGreaterThan(0.5);
+      await page.keyboard.press("ControlOrMeta+Shift+z");
+
+      const exportedPath = await exportPdf(page, testInfo, "several.pdf");
+      const highlights = await getPdfAnnotations(exportedPath);
+
+      expect(highlights.map((highlight) => highlight.contentsObj.str)).toEqual([
+        "passage",
+        "quick",
+        "lazy",
+      ]);
+      highlights.forEach((highlight, index) => {
+        expectQuadsOverWords(highlight.quadPoints, [selections[index]]);
+      });
+    });
   });
 
   for (const rotation of [90, 180, 270]) {
@@ -2071,7 +2249,9 @@ test.describe("Annotouch browser QA", () => {
         `highlight-rotated-${rotation}-annotated.pdf`
       );
       await download.saveAs(exportedPath);
-      const [highlight] = await getPdfAnnotations(exportedPath);
+      const highlights = await getPdfAnnotations(exportedPath);
+      expect(highlights).toHaveLength(1);
+      const [highlight] = highlights;
       expect(highlight.contentsObj.str).toBe("Annotouch QA fixture");
 
       page.once("dialog", (dialog) => dialog.accept());
@@ -2744,39 +2924,256 @@ async function getFirstTextLine(filePath) {
   }
 }
 
-/** Bounds of painted (any alpha) or yellow-tinted pixels on a canvas. */
-async function getPaintedBounds(canvas, mode) {
-  const bounds = await canvas.evaluate((element, mode) => {
-    const { width, height } = element;
-    const data = element
-      .getContext("2d")
-      .getImageData(0, 0, width, height).data;
-    let left = width;
-    let top = height;
-    let right = -1;
-    let bottom = -1;
+/**
+ * Bounds of painted (any alpha) or yellow-tinted pixels on a canvas, optionally
+ * searched only within a canvas-space region. Right and bottom are exclusive.
+ */
+async function getPaintedBounds(canvas, mode, region = null) {
+  const bounds = await canvas.evaluate(
+    (element, { mode, region }) => {
+      const originX = Math.round(region?.x ?? 0);
+      const originY = Math.round(region?.y ?? 0);
+      const width = Math.round(region?.width ?? element.width);
+      const height = Math.round(region?.height ?? element.height);
+      const data = element
+        .getContext("2d")
+        .getImageData(originX, originY, width, height).data;
+      let left = Number.POSITIVE_INFINITY;
+      let top = Number.POSITIVE_INFINITY;
+      let right = -1;
+      let bottom = -1;
 
-    for (let index = 0; index < data.length; index += 4) {
-      const isHit =
-        mode === "painted"
-          ? data[index + 3] > 0
-          : data[index] - data[index + 2] > 40;
-      if (!isHit) continue;
+      for (let index = 0; index < data.length; index += 4) {
+        const isHit =
+          mode === "painted"
+            ? data[index + 3] > 0
+            : data[index] - data[index + 2] > 40;
+        if (!isHit) continue;
 
-      const pixel = index / 4;
-      const px = pixel % width;
-      const py = Math.floor(pixel / width);
-      left = Math.min(left, px);
-      top = Math.min(top, py);
-      right = Math.max(right, px);
-      bottom = Math.max(bottom, py);
-    }
+        const pixel = index / 4;
+        const px = originX + (pixel % width);
+        const py = originY + Math.floor(pixel / width);
+        left = Math.min(left, px);
+        top = Math.min(top, py);
+        right = Math.max(right, px + 1);
+        bottom = Math.max(bottom, py + 1);
+      }
 
-    return right < 0 ? null : { left, top, right, bottom };
-  }, mode);
+      return right < 0 ? null : { left, top, right, bottom };
+    },
+    { mode, region }
+  );
 
   expect(bounds).not.toBeNull();
   return bounds;
+}
+
+const PASSAGE_LINES = [
+  "The quick brown fox jumps over",
+  "the lazy dog while the annotator",
+  "highlights a passage of text.",
+];
+const PASSAGE_FONT_SIZE = 14;
+const PASSAGE_LEFT = 36;
+const PASSAGE_LINE_PITCH = 20;
+const PASSAGE_PAGE_SIZE = { width: 420, height: 300 };
+const PASSAGE_RENDER_SCALE = 1.5;
+// Helvetica's cap height is about 0.72 em and its descenders reach 0.21 em.
+const HELVETICA_CAP_HEIGHT = 0.72;
+const HELVETICA_DESCENT = 0.21;
+/** Letters within a word are never this far apart; spaces always are. */
+const WORD_GAP = 4;
+/** Slack between a glyph's advance box and its ink, in canvas pixels. */
+const WORD_EDGE_TOLERANCE = 3;
+
+/**
+ * A white page of dark Helvetica text. Once it is open, `measure` locates
+ * every word from the ink PDF.js actually painted, so assertions compare the
+ * highlight against what the reader sees rather than against the app's own
+ * glyph-width estimate.
+ */
+async function createPassageFixture(testInfo) {
+  const pdfDoc = await PDFDocument.create();
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  const pdfPage = pdfDoc.addPage([
+    PASSAGE_PAGE_SIZE.width,
+    PASSAGE_PAGE_SIZE.height,
+  ]);
+  const baselines = PASSAGE_LINES.map(
+    (_, index) => 240 - index * PASSAGE_LINE_PITCH
+  );
+
+  PASSAGE_LINES.forEach((line, index) => {
+    pdfPage.drawText(line, {
+      x: PASSAGE_LEFT,
+      y: baselines[index],
+      size: PASSAGE_FONT_SIZE,
+      font,
+      color: rgb(0.1, 0.1, 0.1),
+    });
+  });
+
+  const filePath = await writeRawFixture(
+    testInfo,
+    "passage.pdf",
+    Buffer.from(await pdfDoc.save())
+  );
+  const toCanvas = (points) => points * PASSAGE_RENDER_SCALE;
+  const baselineOf = (lineIndex) =>
+    toCanvas(PASSAGE_PAGE_SIZE.height - baselines[lineIndex]);
+
+  /** A full-width strip that holds one line and none of its neighbours. */
+  const lineStrip = (lineIndex) => {
+    const pitch = toCanvas(PASSAGE_LINE_PITCH);
+    return {
+      x: 0,
+      y: baselineOf(lineIndex) - pitch * 0.75,
+      width: toCanvas(PASSAGE_PAGE_SIZE.width),
+      height: pitch,
+    };
+  };
+
+  return {
+    filePath,
+    lineStrip,
+
+    async measure(page) {
+      const pdfCanvas = page.locator(".pdf-canvas").first();
+      const inkByLine = [];
+
+      for (const [lineIndex, line] of PASSAGE_LINES.entries()) {
+        const spans = await getInkSpans(pdfCanvas, lineStrip(lineIndex));
+        expect(spans).toHaveLength(line.split(" ").length);
+        inkByLine.push(spans);
+      }
+
+      return (lineIndex, word) => {
+        const words = PASSAGE_LINES[lineIndex].split(" ");
+        const wordIndex = words.indexOf(word);
+        expect(wordIndex).toBeGreaterThanOrEqual(0);
+
+        const { left, right } = inkByLine[lineIndex][wordIndex];
+        const baseline = baselineOf(lineIndex);
+        const top =
+          baseline - toCanvas(PASSAGE_FONT_SIZE * HELVETICA_CAP_HEIGHT);
+        const bottom =
+          baseline + toCanvas(PASSAGE_FONT_SIZE * HELVETICA_DESCENT);
+        const midline = baseline - toCanvas(PASSAGE_FONT_SIZE * 0.3);
+
+        return {
+          box: { x: left, y: top, width: right - left, height: bottom - top },
+          // One pixel inside the word's ink, so the carets land on its edges.
+          startPoint: { x: left + 1, y: midline },
+          endPoint: { x: right - 1, y: midline },
+        };
+      };
+    },
+  };
+}
+
+/**
+ * Horizontal runs of dark pixels in a canvas-space region, split wherever a
+ * gap is wide enough to be a space: one span per rendered word.
+ */
+async function getInkSpans(canvas, region) {
+  return canvas.evaluate(
+    (element, { region, wordGap }) => {
+      const x = Math.round(region.x);
+      const y = Math.round(region.y);
+      const width = Math.round(region.width);
+      const height = Math.round(region.height);
+      const data = element
+        .getContext("2d")
+        .getImageData(x, y, width, height).data;
+      const spans = [];
+
+      for (let column = 0; column < width; column += 1) {
+        let isInk = false;
+        for (let row = 0; row < height && !isInk; row += 1) {
+          const index = (row * width + column) * 4;
+          isInk = data[index] + data[index + 1] + data[index + 2] < 384;
+        }
+        if (!isInk) continue;
+
+        const last = spans.at(-1);
+        if (last && x + column - last.right < wordGap) {
+          last.right = x + column + 1;
+        } else {
+          spans.push({ left: x + column, right: x + column + 1 });
+        }
+      }
+
+      return spans;
+    },
+    { region, wordGap: WORD_GAP }
+  );
+}
+
+/** The box from the start of one word to the end of another on its line. */
+function spanWords(first, last) {
+  return {
+    box: {
+      x: first.box.x,
+      y: first.box.y,
+      width: last.box.x + last.box.width - first.box.x,
+      height: first.box.height,
+    },
+  };
+}
+
+/**
+ * A band must cover the word's full width, stop at its edges rather than
+ * spilling into the neighbouring spaces, and stay within its own line.
+ */
+function expectBandOverWord(bounds, { box }) {
+  expect(Math.abs(bounds.left - box.x)).toBeLessThan(WORD_EDGE_TOLERANCE);
+  expect(Math.abs(bounds.right - (box.x + box.width))).toBeLessThan(
+    WORD_EDGE_TOLERANCE
+  );
+  expect(bounds.top).toBeLessThanOrEqual(box.y + 1);
+  expect(bounds.bottom).toBeGreaterThanOrEqual(box.y + box.height - 1);
+  expect(bounds.bottom - bounds.top).toBeLessThan(
+    PASSAGE_LINE_PITCH * PASSAGE_RENDER_SCALE
+  );
+}
+
+/** Checks exported QuadPoints, in PDF points, against canvas-space boxes. */
+function expectQuadsOverWords(quadPoints, words) {
+  expect(quadPoints).toHaveLength(words.length * 8);
+
+  words.forEach((word, index) => {
+    const quad = quadPoints.slice(index * 8, index * 8 + 8);
+    const xs = [quad[0], quad[2], quad[4], quad[6]];
+    const ys = [quad[1], quad[3], quad[5], quad[7]];
+    const toCanvasY = (y) =>
+      (PASSAGE_PAGE_SIZE.height - y) * PASSAGE_RENDER_SCALE;
+
+    // Top-left, top-right, bottom-left, bottom-right, as readers expect.
+    expect(quad[1]).toBe(quad[3]);
+    expect(quad[5]).toBe(quad[7]);
+    expect(quad[1]).toBeGreaterThan(quad[5]);
+    expect(quad[0]).toBeLessThan(quad[2]);
+
+    expectBandOverWord(
+      {
+        left: Math.min(...xs) * PASSAGE_RENDER_SCALE,
+        right: Math.max(...xs) * PASSAGE_RENDER_SCALE,
+        top: toCanvasY(Math.max(...ys)),
+        bottom: toCanvasY(Math.min(...ys)),
+      },
+      word
+    );
+  });
+}
+
+async function exportPdf(page, testInfo, fileName) {
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    clickToolbarControl(page, page.getByRole("button", { name: "export" })),
+  ]);
+  const exportedPath = testInfo.outputPath(fileName);
+  await download.saveAs(exportedPath);
+  return exportedPath;
 }
 
 async function getPdfAnnotations(filePath) {
