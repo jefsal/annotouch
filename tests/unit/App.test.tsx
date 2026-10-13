@@ -531,6 +531,51 @@ describe("App", () => {
 
       expect(document.activeElement).toBe(settingsButton);
     });
+
+    it("types into the search field without running shortcuts", async () => {
+      const user = userEvent.setup();
+
+      renderApp();
+      loadDocument();
+
+      const controller = getController();
+      const initialTheme = document.documentElement.dataset.theme;
+
+      await user.keyboard("{Meta>}k{/Meta}");
+      const search = screen.getByRole("searchbox", {
+        name: "search shortcuts",
+      });
+      await user.click(search);
+      await user.keyboard("nt3 w{Shift>}I{/Shift}");
+
+      expect(search).toHaveValue("nt3 wI");
+      expect(document.documentElement.dataset.theme).toBe(initialTheme);
+      expect(controller.toggleTextMode).not.toHaveBeenCalled();
+      expect(screen.getByRole("button", { name: "green pen" })).toHaveAttribute(
+        "aria-pressed",
+        "false"
+      );
+    });
+
+    it("closes with command k from the search field", async () => {
+      const user = userEvent.setup();
+
+      renderApp();
+
+      const settingsButton = screen.getByRole("button", { name: "settings" });
+
+      await user.keyboard("{Meta>}k{/Meta}");
+      await user.click(
+        screen.getByRole("searchbox", { name: "search shortcuts" })
+      );
+      await user.keyboard("{Meta>}k{/Meta}");
+
+      expect(
+        document.querySelector<HTMLDialogElement>("#commands-shortcuts-dialog")
+          ?.open
+      ).toBe(false);
+      expect(document.activeElement).toBe(settingsButton);
+    });
   });
 
   describe("keyboard shortcuts", () => {
