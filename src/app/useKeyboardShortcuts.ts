@@ -5,6 +5,7 @@ import {
   isHighlightShortcut,
   isKeyboardShortcutsShortcut,
   isNightModeShortcut,
+  isShortcutSearchTarget,
   isTextShortcut,
   isUndoRedoShortcut,
   isWidthShortcut,
@@ -22,6 +23,7 @@ export interface KeyboardShortcutHandlers {
   onToggleTheme: () => void;
   onToggleBackgroundImage: () => void;
   onOpenShortcuts: () => void;
+  onCloseShortcuts: () => void;
   /** Returns true when Escape was consumed by the application. */
   onEscape: () => boolean;
 }
@@ -36,12 +38,31 @@ export function useKeyboardShortcuts(handlers: KeyboardShortcutHandlers): void {
 
   useLayoutEffect(() => {
     const suppressWhileDialogOpen = (event: KeyboardEvent): void => {
-      if (!handlersRef.current.isShortcutDialogOpen || event.key === "Escape") {
+      const current = handlersRef.current;
+
+      // Escape closes the dialog natively and Tab moves focus within it; no
+      // application listener acts on either key.
+      if (
+        !current.isShortcutDialogOpen ||
+        event.key === "Escape" ||
+        event.key === "Tab"
+      ) {
         return;
       }
 
-      event.preventDefault();
       event.stopImmediatePropagation();
+
+      if (event.type === "keydown" && isKeyboardShortcutsShortcut(event)) {
+        event.preventDefault();
+        current.onCloseShortcuts();
+        return;
+      }
+
+      // The search field still needs keys' default actions so the user can
+      // type; propagation is already stopped, so no shortcut sees them.
+      if (!isShortcutSearchTarget(event.target)) {
+        event.preventDefault();
+      }
     };
 
     const handleKeyDown = (event: KeyboardEvent): void => {

@@ -155,4 +155,100 @@ describe("ShortcutDialog", () => {
 
     expect(renderedKeys).toEqual(expect.arrayContaining([...chord.keys]));
   });
+
+  describe("search", () => {
+    function getSearch(): HTMLInputElement {
+      return screen.getByRole<HTMLInputElement>("searchbox", {
+        name: "search shortcuts",
+      });
+    }
+
+    it("hides groups without a matching command", async () => {
+      const user = userEvent.setup();
+
+      render(<ShortcutDialog isOpen onClose={vi.fn()} />);
+      await user.type(getSearch(), "undo");
+
+      expect(screen.getByRole("heading", { name: "history" })).toBeVisible();
+      expect(screen.queryByRole("heading", { name: "tools" })).toBeNull();
+      expect(
+        getDialog().querySelectorAll(".commands-shortcuts-row")
+      ).toHaveLength(1);
+      expect(screen.getByRole("status")).toBeEmptyDOMElement();
+    });
+
+    it("announces when nothing matches", async () => {
+      const user = userEvent.setup();
+
+      render(<ShortcutDialog isOpen onClose={vi.fn()} />);
+      await user.type(getSearch(), "  xyzzy ");
+
+      expect(screen.getByRole("status")).toHaveTextContent(
+        'no shortcuts match "xyzzy"'
+      );
+      expect(screen.getByRole("status")).toHaveAttribute("aria-live", "polite");
+      expect(
+        getDialog().querySelectorAll(".commands-shortcuts-group")
+      ).toHaveLength(0);
+    });
+
+    it("clears the query when the dialog reopens", async () => {
+      const user = userEvent.setup();
+      const onClose = vi.fn();
+      const { rerender } = render(<ShortcutDialog isOpen onClose={onClose} />);
+
+      await user.type(getSearch(), "xyzzy");
+      rerender(<ShortcutDialog isOpen={false} onClose={onClose} />);
+      rerender(<ShortcutDialog isOpen onClose={onClose} />);
+
+      expect(getSearch()).toHaveValue("");
+      expect(screen.getByRole("status")).toBeEmptyDOMElement();
+      expect(screen.getByRole("heading", { name: "tools" })).toBeVisible();
+    });
+
+    it("clears the query after a native close", async () => {
+      const user = userEvent.setup();
+      const onClose = vi.fn();
+      const { rerender } = render(<ShortcutDialog isOpen onClose={onClose} />);
+
+      await user.type(getSearch(), "xyzzy");
+      // Escape closes the native dialog before the parent withdraws the flag.
+      getDialog().close();
+      rerender(<ShortcutDialog isOpen={false} onClose={onClose} />);
+      rerender(<ShortcutDialog isOpen onClose={onClose} />);
+
+      expect(getSearch()).toHaveValue("");
+    });
+
+    it("cycles Tab between the search field and the close button", () => {
+      render(<ShortcutDialog isOpen onClose={vi.fn()} />);
+
+      const search = getSearch();
+      const close = screen.getByRole("button", {
+        name: "close keyboard shortcuts",
+      });
+
+      search.focus();
+      expect(fireEvent.keyDown(search, { key: "Tab" })).toBe(false);
+      expect(close).toHaveFocus();
+
+      fireEvent.keyDown(close, { key: "Tab" });
+      expect(search).toHaveFocus();
+
+      fireEvent.keyDown(search, { key: "Tab", shiftKey: true });
+      expect(close).toHaveFocus();
+
+      fireEvent.keyDown(close, { key: "Tab", shiftKey: true });
+      expect(search).toHaveFocus();
+    });
+
+    it("moves autofocus from the close button to the search field", () => {
+      render(<ShortcutDialog isOpen onClose={vi.fn()} />);
+
+      expect(getSearch()).toHaveAttribute("autofocus");
+      expect(
+        screen.getByRole("button", { name: "close keyboard shortcuts" })
+      ).not.toHaveAttribute("autofocus");
+    });
+  });
 });

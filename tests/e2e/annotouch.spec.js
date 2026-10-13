@@ -481,18 +481,26 @@ test.describe("Annotouch browser QA", () => {
       page.getByRole("dialog", { name: "keyboard shortcuts" })
     ).toBeVisible();
 
-    // The close button is the viewer's only focusable control, so a trapped
-    // focus ring can never leave it in either direction.
-    expect(await walkTabOrder(page, 4)).toEqual(
-      Array(4).fill("#commands-shortcuts-close")
-    );
+    // The search field and the close button are the viewer's only stops, so
+    // focus alternates between them in either direction and never leaves.
+    await expect(page.locator("#commands-shortcuts-search")).toBeFocused();
+    expect(await walkTabOrder(page, 4)).toEqual([
+      "#commands-shortcuts-close",
+      "#commands-shortcuts-search",
+      "#commands-shortcuts-close",
+      "#commands-shortcuts-search",
+    ]);
 
     const backwards = [];
     for (let step = 0; step < 3; step += 1) {
       await page.keyboard.press("Shift+Tab");
       backwards.push(await describeFocusedElement(page));
     }
-    expect(backwards).toEqual(Array(3).fill("#commands-shortcuts-close"));
+    expect(backwards).toEqual([
+      "#commands-shortcuts-close",
+      "#commands-shortcuts-search",
+      "#commands-shortcuts-close",
+    ]);
 
     await expect(page.locator("#settings-button")).not.toBeFocused();
   });
@@ -644,7 +652,9 @@ test.describe("Annotouch browser QA", () => {
     };
 
     await openViewer();
-    await expect(closeButton).toBeFocused();
+    await expect(
+      dialog.getByRole("searchbox", { name: "search shortcuts" })
+    ).toBeFocused();
     await closeButton.click();
     await expect(dialog).toBeHidden();
     await expect(settingsButton).toBeFocused();
@@ -870,17 +880,35 @@ test.describe("Annotouch browser QA", () => {
     await page.getByRole("button", { name: "view keyboard shortcuts" }).click();
 
     const selectedColor = page.getByRole("button", { name: "red pen" });
+    const search = page.getByRole("searchbox", { name: "search shortcuts" });
     const initialTheme = await page.locator("html").getAttribute("data-theme");
     const initialBackgroundImage = await page
       .locator("html")
       .getAttribute("data-background-image");
-    await page.keyboard.press("5");
-    await page.keyboard.press("n");
-    await page.keyboard.press("Shift+i");
-    await page.keyboard.press("Control+Z");
-    await page.keyboard.press("Control+Shift+Z");
-    await page.keyboard.press("Space");
-    await page.keyboard.press("e");
+
+    // Keys reach the focused search field as text, not as commands, and are
+    // equally inert once focus moves to the close button.
+    const pressSingleKeyShortcuts = async () => {
+      for (const key of ["5", "n", "t", "w", "Shift+i", "Space", "e"]) {
+        await page.keyboard.press(key);
+      }
+    };
+    const pressHistoryShortcuts = async () => {
+      await page.keyboard.press("Control+Z");
+      await page.keyboard.press("Control+Shift+Z");
+    };
+
+    await expect(search).toBeFocused();
+    await pressSingleKeyShortcuts();
+    await expect(search).toHaveValue(/^5ntwi e$/i);
+    // Inside the field these are the field's own text undo and redo.
+    await pressHistoryShortcuts();
+    await page.keyboard.press("Tab");
+    await expect(
+      page.getByRole("button", { name: "close keyboard shortcuts" })
+    ).toBeFocused();
+    await pressSingleKeyShortcuts();
+    await pressHistoryShortcuts();
 
     await expect(selectedColor).toHaveAttribute("aria-pressed", "true");
     await expect(page.locator("html")).toHaveAttribute(
@@ -895,7 +923,74 @@ test.describe("Annotouch browser QA", () => {
       "1/1 pages | 1 annotation"
     );
     await expectCanvasHasColor(annotationCanvas, PEN_COLORS[1]);
-    await expect(page.getByRole("status")).toHaveText("ready");
+    // The open viewer has its own status region for empty search results.
+    await expect(page.locator("#status")).toHaveText("ready");
+  });
+
+  test("filters the shortcuts viewer as you type", async ({ page }) => {
+    await page.keyboard.press("Meta+k");
+
+    const dialog = page.getByRole("dialog", { name: "keyboard shortcuts" });
+    const search = dialog.getByRole("searchbox", { name: "search shortcuts" });
+    const rows = dialog.locator(".commands-shortcuts-row");
+    const status = dialog.getByRole("status");
+
+    await expect(search).toBeFocused();
+    await expect(rows).toHaveCount(15);
+
+    await search.fill("dark");
+    await expect(rows).toHaveCount(1);
+    await expect(rows.locator("dt")).toHaveText("toggle night mode");
+    await expect(dialog.locator("h3")).toHaveText(["appearance"]);
+
+    await search.fill("cmd+shift+z");
+    await expect(rows.locator("dt")).toHaveText(["redo"]);
+
+    await search.fill("COLORS ");
+    await expect(dialog.locator("h3")).toHaveText(["colors"]);
+    await expect(rows).toHaveCount(PEN_COLORS.length);
+
+    await search.fill("xyzzy");
+    await expect(rows).toHaveCount(0);
+    await expect(status).toHaveText('no shortcuts match "xyzzy"');
+
+    // A query never holds Escape back from closing, and is gone on reopen.
+    // Settings focus confirms the app saw the close, not just the browser.
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeHidden();
+    await expect(page.getByRole("button", { name: "settings" })).toBeFocused();
+
+    await page.keyboard.press("Meta+k");
+    await expect(search).toBeFocused();
+    await expect(search).toHaveValue("");
+    await expect(rows).toHaveCount(15);
+    await expect(status).toBeEmpty();
+  });
+
+  test("closes the shortcuts viewer with command k from the search field", async ({
+    page,
+  }) => {
+    const settingsButton = page.getByRole("button", { name: "settings" });
+    const dialog = page.getByRole("dialog", { name: "keyboard shortcuts" });
+    const search = dialog.getByRole("searchbox", { name: "search shortcuts" });
+
+    await settingsButton.click();
+    await page.getByRole("button", { name: "view keyboard shortcuts" }).click();
+    await expect(search).toBeFocused();
+    await search.pressSequentially("undo");
+
+    await page.keyboard.press("Meta+k");
+    await expect(dialog).toBeHidden();
+    await expect(settingsButton).toBeFocused();
+
+    await page.keyboard.press("Meta+k");
+    await expect(dialog).toBeVisible();
+    await page.keyboard.press("Tab");
+    await expect(
+      dialog.getByRole("button", { name: "close keyboard shortcuts" })
+    ).toBeFocused();
+    await page.keyboard.press("Meta+k");
+    await expect(dialog).toBeHidden();
   });
 
   test("keeps the shortcuts viewer contained and scrollable at narrow sizes", async ({

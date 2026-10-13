@@ -185,6 +185,7 @@ export function App({ root }: AppProps) {
     onToggleTheme: toggleTheme,
     onToggleBackgroundImage: toggleBackgroundImage,
     onOpenShortcuts: openShortcuts,
+    onCloseShortcuts: closeShortcuts,
     onEscape: () => {
       const didCancelToolMode = Boolean(
         controllerRef.current?.cancelTextMode() ||

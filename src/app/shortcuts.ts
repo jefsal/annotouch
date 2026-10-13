@@ -4,6 +4,8 @@ export interface ShortcutCommand {
   label: string;
   keys: string[];
   alternateKeys?: string[];
+  /** Extra search terms for the shortcut dialog; never displayed. */
+  aliases?: string[];
 }
 
 export interface ShortcutGroup {
@@ -19,8 +21,8 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
   {
     label: "tools",
     commands: [
-      { label: "draw", keys: ["space"] },
-      { label: "erase", keys: ["e"] },
+      { label: "draw", keys: ["space"], aliases: ["pen", "stroke"] },
+      { label: "erase", keys: ["e"], aliases: ["delete", "remove"] },
       { label: "text", keys: ["t"] },
       { label: "highlight text", keys: ["h"] },
       { label: "stroke width", keys: ["w"] },
@@ -36,7 +38,11 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
   {
     label: "appearance",
     commands: [
-      { label: "toggle night mode", keys: ["n"] },
+      {
+        label: "toggle night mode",
+        keys: ["n"],
+        aliases: ["dark", "theme"],
+      },
       { label: "toggle background image", keys: ["shift", "i"] },
     ],
   },
@@ -52,6 +58,77 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
     ],
   },
 ];
+
+/**
+ * Group names only match once the query is this long, so that a letter or two
+ * does not pull in whole groups that merely contain it.
+ */
+export const MIN_GROUP_QUERY_LENGTH = 3;
+
+export const SHORTCUT_SEARCH_ID = "commands-shortcuts-search";
+
+const KEY_TOKEN_ALIASES = new Map([
+  ["cmd", "⌘"],
+  ["command", "⌘"],
+  ["meta", "⌘"],
+  ["control", "ctrl"],
+]);
+
+/**
+ * Narrows the shortcut list for the dialog's search field, keeping group and
+ * command order. Labels, aliases, and group names match by substring; keys
+ * only match whole tokens, so `shift+i` finds a chord but `e` does not match
+ * every key that contains an e.
+ */
+export function filterShortcutGroups(
+  groups: ShortcutGroup[],
+  query: string
+): ShortcutGroup[] {
+  const normalizedQuery = query.trim().toLowerCase();
+  if (!normalizedQuery) {
+    return groups;
+  }
+
+  const keyTokens = normalizedQuery
+    .split(/[\s+]+/)
+    .filter(Boolean)
+    .map((token) => KEY_TOKEN_ALIASES.get(token) ?? token);
+
+  return groups.flatMap((group) => {
+    if (
+      normalizedQuery.length >= MIN_GROUP_QUERY_LENGTH &&
+      group.label.toLowerCase().includes(normalizedQuery)
+    ) {
+      return [group];
+    }
+
+    const commands = group.commands.filter((command) =>
+      commandMatches(command, normalizedQuery, keyTokens)
+    );
+
+    return commands.length > 0 ? [{ ...group, commands }] : [];
+  });
+}
+
+function commandMatches(
+  command: ShortcutCommand,
+  normalizedQuery: string,
+  keyTokens: string[]
+): boolean {
+  const terms = [command.label, ...(command.aliases ?? [])];
+  if (terms.some((term) => term.toLowerCase().includes(normalizedQuery))) {
+    return true;
+  }
+
+  // Every token must belong to the same chord; a query never mixes a
+  // command's keys with its alternate keys.
+  return (
+    keyTokens.length > 0 &&
+    [command.keys, command.alternateKeys ?? []].some((chord) =>
+      keyTokens.every((token) => chord.includes(token))
+    )
+  );
+}
 
 export function isUndoRedoShortcut(event: KeyboardEvent): boolean {
   return (
@@ -126,8 +203,14 @@ export function isKeyboardShortcutsShortcut(event: KeyboardEvent): boolean {
     !event.shiftKey &&
     !event.repeat &&
     event.key.toLowerCase() === "k" &&
-    !isEditableTarget(event.target)
+    // The dialog's own search field is the one editable control that may
+    // still toggle the dialog; every other shortcut stays off while typing.
+    (isShortcutSearchTarget(event.target) || !isEditableTarget(event.target))
   );
+}
+
+export function isShortcutSearchTarget(target: EventTarget | null): boolean {
+  return target instanceof Element && target.id === SHORTCUT_SEARCH_ID;
 }
 
 export function isEditableTarget(target: EventTarget | null): boolean {
