@@ -1,0 +1,15 @@
+http://:8080 {
+	bind 127.0.0.1
+	root * {$ANNOTOUCH_ROOT:/var/www/annotouch/current}
+	encode zstd gzip
+	header X-Content-Type-Options nosniff
+
+	@assets path /assets/*
+	header @assets Cache-Control "public, max-age=31536000, immutable"
+	@pages not path /assets/*
+	header @pages Cache-Control "no-cache"
+	@workers path *.mjs
+	header @workers Content-Type text/javascript
+
+	file_server
+}

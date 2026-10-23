@@ -86,3 +86,8 @@ Bug reports, feature proposals, documentation fixes, accessibility work, and
 code contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) before
 opening a pull request. Report suspected vulnerabilities privately according to
 [SECURITY.md](SECURITY.md).
+
+## Deployment
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) for serving the production build on an Ubuntu
+mini PC through Cloudflare Tunnel.
