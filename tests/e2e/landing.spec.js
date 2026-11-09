@@ -70,12 +70,15 @@ test.describe("landing page", () => {
   test("loads the headline font and dither artwork", async ({ page }) => {
     await page.goto(LANDING, { waitUntil: "networkidle" });
 
-    expect(
-      await page.evaluate(async () => {
-        await document.fonts.ready;
-        return document.fonts.check('600 88px "Inter Tight Variable"');
-      })
-    ).toBe(true);
+    // fonts.check() also returns true when no matching face is registered, so
+    // look for a loaded face rather than relying on it alone.
+    const loadedFamilies = await page.evaluate(async () => {
+      await document.fonts.ready;
+      return [...document.fonts]
+        .filter((face) => face.status === "loaded")
+        .map((face) => face.family.replaceAll('"', ""));
+    });
+    expect(loadedFamilies).toContain("Inter Tight Variable");
 
     const dither = page.locator('img[src*="dither-signal"]').first();
     expect(await dither.evaluate((image) => image.naturalWidth)).toBe(318);
