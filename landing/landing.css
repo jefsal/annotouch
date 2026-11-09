@@ -1,0 +1,55 @@
+@layer theme, base, components, utilities;
+
+/* Self-hosted so the page, like the app, makes no third-party requests. */
+@import "@fontsource-variable/inter-tight/wght.css";
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/preflight.css" layer(base);
+@import "tailwindcss/utilities.css" layer(utilities) source(none);
+
+@source "./index.html";
+
+@theme {
+  --font-display: "Inter Tight Variable", system-ui, sans-serif;
+  --font-sans: system-ui, sans-serif;
+  --font-mono:
+    ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
+
+  --color-ink: #111111;
+  --color-ink-hover: #333333;
+  --color-muted: #555555;
+  --color-line: #dcdcdc;
+  --color-rule: #e8e8e8;
+  --color-signal: #2458ff;
+}
+
+/* Sections share the design's 1120px column; the nav runs slightly wider. */
+@utility page-gutter {
+  padding-inline: max(clamp(16px, 4vw, 32px), calc((100% - 1120px) / 2));
+}
+
+@utility nav-gutter {
+  padding-inline: max(clamp(16px, 4vw, 32px), calc((100% - 1200px) / 2));
+}
+
+@layer base {
+  body {
+    min-width: 320px;
+    background: #ffffff;
+    color: #000000;
+    font-synthesis: none;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  a:focus-visible {
+    outline: 2px solid var(--color-signal);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
+  }
+}

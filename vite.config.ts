@@ -4,6 +4,14 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   plugins: [preact(), tailwindcss()],
+  build: {
+    rollupOptions: {
+      input: {
+        app: "index.html",
+        landing: "landing/index.html",
+      },
+    },
+  },
   test: {
     environment: "jsdom",
     include: ["tests/unit/**/*.test.{ts,tsx}"],

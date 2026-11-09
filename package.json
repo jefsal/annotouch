@@ -2,6 +2,7 @@
   "name": "annotouch",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -17,6 +18,7 @@
     "test:e2e:headed": "playwright test --headed"
   },
   "dependencies": {
+    "@fontsource-variable/inter-tight": "^5.3.0",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^4.10.38",
     "preact": "^10.29.7"

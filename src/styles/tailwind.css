@@ -3,6 +3,9 @@
 @import "tailwindcss/theme.css" layer(theme);
 @import "tailwindcss/utilities.css" layer(utilities);
 
+/* The landing page builds its own stylesheet from landing/landing.css. */
+@source not "../../landing";
+
 /*
  * Base resets live in @layer base so utilities win. Anything left unlayered
  * (style.css) outranks every Tailwind utility regardless of source order.

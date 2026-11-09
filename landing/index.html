@@ -1,0 +1,333 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light" />
+    <meta
+      name="description"
+      content="Annotate your PDF without your trackpad. Hold Space to draw. Free, open source, and your PDF never leaves the browser."
+    />
+    <link rel="icon" href="/favicon-pointer.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="./landing.css" />
+    <title>Annotouch: annotate your PDF without your trackpad</title>
+  </head>
+  <body>
+    <header
+      class="nav-gutter flex min-h-[88px] items-center justify-between gap-6 border-b border-rule"
+    >
+      <a
+        href="./"
+        class="flex items-center gap-2.5"
+        aria-label="Annotouch home"
+      >
+        <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true">
+          <path d="M4 21L12 5H16L8 21H4Z" fill="#000" />
+          <path d="M14 21L18 13L22 21H14Z" fill="#000" />
+        </svg>
+        <span
+          class="hidden text-[23px] leading-7 font-semibold tracking-[-0.04em] min-[360px]:inline"
+        >
+          annotouch
+        </span>
+      </a>
+      <nav
+        aria-label="Primary"
+        class="hidden gap-8 text-sm leading-[18px] text-muted md:flex"
+      >
+        <a class="transition-colors hover:text-black" href="#how-it-works">
+          How it works
+        </a>
+        <a class="transition-colors hover:text-black" href="#features">
+          Features
+        </a>
+        <a
+          class="transition-colors hover:text-black"
+          href="https://github.com/jefsal/annotouch"
+          rel="noreferrer"
+          target="_blank"
+        >
+          GitHub <span aria-hidden="true">↗</span>
+        </a>
+      </nav>
+      <div class="flex items-center gap-6 text-sm leading-[18px]">
+        <p class="hidden lg:block">Free. No sign-up.</p>
+        <a
+          class="rounded-md bg-ink px-[18px] py-3 whitespace-nowrap text-white transition-colors hover:bg-ink-hover"
+          href="../"
+        >
+          Open Annotouch <span aria-hidden="true">↗</span>
+        </a>
+      </div>
+    </header>
+
+    <main>
+      <section
+        class="relative flex flex-col items-center gap-6 overflow-clip px-4 pt-14 pb-14 min-[900px]:h-[392px] min-[900px]:pt-20 min-[900px]:pb-16"
+      >
+        <h1
+          class="text-center font-display text-[min(88px,10vw)] leading-none font-semibold tracking-[-0.065em] text-black"
+        >
+          Annotate your pdf<br />
+          without your trackpad
+        </h1>
+        <div
+          class="relative z-10 flex flex-wrap items-center justify-center gap-3 text-sm leading-[18px]"
+        >
+          <a
+            class="flex h-12 items-center gap-7 rounded-md bg-ink px-[22px] font-medium text-white transition-colors hover:bg-ink-hover"
+            href="../"
+          >
+            Start annotating <span aria-hidden="true">↗</span>
+          </a>
+          <a
+            class="flex h-12 items-center gap-4 rounded-md border border-line px-[22px] text-black transition-colors hover:border-ink"
+            href="#how-it-works"
+          >
+            See how it works <span aria-hidden="true">↓</span>
+          </a>
+        </div>
+        <img
+          alt=""
+          class="mt-4 h-auto opacity-50 min-[900px]:absolute min-[900px]:top-[256px] min-[900px]:left-[calc(50%-620px)] min-[900px]:mt-0"
+          height="114"
+          src="./dither-signal.svg"
+          width="318"
+        />
+        <img
+          alt=""
+          class="absolute top-[250px] left-[calc(50%+302px)] hidden h-auto opacity-35 min-[900px]:block"
+          height="114"
+          src="./dither-signal.svg"
+          width="318"
+        />
+      </section>
+
+      <section id="how-it-works" class="page-gutter scroll-mt-6 pb-[72px]">
+        <div
+          aria-label="The Annotouch editor with design-notes.pdf open. A heading is underlined and a passage is circled in blue freehand ink. A hint reads: hold Space to draw, release to pause."
+          class="overflow-clip rounded-xl border border-line bg-[#F6F6F6]"
+          role="img"
+        >
+          <div
+            class="flex h-14 items-center justify-between border-b border-[#E4E4E4] bg-white px-4 text-[13px] leading-4 sm:px-6"
+          >
+            <div class="flex items-center gap-3">
+              <span class="size-[7px] rounded-full bg-signal"></span>
+              <span class="text-black">design-notes.pdf</span>
+              <span class="hidden text-[#777] sm:inline">/ 4 pages</span>
+            </div>
+            <div class="flex items-center gap-6 text-muted">
+              <span class="hidden sm:inline">↶</span>
+              <span class="hidden sm:inline">↷</span>
+              <span class="hidden sm:inline">100%</span>
+              <span
+                class="rounded-[5px] border border-[#E0E0E0] px-3 py-[7px] text-ink"
+              >
+                Export PDF ↓
+              </span>
+            </div>
+          </div>
+
+          <div class="relative md:-mb-0.5">
+            <svg class="absolute size-0" aria-hidden="true">
+              <defs>
+                <g id="preview-document">
+                  <rect
+                    fill="#fff"
+                    height="379"
+                    stroke="#E5E5E5"
+                    width="689"
+                    x="214.5"
+                    y="20.5"
+                  />
+                  <text
+                    class="fill-[#777] font-mono text-[10px] tracking-[0.08em]"
+                    x="271"
+                    y="75"
+                  >
+                    FIELD NOTES — 001
+                  </text>
+                  <text
+                    class="fill-black text-[32px] font-medium tracking-[-0.04em]"
+                    x="271"
+                    y="127"
+                  >
+                    Good ideas need room.
+                  </text>
+                  <g class="fill-[#707070] text-[14px]">
+                    <text x="271" y="170.5">
+                      The best tools make the space between a thought and its
+                      expression
+                    </text>
+                    <text x="271" y="195.5">
+                      feel a little smaller. Start with a blank margin. Follow
+                      your curiosity.
+                    </text>
+                    <text x="271" y="220.5">
+                      Leave yourself a note. Make the connection.
+                    </text>
+                  </g>
+                  <g
+                    fill="none"
+                    stroke="#2458FF"
+                    stroke-linecap="round"
+                    stroke-width="2.5"
+                    transform="translate(250 96)"
+                  >
+                    <path
+                      d="M20 47C110 43 255 42 377 46M25 52C180 50 290 53 357 50M415 108C430 94 463 96 476 112C491 139 445 157 423 136C397 110 451 77 487 80M466 81L487 79L480 100"
+                    />
+                    <path
+                      d="M15 155C100 105 115 188 180 141C212 120 242 130 267 141"
+                    />
+                  </g>
+                </g>
+              </defs>
+            </svg>
+
+            <svg
+              aria-hidden="true"
+              class="hidden h-auto w-full md:block"
+              viewBox="0 0 1118 420"
+            >
+              <use href="#preview-document" />
+              <g>
+                <rect
+                  fill="#fff"
+                  height="207"
+                  rx="8"
+                  stroke="#E3E3E3"
+                  width="51"
+                  x="26.5"
+                  y="72.5"
+                />
+                <rect
+                  fill="#EDF2FF"
+                  height="34"
+                  rx="5"
+                  width="26"
+                  x="39"
+                  y="85"
+                />
+                <g class="text-[18px]" text-anchor="middle">
+                  <text class="fill-signal" x="52" y="108">↗</text>
+                  <text x="52" y="155">✎</text>
+                  <text x="52" y="195">T</text>
+                </g>
+                <circle cx="52" cy="225" fill="#2458FF" r="8" />
+                <circle cx="52" cy="259" fill="#111" r="8" />
+              </g>
+            </svg>
+            <svg
+              aria-hidden="true"
+              class="block h-auto w-full md:hidden"
+              viewBox="204 12 710 396"
+            >
+              <use href="#preview-document" />
+            </svg>
+
+            <div
+              class="absolute right-3 bottom-3 flex items-center gap-2.5 rounded-[7px] bg-ink px-3.5 py-2.5 text-xs leading-4 whitespace-nowrap text-white md:right-7 md:bottom-[18px]"
+            >
+              <span
+                class="rounded-[3px] border border-[#777] px-2.5 py-[3px] font-mono"
+              >
+                Space
+              </span>
+              Hold to draw. Release to pause.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section
+        id="features"
+        class="relative scroll-mt-6 overflow-clip border-t border-rule pt-[72px] pb-20"
+      >
+        <h2
+          class="page-gutter font-display text-5xl leading-[52px] font-medium tracking-[-0.05em] text-black"
+        >
+          No need for<br />
+          a mouse
+        </h2>
+        <div
+          class="relative mt-8 ml-4 h-[154px] w-[955px] min-[1200px]:absolute min-[1200px]:top-[27px] min-[1200px]:left-[calc(50%-298px)] min-[1200px]:m-0"
+        >
+          <img
+            alt=""
+            class="absolute top-0 left-0 max-w-none opacity-35"
+            height="114"
+            src="./dither-signal.svg"
+            width="318"
+          />
+          <img
+            alt=""
+            class="absolute top-6 left-[318px] max-w-none opacity-35"
+            height="114"
+            src="./dither-signal.svg"
+            width="318"
+          />
+          <img
+            alt=""
+            class="absolute top-10 left-[637px] max-w-none opacity-35"
+            height="114"
+            src="./dither-signal.svg"
+            width="318"
+          />
+        </div>
+      </section>
+
+      <section
+        class="page-gutter flex flex-col gap-10 bg-ink py-[72px] lg:flex-row lg:items-center lg:justify-between"
+      >
+        <div class="flex flex-col gap-[26px]">
+          <h2
+            class="font-display text-[clamp(40px,8vw,64px)] leading-[1.03] font-medium tracking-[-0.055em] text-white"
+          >
+            A mouse is unnecessary.
+          </h2>
+          <div
+            class="flex flex-wrap items-center gap-x-10 gap-y-4 text-sm leading-[18px]"
+          >
+            <a
+              class="rounded-md bg-white px-[22px] py-[15px] text-ink transition-colors hover:bg-rule"
+              href="../"
+            >
+              Open Annotouch <span aria-hidden="true">↗</span>
+            </a>
+            <p class="text-[#B8B8B8]">Free · OSS</p>
+          </div>
+        </div>
+        <div
+          aria-hidden="true"
+          class="flex h-[106px] w-full max-w-[286px] shrink-0 items-center justify-between rounded-xl border border-b-[5px] border-[#666] border-b-[#444] p-[30px] font-mono leading-5 tracking-[0.08em] text-white"
+        >
+          <span>Space</span>
+          <span>␣</span>
+        </div>
+      </section>
+    </main>
+
+    <footer
+      class="page-gutter flex min-h-[84px] flex-wrap items-center justify-between gap-x-8 gap-y-2 py-4 text-[13px] leading-4 text-[#6B6B6B]"
+    >
+      <a href="./" class="flex items-center gap-2 text-ink">
+        <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true">
+          <path d="M4 21L12 5H16L8 21H4Z" fill="#111" />
+          <path d="M14 21L18 13L22 21H14Z" fill="#111" />
+        </svg>
+        annotouch
+      </a>
+      <p>A little less friction. A little more thought.</p>
+      <a
+        class="transition-colors hover:text-ink"
+        href="https://github.com/jefsal/annotouch"
+        rel="noreferrer"
+        target="_blank"
+      >
+        GitHub <span aria-hidden="true">↗</span>
+      </a>
+    </footer>
+  </body>
+</html>

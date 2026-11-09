@@ -62,6 +62,9 @@ machine-local files.
   and writes annotations into a downloaded copy with pdf-lib.
 - `src/domain/` contains annotation types, geometry, canvas mapping, rendering
   helpers, and typed errors.
+- `landing/` is the marketing page, built as a second Vite entry and served at
+  `/landing/`. It is static HTML with its own Tailwind stylesheet and no app
+  code or JavaScript; the app remains at `/`.
 - `src/styles/tailwind.css` owns tokens, themes, and component styling;
   `src/style.css` owns browser pseudo-elements and controller-created DOM.
 
