@@ -63,8 +63,11 @@ machine-local files.
 - `src/domain/` contains annotation types, geometry, canvas mapping, rendering
   helpers, and typed errors.
 - `landing/` is the marketing page, built as a second Vite entry and served at
-  `/landing/`. It is static HTML with its own Tailwind stylesheet and no app
-  code or JavaScript; the app remains at `/`.
+  `/landing/`. It is static HTML with its own Tailwind stylesheet and a small
+  script; the app remains at `/`. Its "how it works" section embeds the real
+  app at `/?demo`, which `src/app/demo.ts` turns into a light-mode session on
+  `public/samples/annotouch-sample.pdf` that neither reads nor writes saved
+  preferences and never blocks unload.
 - `src/styles/tailwind.css` owns tokens, themes, and component styling;
   `src/style.css` owns browser pseudo-elements and controller-created DOM.
 

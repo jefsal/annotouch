@@ -38,9 +38,7 @@ test.describe("landing page", () => {
 
     await page.getByRole("link", { name: /See how it works/ }).click();
     await expect(page).toHaveURL(/#how-it-works$/);
-    await expect(
-      page.getByRole("img", { name: /The Annotouch editor/ })
-    ).toBeInViewport();
+    await expect(page.locator("[data-demo-frame]")).toBeInViewport();
 
     await page
       .getByRole("navigation", { name: "Primary" })
@@ -50,6 +48,65 @@ test.describe("landing page", () => {
     await expect(
       page.getByRole("heading", { name: /No need for/ })
     ).toBeInViewport();
+  });
+
+  test("embeds the real editor on the sample worksheet", async ({ page }) => {
+    await page.goto(LANDING);
+    await page.locator("#how-it-works").scrollIntoViewIfNeeded();
+
+    const demo = page.frameLocator("[data-demo-frame]");
+    await expect(demo.locator("#document-name")).toHaveText(
+      "annotouch-sample.pdf"
+    );
+    await expect(demo.locator("#document-count")).toHaveText(
+      "3/3 pages | 0 annotations"
+    );
+    await expect(demo.locator("html")).toHaveAttribute("data-theme", "light");
+  });
+
+  test("lets a visitor draw in the demo after opting in", async ({ page }) => {
+    await page.goto(LANDING);
+    await page.locator("#how-it-works").scrollIntoViewIfNeeded();
+
+    const demo = page.frameLocator("[data-demo-frame]");
+    const canvas = demo.locator(".annotation-canvas").first();
+    await expect(canvas).toBeVisible();
+
+    await page.getByRole("button", { name: "Try the editor" }).click();
+    await expect(
+      page.getByRole("button", { name: "Try the editor" })
+    ).toHaveCount(0);
+
+    const box = await canvas.boundingBox();
+    expect(box).not.toBeNull();
+    const y = box.y + Math.min(260, box.height / 2);
+    const scrollBefore = await page.evaluate(() => window.scrollY);
+    await page.mouse.move(box.x + 120, y);
+    await page.keyboard.down("Space");
+    await page.mouse.move(box.x + 360, y, { steps: 12 });
+    await page.keyboard.up("Space");
+
+    await expect(demo.locator("#document-count")).toHaveText(
+      "3/3 pages | 1 annotation"
+    );
+    // Space went to the editor instead of scrolling the landing page.
+    expect(await page.evaluate(() => window.scrollY)).toBe(scrollBefore);
+  });
+
+  test("demo opens in light mode without reading saved preferences", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await page.evaluate(() => localStorage.setItem("annotouch-theme", "night"));
+
+    await page.goto("/?demo");
+    await expect(page.locator("#document-name")).toHaveText(
+      "annotouch-sample.pdf"
+    );
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+    expect(
+      await page.evaluate(() => localStorage.getItem("annotouch-theme"))
+    ).toBe("night");
   });
 
   test("makes no third-party requests", async ({ page, baseURL }) => {

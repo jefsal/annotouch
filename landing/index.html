@@ -14,16 +14,22 @@
   </head>
   <body>
     <header
-      class="nav-gutter flex min-h-[88px] items-center justify-between gap-6 border-b border-rule"
+      class="frost-header nav-gutter sticky top-0 z-30 flex min-h-[88px] items-center justify-between gap-6"
     >
+      <div class="frost" aria-hidden="true">
+        <span class="frost__layer frost__layer--strong"></span>
+        <span class="frost__layer frost__layer--medium"></span>
+        <span class="frost__layer frost__layer--soft"></span>
+        <span class="frost__layer frost__layer--faint"></span>
+      </div>
       <a
         href="./"
-        class="flex items-center gap-2.5"
+        class="flex items-center gap-2.5 text-ink"
         aria-label="Annotouch home"
       >
         <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true">
-          <path d="M4 21L12 5H16L8 21H4Z" fill="#000" />
-          <path d="M14 21L18 13L22 21H14Z" fill="#000" />
+          <path d="M4 21L12 5H16L8 21H4Z" fill="currentColor" />
+          <path d="M14 21L18 13L22 21H14Z" fill="currentColor" />
         </svg>
         <span
           class="hidden text-[23px] leading-7 font-semibold tracking-[-0.04em] min-[360px]:inline"
@@ -35,14 +41,14 @@
         aria-label="Primary"
         class="hidden gap-8 text-sm leading-[18px] text-muted md:flex"
       >
-        <a class="transition-colors hover:text-black" href="#how-it-works">
+        <a class="transition-colors hover:text-ink" href="#how-it-works">
           How it works
         </a>
-        <a class="transition-colors hover:text-black" href="#features">
+        <a class="transition-colors hover:text-ink" href="#features">
           Features
         </a>
         <a
-          class="transition-colors hover:text-black"
+          class="transition-colors hover:text-ink"
           href="https://github.com/jefsal/annotouch"
           rel="noreferrer"
           target="_blank"
@@ -51,9 +57,9 @@
         </a>
       </nav>
       <div class="flex items-center gap-6 text-sm leading-[18px]">
-        <p class="hidden lg:block">Free. No sign-up.</p>
+        <p class="hidden text-ink lg:block">Free. No sign-up.</p>
         <a
-          class="rounded-md bg-ink px-[18px] py-3 whitespace-nowrap text-white transition-colors hover:bg-ink-hover"
+          class="rounded-control bg-navy px-[18px] py-3 whitespace-nowrap text-white shadow-control transition-colors hover:bg-navy-hover"
           href="../"
         >
           Open Annotouch <span aria-hidden="true">↗</span>
@@ -66,7 +72,7 @@
         class="relative flex flex-col items-center gap-6 overflow-clip px-4 pt-14 pb-14 min-[900px]:h-[392px] min-[900px]:pt-20 min-[900px]:pb-16"
       >
         <h1
-          class="text-center font-display text-[min(88px,10vw)] leading-none font-semibold tracking-[-0.065em] text-black"
+          class="text-center font-display text-[min(88px,10vw)] leading-none font-semibold tracking-[-0.065em] text-ink"
         >
           Annotate your pdf<br />
           without your trackpad
@@ -75,13 +81,13 @@
           class="relative z-10 flex flex-wrap items-center justify-center gap-3 text-sm leading-[18px]"
         >
           <a
-            class="flex h-12 items-center gap-7 rounded-md bg-ink px-[22px] font-medium text-white transition-colors hover:bg-ink-hover"
+            class="flex h-12 items-center gap-7 rounded-control bg-navy px-[22px] font-[650] text-white shadow-control transition-[background-color,box-shadow] hover:bg-navy-hover hover:shadow-control-raised"
             href="../"
           >
             Start annotating <span aria-hidden="true">↗</span>
           </a>
           <a
-            class="flex h-12 items-center gap-4 rounded-md border border-line px-[22px] text-black transition-colors hover:border-ink"
+            class="flex h-12 items-center gap-4 rounded-control bg-white px-[22px] text-ink shadow-control transition-[background-color,box-shadow] hover:bg-surface-muted hover:shadow-control-raised"
             href="#how-it-works"
           >
             See how it works <span aria-hidden="true">↓</span>
@@ -103,141 +109,45 @@
         />
       </section>
 
-      <section id="how-it-works" class="page-gutter scroll-mt-6 pb-[72px]">
+      <section id="how-it-works" class="page-gutter scroll-mt-24 pb-[72px]">
         <div
-          aria-label="The Annotouch editor with design-notes.pdf open. A heading is underlined and a passage is circled in blue freehand ink. A hint reads: hold Space to draw, release to pause."
-          class="overflow-clip rounded-xl border border-line bg-[#F6F6F6]"
-          role="img"
+          class="mb-4 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 text-sm leading-5 text-muted"
         >
-          <div
-            class="flex h-14 items-center justify-between border-b border-[#E4E4E4] bg-white px-4 text-[13px] leading-4 sm:px-6"
+          <p class="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <kbd
+              class="rounded-control border border-line bg-white px-2 py-0.5 font-mono text-xs text-ink shadow-control"
+              >Space</kbd
+            >
+            Click the page, then hold Space and move the pointer to draw.
+          </p>
+          <a
+            class="whitespace-nowrap text-ink transition-colors hover:text-action"
+            href="../?demo"
           >
-            <div class="flex items-center gap-3">
-              <span class="size-[7px] rounded-full bg-signal"></span>
-              <span class="text-black">design-notes.pdf</span>
-              <span class="hidden text-[#777] sm:inline">/ 4 pages</span>
-            </div>
-            <div class="flex items-center gap-6 text-muted">
-              <span class="hidden sm:inline">↶</span>
-              <span class="hidden sm:inline">↷</span>
-              <span class="hidden sm:inline">100%</span>
-              <span
-                class="rounded-[5px] border border-[#E0E0E0] px-3 py-[7px] text-ink"
-              >
-                Export PDF ↓
-              </span>
-            </div>
-          </div>
-
-          <div class="relative md:-mb-0.5">
-            <svg class="absolute size-0" aria-hidden="true">
-              <defs>
-                <g id="preview-document">
-                  <rect
-                    fill="#fff"
-                    height="379"
-                    stroke="#E5E5E5"
-                    width="689"
-                    x="214.5"
-                    y="20.5"
-                  />
-                  <text
-                    class="fill-[#777] font-mono text-[10px] tracking-[0.08em]"
-                    x="271"
-                    y="75"
-                  >
-                    FIELD NOTES — 001
-                  </text>
-                  <text
-                    class="fill-black text-[32px] font-medium tracking-[-0.04em]"
-                    x="271"
-                    y="127"
-                  >
-                    Good ideas need room.
-                  </text>
-                  <g class="fill-[#707070] text-[14px]">
-                    <text x="271" y="170.5">
-                      The best tools make the space between a thought and its
-                      expression
-                    </text>
-                    <text x="271" y="195.5">
-                      feel a little smaller. Start with a blank margin. Follow
-                      your curiosity.
-                    </text>
-                    <text x="271" y="220.5">
-                      Leave yourself a note. Make the connection.
-                    </text>
-                  </g>
-                  <g
-                    fill="none"
-                    stroke="#2458FF"
-                    stroke-linecap="round"
-                    stroke-width="2.5"
-                    transform="translate(250 96)"
-                  >
-                    <path
-                      d="M20 47C110 43 255 42 377 46M25 52C180 50 290 53 357 50M415 108C430 94 463 96 476 112C491 139 445 157 423 136C397 110 451 77 487 80M466 81L487 79L480 100"
-                    />
-                    <path
-                      d="M15 155C100 105 115 188 180 141C212 120 242 130 267 141"
-                    />
-                  </g>
-                </g>
-              </defs>
-            </svg>
-
-            <svg
-              aria-hidden="true"
-              class="hidden h-auto w-full md:block"
-              viewBox="0 0 1118 420"
+            Open the sample full screen <span aria-hidden="true">↗</span>
+          </a>
+        </div>
+        <div
+          class="relative overflow-clip rounded-dialog border border-line bg-white shadow-page"
+        >
+          <iframe
+            class="block h-[min(720px,78vh)] min-h-[480px] w-full"
+            data-demo-frame
+            loading="lazy"
+            src="../?demo"
+            title="Annotouch editor with a sample worksheet"
+          ></iframe>
+          <button
+            class="demo-shield absolute inset-0 flex cursor-pointer items-end justify-center bg-transparent pb-8"
+            data-demo-shield
+            type="button"
+          >
+            <span
+              class="frost-chip rounded-pill px-5 py-2.5 text-sm font-[650] text-ink shadow-floating"
             >
-              <use href="#preview-document" />
-              <g>
-                <rect
-                  fill="#fff"
-                  height="207"
-                  rx="8"
-                  stroke="#E3E3E3"
-                  width="51"
-                  x="26.5"
-                  y="72.5"
-                />
-                <rect
-                  fill="#EDF2FF"
-                  height="34"
-                  rx="5"
-                  width="26"
-                  x="39"
-                  y="85"
-                />
-                <g class="text-[18px]" text-anchor="middle">
-                  <text class="fill-signal" x="52" y="108">↗</text>
-                  <text x="52" y="155">✎</text>
-                  <text x="52" y="195">T</text>
-                </g>
-                <circle cx="52" cy="225" fill="#2458FF" r="8" />
-                <circle cx="52" cy="259" fill="#111" r="8" />
-              </g>
-            </svg>
-            <svg
-              aria-hidden="true"
-              class="block h-auto w-full md:hidden"
-              viewBox="204 12 710 396"
-            >
-              <use href="#preview-document" />
-            </svg>
-
-            <div
-              class="absolute right-3 bottom-3 flex items-center gap-2.5 rounded-[7px] bg-ink px-3.5 py-2.5 text-xs leading-4 whitespace-nowrap text-white md:right-7 md:bottom-[18px]"
-            >
-              <span
-                class="rounded-[3px] border border-[#777] px-2.5 py-[3px] font-mono"
-              >
-                Space
-              </span>
-              Hold to draw. Release to pause.
-            </div>
-          </div>
+              Try the editor
+            </span>
+          </button>
         </div>
       </section>
 
@@ -246,7 +156,7 @@
         class="relative scroll-mt-6 overflow-clip border-t border-rule pt-[72px] pb-20"
       >
         <h2
-          class="page-gutter font-display text-5xl leading-[52px] font-medium tracking-[-0.05em] text-black"
+          class="page-gutter font-display text-5xl leading-[52px] font-medium tracking-[-0.05em] text-ink"
         >
           No need for<br />
           a mouse
@@ -279,7 +189,7 @@
       </section>
 
       <section
-        class="page-gutter flex flex-col gap-10 bg-ink py-[72px] lg:flex-row lg:items-center lg:justify-between"
+        class="on-dark page-gutter flex flex-col gap-10 bg-navy py-[72px] lg:flex-row lg:items-center lg:justify-between"
       >
         <div class="flex flex-col gap-[26px]">
           <h2
@@ -291,17 +201,17 @@
             class="flex flex-wrap items-center gap-x-10 gap-y-4 text-sm leading-[18px]"
           >
             <a
-              class="rounded-md bg-white px-[22px] py-[15px] text-ink transition-colors hover:bg-rule"
+              class="rounded-control bg-white px-[22px] py-[15px] font-[650] text-navy shadow-control transition-colors hover:bg-surface-muted"
               href="../"
             >
               Open Annotouch <span aria-hidden="true">↗</span>
             </a>
-            <p class="text-[#B8B8B8]">Free · OSS</p>
+            <p class="text-[#aab2c0]">Free · OSS</p>
           </div>
         </div>
         <div
           aria-hidden="true"
-          class="flex h-[106px] w-full max-w-[286px] shrink-0 items-center justify-between rounded-xl border border-b-[5px] border-[#666] border-b-[#444] p-[30px] font-mono leading-5 tracking-[0.08em] text-white"
+          class="flex h-[106px] w-full max-w-[286px] shrink-0 items-center justify-between rounded-xl border border-b-[5px] border-[#4f5969] border-b-[#343b49] bg-[#171923] p-[30px] font-mono leading-5 tracking-[0.08em] text-white"
         >
           <span>Space</span>
           <span>␣</span>
@@ -310,16 +220,16 @@
     </main>
 
     <footer
-      class="page-gutter flex min-h-[84px] flex-wrap items-center justify-between gap-x-8 gap-y-2 py-4 text-[13px] leading-4 text-[#6B6B6B]"
+      class="page-gutter flex min-h-[84px] flex-wrap items-center justify-between gap-x-8 gap-y-2 py-4 text-[13px] leading-4 text-secondary"
     >
       <a href="./" class="flex items-center gap-2 text-ink">
         <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true">
-          <path d="M4 21L12 5H16L8 21H4Z" fill="#111" />
-          <path d="M14 21L18 13L22 21H14Z" fill="#111" />
+          <path d="M4 21L12 5H16L8 21H4Z" fill="currentColor" />
+          <path d="M14 21L18 13L22 21H14Z" fill="currentColor" />
         </svg>
         annotouch
       </a>
-      <p>A little less friction. A little more thought.</p>
+      <p>Less friction to convey your thoughts</p>
       <a
         class="transition-colors hover:text-ink"
         href="https://github.com/jefsal/annotouch"
@@ -329,5 +239,6 @@
         GitHub <span aria-hidden="true">↗</span>
       </a>
     </footer>
+    <script type="module" src="./landing.ts"></script>
   </body>
 </html>

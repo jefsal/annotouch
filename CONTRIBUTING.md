@@ -111,7 +111,8 @@ system libraries are not already installed.
 ```text
 annotouch/
 ├── landing/                 # Static marketing page, served at /landing/
-├── public/                  # Static images and favicons
+├── public/                  # Static images, favicons, and the sample PDF
+├── scripts/                 # Generator for public/samples/annotouch-sample.pdf
 ├── src/
 │   ├── app/                 # State, preferences, shortcuts, and PDF lifecycle
 │   ├── components/          # Preact interface components
