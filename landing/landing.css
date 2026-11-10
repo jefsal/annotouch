@@ -1,0 +1,184 @@
+@layer theme, base, components, utilities;
+
+/* Self-hosted so the page, like the app, makes no third-party requests. */
+@import "@fontsource-variable/inter-tight/wght.css";
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/preflight.css" layer(base);
+@import "tailwindcss/utilities.css" layer(utilities) source(none);
+
+@source "./index.html";
+
+/*
+ * Values mirror the app's light theme in src/styles/tailwind.css so the page
+ * and the embedded editor read as one product.
+ */
+@theme {
+  --font-display: "Inter Tight Variable", system-ui, sans-serif;
+  --font-sans:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+  --font-mono:
+    ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas,
+    "Liberation Mono", monospace;
+
+  --color-ink: #171923;
+  --color-navy: #111827;
+  --color-navy-hover: #1f2937;
+  --color-muted: #4f5969;
+  --color-secondary: #687386;
+  --color-surface-muted: #f8fafc;
+  --color-line: #d7dde6;
+  --color-rule: #e3e7ee;
+  --color-action: #1f6feb;
+  --color-action-ring: #1d4ed8;
+
+  --radius-control: 4px;
+  --radius-dialog: 8px;
+  --radius-pill: 999px;
+
+  --shadow-control:
+    0 1px 2px rgba(16, 24, 40, 0.1), 0 1px 1px rgba(16, 24, 40, 0.06);
+  --shadow-control-raised:
+    0 2px 6px rgba(16, 24, 40, 0.14), 0 1px 2px rgba(16, 24, 40, 0.08);
+  --shadow-floating: 0 2px 8px rgba(16, 24, 40, 0.08);
+  --shadow-page:
+    0 1px 2px rgba(16, 24, 40, 0.08), 0 18px 48px rgba(16, 24, 40, 0.14);
+}
+
+/* Sections share the design's 1120px column; the nav runs slightly wider. */
+@utility page-gutter {
+  padding-inline: max(clamp(16px, 4vw, 32px), calc((100% - 1120px) / 2));
+}
+
+@utility nav-gutter {
+  padding-inline: max(clamp(16px, 4vw, 32px), calc((100% - 1200px) / 2));
+}
+
+@layer base {
+  body {
+    min-width: 320px;
+    background: #ffffff;
+    color: var(--color-ink);
+    font-synthesis: none;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  a:focus-visible,
+  button:focus-visible {
+    outline: 3px solid var(--color-action-ring);
+    outline-offset: 2px;
+  }
+
+  .on-dark a:focus-visible {
+    outline-color: #60a5fa;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
+  }
+}
+
+/*
+ * The app toolbar's progressive blur (src/style.css): stacked backdrop-filter
+ * layers with soft masks, strong at the top and clear at the bottom, hanging
+ * past the header so the frost eases out instead of ending at a seam.
+ */
+@layer components {
+  .frost-header > :not(.frost) {
+    position: relative;
+    z-index: 1;
+  }
+
+  .frost {
+    position: absolute;
+    z-index: 0;
+    inset: 0 0 -34px;
+    overflow: hidden;
+    pointer-events: none;
+    background: linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, 0.74) 0%,
+      rgba(255, 255, 255, 0.58) 35%,
+      rgba(255, 255, 255, 0.33) 58%,
+      rgba(255, 255, 255, 0.13) 78%,
+      rgba(255, 255, 255, 0.04) 90%,
+      transparent 100%
+    );
+  }
+
+  .frost__layer {
+    position: absolute;
+    inset: -18px 0 0;
+    -webkit-backdrop-filter: blur(var(--frost-radius));
+    backdrop-filter: blur(var(--frost-radius));
+    -webkit-mask-image: var(--frost-mask);
+    mask-image: var(--frost-mask);
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+  }
+
+  .frost__layer--strong {
+    --frost-radius: 18px;
+    --frost-mask: linear-gradient(
+      to bottom,
+      #000 0%,
+      #000 30%,
+      transparent 52%
+    );
+  }
+
+  .frost__layer--medium {
+    --frost-radius: 9px;
+    --frost-mask: linear-gradient(
+      to bottom,
+      transparent 24%,
+      #000 42%,
+      #000 50%,
+      transparent 68%
+    );
+  }
+
+  .frost__layer--soft {
+    --frost-radius: 4px;
+    --frost-mask: linear-gradient(
+      to bottom,
+      transparent 46%,
+      #000 62%,
+      transparent 82%
+    );
+  }
+
+  .frost__layer--faint {
+    --frost-radius: 1.5px;
+    --frost-mask: linear-gradient(
+      to bottom,
+      transparent 64%,
+      #000 78%,
+      transparent 98%
+    );
+  }
+
+  .frost-chip {
+    background: rgba(255, 255, 255, 0.74);
+    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(12px);
+    transition: background-color 150ms ease;
+  }
+
+  .demo-shield:hover .frost-chip {
+    background: rgba(255, 255, 255, 0.92);
+  }
+
+  @media (forced-colors: active) {
+    .frost-header {
+      background-color: Canvas;
+    }
+
+    .frost {
+      display: none;
+    }
+  }
+}

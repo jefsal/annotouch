@@ -86,3 +86,7 @@ Bug reports, feature proposals, documentation fixes, accessibility work, and
 code contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) before
 opening a pull request. Report suspected vulnerabilities privately according to
 [SECURITY.md](SECURITY.md).
+
+## License
+
+[MIT](LICENSE)

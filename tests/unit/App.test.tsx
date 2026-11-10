@@ -1,4 +1,10 @@
-import { act, fireEvent, render, screen } from "@testing-library/preact";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/preact";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Mock } from "vitest";
@@ -61,12 +67,17 @@ vi.mock("../../src/app/documentController", async (importOriginal) => ({
   createDocumentController,
 }));
 
-function renderApp(): { root: HTMLDivElement; unmount: () => void } {
+function renderApp({ demo = false } = {}): {
+  root: HTMLDivElement;
+  unmount: () => void;
+} {
   const root = document.createElement("div");
   root.id = "app";
   document.body.append(root);
 
-  const { unmount } = render(<App root={root} />, { container: root });
+  const { unmount } = render(<App root={root} demo={demo} />, {
+    container: root,
+  });
 
   return { root, unmount };
 }
@@ -592,6 +603,106 @@ describe("App", () => {
 
       expect(screen.queryByRole("dialog", { name: "settings" })).toBeNull();
       expect(document.activeElement).toBe(settingsButton);
+    });
+  });
+
+  describe("demo mode", () => {
+    function stubSampleFetch(
+      response: Promise<Partial<Response>> = Promise.resolve({
+        ok: true,
+        blob: () => Promise.resolve(new Blob(["%PDF-1.4"])),
+      })
+    ): Mock {
+      const fetchMock = vi.fn(() => response);
+      vi.stubGlobal("fetch", fetchMock);
+      return fetchMock;
+    }
+
+    it("opens the sample worksheet in light mode", async () => {
+      window.localStorage.setItem("annotouch-theme", "night");
+      window.localStorage.setItem("annotouch-background-image", "true");
+      const fetchMock = stubSampleFetch();
+
+      renderApp({ demo: true });
+
+      expect(fetchMock).toHaveBeenCalledWith("/samples/annotouch-sample.pdf");
+      await waitFor(() => {
+        expect(getController().open).toHaveBeenCalledTimes(1);
+      });
+      const [file] = getController().open.mock.calls[0] ?? [];
+      expect(file?.name).toBe("annotouch-sample.pdf");
+      expect(file?.type).toBe("application/pdf");
+      expect(document.documentElement.dataset.theme).toBe("light");
+      expect(document.documentElement.dataset.backgroundImage).toBe("hidden");
+    });
+
+    it("leaves the visitor's saved preferences untouched", async () => {
+      const user = userEvent.setup();
+      stubSampleFetch();
+
+      renderApp({ demo: true });
+      await user.click(screen.getByRole("button", { name: "night mode" }));
+      await user.click(screen.getByRole("button", { name: "settings" }));
+      await user.click(screen.getByLabelText("show background image"));
+
+      expect(document.documentElement.dataset.theme).toBe("night");
+      expect(window.localStorage.getItem("annotouch-theme")).toBeNull();
+      expect(
+        window.localStorage.getItem("annotouch-background-image")
+      ).toBeNull();
+    });
+
+    it("never blocks leaving the page", () => {
+      stubSampleFetch(new Promise(() => {}));
+
+      renderApp({ demo: true });
+      loadDocument();
+      annotate();
+
+      const event = new Event("beforeunload", { cancelable: true });
+      window.dispatchEvent(event);
+      expect(event.defaultPrevented).toBe(false);
+    });
+
+    it("reports a sample that fails to load", async () => {
+      vi.spyOn(console, "error").mockImplementation(() => {});
+      stubSampleFetch(Promise.resolve({ ok: false, status: 404 }));
+
+      renderApp({ demo: true });
+
+      expect(
+        await screen.findByText("could not load the sample PDF")
+      ).toBeInTheDocument();
+      expect(getController().open).not.toHaveBeenCalled();
+    });
+
+    it("does not replace a PDF the visitor opened first", async () => {
+      const user = userEvent.setup();
+      let deliverSample: (response: Partial<Response>) => void = () => {};
+      stubSampleFetch(
+        new Promise((resolve) => {
+          deliverSample = resolve;
+        })
+      );
+
+      renderApp({ demo: true });
+      const file = pdfFile("mine.pdf");
+      await user.upload(getFileInput(), file);
+      dispatchFromController({
+        type: "document/loading",
+        fileName: "mine.pdf",
+      });
+
+      deliverSample({
+        ok: true,
+        blob: () => Promise.resolve(new Blob(["%PDF-1.4"])),
+      });
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(getController().open).toHaveBeenCalledTimes(1);
+      expect(getController().open).toHaveBeenCalledWith(file);
     });
   });
 });

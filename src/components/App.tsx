@@ -6,6 +6,11 @@ import {
   type DocumentController,
 } from "../app/documentController";
 import {
+  DEMO_SAMPLE_FILE_NAME,
+  fetchDemoDocument,
+  getFitWidthScale,
+} from "../app/demo";
+import {
   getInitialBackgroundImageVisibility,
   getInitialTheme,
   getInitialToolbarSettings,
@@ -18,6 +23,7 @@ import {
   createInitialState,
   hasDocument,
   hasUnsavedWork,
+  type AppAction,
   type AppState,
 } from "../app/state";
 import type { Theme } from "../domain/types";
@@ -27,6 +33,11 @@ import { AppShell } from "./AppShell";
 interface AppProps {
   /** The mount container that owns theme filters and application-wide classes. */
   root: HTMLElement;
+  /**
+   * The landing-page embed: opens the sample PDF in light mode and neither
+   * reads nor writes the visitor's saved preferences.
+   */
+  demo?: boolean;
 }
 
 /**
@@ -35,13 +46,15 @@ interface AppProps {
  * user action or a page unload can observe: the unsaved-work `beforeunload`
  * guard, page scaling, and the theme/state classes on the mount container.
  */
-export function App({ root }: AppProps) {
+export function App({ root, demo = false }: AppProps) {
   const [state, dispatch] = useReducer(appReducer, null, () =>
-    createInitialState({
-      theme: getInitialTheme(),
-      toolbar: getInitialToolbarSettings(),
-      isBackgroundImageVisible: getInitialBackgroundImageVisibility(),
-    })
+    demo
+      ? createInitialState()
+      : createInitialState({
+          theme: getInitialTheme(),
+          toolbar: getInitialToolbarSettings(),
+          isBackgroundImageVisible: getInitialBackgroundImageVisibility(),
+        })
   );
 
   const stateRef = useRef<AppState>(state);
@@ -67,7 +80,25 @@ export function App({ root }: AppProps) {
 
     controllerRef.current = controller;
 
+    let isMounted = true;
+
+    if (demo) {
+      void openDemoDocument({
+        controller,
+        workspace,
+        pagesContainer,
+        dispatch,
+        isMounted: () => isMounted,
+        isUntouched: () => stateRef.current.document.status === "idle",
+        isSampleOpen: () =>
+          isMounted &&
+          stateRef.current.document.status === "ready" &&
+          stateRef.current.document.fileName === DEMO_SAMPLE_FILE_NAME,
+      });
+    }
+
     return () => {
+      isMounted = false;
       controller.destroy();
       controllerRef.current = null;
     };
@@ -97,13 +128,14 @@ export function App({ root }: AppProps) {
   const hasUnsavedAnnotations = hasUnsavedWork(state);
 
   useLayoutEffect(() => {
-    if (!hasUnsavedAnnotations) return;
+    // The embed is a scratch pad: leaving the landing page must not prompt.
+    if (!hasUnsavedAnnotations || demo) return;
 
     window.addEventListener("beforeunload", warnBeforeUnload);
     return () => {
       window.removeEventListener("beforeunload", warnBeforeUnload);
     };
-  }, [hasUnsavedAnnotations]);
+  }, [hasUnsavedAnnotations, demo]);
 
   useLayoutEffect(() => {
     const closeSettingsOnOutsidePointer = (event: PointerEvent): void => {
@@ -143,12 +175,12 @@ export function App({ root }: AppProps) {
       stateRef.current.theme === THEMES.NIGHT ? THEMES.LIGHT : THEMES.NIGHT;
 
     dispatch({ type: "theme/set", theme: nextTheme });
-    persistTheme(nextTheme);
+    if (!demo) persistTheme(nextTheme);
   };
 
   const setBackgroundImageVisibility = (isVisible: boolean): void => {
     dispatch({ type: "background/setImageVisible", isVisible });
-    persistBackgroundImageVisibility(isVisible);
+    if (!demo) persistBackgroundImageVisibility(isVisible);
   };
 
   const toggleBackgroundImage = (): void => {
@@ -229,7 +261,7 @@ export function App({ root }: AppProps) {
         const settings = { showHistoryControls };
 
         dispatch({ type: "toolbar/set", settings });
-        persistToolbarSettings(settings);
+        if (!demo) persistToolbarSettings(settings);
       }}
       onBackgroundImageVisibilityChange={setBackgroundImageVisibility}
       onOpenShortcuts={openShortcuts}
@@ -245,6 +277,63 @@ function applyTheme(theme: Theme): void {
   document.documentElement.dataset.theme = theme;
   document.documentElement.style.colorScheme =
     theme === THEMES.NIGHT ? "dark" : "light";
+}
+
+interface DemoDocumentOptions {
+  controller: DocumentController;
+  workspace: HTMLElement;
+  pagesContainer: HTMLElement;
+  dispatch: (action: AppAction) => void;
+  /** False once the app unmounts. */
+  isMounted: () => boolean;
+  /** True while nothing but the sample has been opened. */
+  isUntouched: () => boolean;
+  /** True while the sample is the document on screen. */
+  isSampleOpen: () => boolean;
+}
+
+/**
+ * Loads the sample worksheet, then zooms so its page fits the embed's width.
+ * A PDF the visitor opens meanwhile wins: the sample is skipped if it arrives
+ * late, and the zoom only applies while the sample is still on screen.
+ */
+async function openDemoDocument({
+  controller,
+  workspace,
+  pagesContainer,
+  dispatch,
+  isMounted,
+  isUntouched,
+  isSampleOpen,
+}: DemoDocumentOptions): Promise<void> {
+  let file: File;
+
+  try {
+    file = await fetchDemoDocument();
+  } catch (error) {
+    if (!isMounted()) return;
+    console.error(error);
+    dispatch({ type: "status/set", message: "could not load the sample PDF" });
+    return;
+  }
+
+  if (!isMounted() || !isUntouched()) return;
+
+  await controller.open(file);
+
+  const pageShell = pagesContainer.querySelector<HTMLElement>(".page-shell");
+  if (!pageShell || !isSampleOpen()) return;
+
+  const style = getComputedStyle(workspace);
+  const availableWidth =
+    workspace.clientWidth -
+    parseFloat(style.paddingLeft) -
+    parseFloat(style.paddingRight);
+
+  dispatch({
+    type: "view/setScale",
+    scale: getFitWidthScale(availableWidth, pageShell.offsetWidth),
+  });
 }
 
 function warnBeforeUnload(event: BeforeUnloadEvent): void {

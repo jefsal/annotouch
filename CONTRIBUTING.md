@@ -19,6 +19,7 @@ browser; changes MUST preserve that privacy model.
 - [Testing](#testing)
 - [Submitting a Pull Request](#submitting-a-pull-request)
 - [Reporting Bugs and Requesting Features](#reporting-bugs-and-requesting-features)
+- [Licensing](#licensing)
 - [Community Expectations](#community-expectations)
 - [Getting Help](#getting-help)
 
@@ -109,7 +110,9 @@ system libraries are not already installed.
 
 ```text
 annotouch/
-├── public/                  # Static images and favicons
+├── landing/                 # Static marketing page, served at /landing/
+├── public/                  # Static images, favicons, and the sample PDF
+├── scripts/                 # Generator for public/samples/annotouch-sample.pdf
 ├── src/
 │   ├── app/                 # State, preferences, shortcuts, and PDF lifecycle
 │   ├── components/          # Preact interface components
@@ -250,6 +253,11 @@ is safe to share publicly.
 Feature requests should explain the user problem before proposing an
 implementation. Accessibility and keyboard-only workflows are first-class use
 cases for Annotouch.
+
+## Licensing
+
+Annotouch is released under the [MIT License](LICENSE). By contributing, you
+agree that your contributions are licensed under the same terms.
 
 ## Community Expectations
 
