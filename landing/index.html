@@ -6,7 +6,7 @@
     <meta name="color-scheme" content="light" />
     <meta
       name="description"
-      content="Annotate your PDF without your trackpad. Hold Space to draw. Free, open source, and your PDF never leaves the browser."
+      content="Annotate your PDF without your trackpad. Free, open source, and your PDF never leaves the browser."
     />
     <link rel="icon" href="/favicon-pointer.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="./landing.css" />
@@ -14,7 +14,8 @@
   </head>
   <body>
     <header
-      class="frost-header nav-gutter sticky top-0 z-30 flex min-h-[88px] items-center justify-between gap-6"
+      class="frost-header nav-gutter sticky top-0 z-30 flex min-h-[88px] items-center justify-between gap-6 transition-transform duration-200 ease-out motion-reduce:transition-none data-hidden:-translate-y-[calc(100%+40px)]"
+      data-site-header
     >
       <div class="frost" aria-hidden="true">
         <span class="frost__layer frost__layer--strong"></span>
@@ -114,11 +115,12 @@
           class="mb-4 flex flex-wrap items-center justify-between gap-x-6 gap-y-2 text-sm leading-5 text-muted"
         >
           <p class="flex flex-wrap items-center gap-x-2 gap-y-1">
+            Hold
             <kbd
               class="rounded-control border border-line bg-white px-2 py-0.5 font-mono text-xs text-ink shadow-control"
               >Space</kbd
             >
-            Click the page, then hold Space and move the pointer to draw.
+            to draw
           </p>
           <a
             class="whitespace-nowrap text-ink transition-colors hover:text-action"

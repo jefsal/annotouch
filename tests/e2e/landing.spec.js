@@ -109,6 +109,28 @@ test.describe("landing page", () => {
     ).toBe("night");
   });
 
+  test("header hides while scrolling down and returns on scroll up", async ({
+    page,
+  }) => {
+    await page.goto(LANDING);
+    const header = page.locator("[data-site-header]");
+    await expect(header).toBeInViewport();
+
+    await page.mouse.move(40, 40);
+    await page.mouse.wheel(0, 900);
+    await expect(header).toHaveAttribute("data-hidden", "");
+    await expect(header).not.toBeInViewport();
+
+    await page.mouse.wheel(0, -300);
+    await expect(header).not.toHaveAttribute("data-hidden");
+    await expect(header).toBeInViewport();
+
+    await page.mouse.wheel(0, 600);
+    await expect(header).toHaveAttribute("data-hidden", "");
+    await page.keyboard.press("Tab");
+    await expect(header).not.toHaveAttribute("data-hidden");
+  });
+
   test("makes no third-party requests", async ({ page, baseURL }) => {
     const origin = new URL(baseURL).origin;
     const external = [];

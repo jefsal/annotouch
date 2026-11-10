@@ -18,3 +18,40 @@ if (frame && shield) {
     { once: true }
   );
 }
+
+/*
+ * The header gets out of the way while reading down the page and returns as
+ * soon as the visitor scrolls back up, reaches the top, or tabs into it.
+ */
+const header = document.querySelector<HTMLElement>("[data-site-header]");
+const SCROLL_JITTER = 4;
+
+if (header) {
+  let lastY = window.scrollY;
+  let pending = 0;
+
+  const update = (): void => {
+    pending = 0;
+    const y = window.scrollY;
+    const delta = y - lastY;
+    if (Math.abs(delta) < SCROLL_JITTER) return;
+
+    const shouldHide =
+      delta > 0 &&
+      y > header.offsetHeight &&
+      !header.contains(document.activeElement);
+    header.toggleAttribute("data-hidden", shouldHide);
+    lastY = y;
+  };
+
+  window.addEventListener(
+    "scroll",
+    () => {
+      pending ||= window.requestAnimationFrame(update);
+    },
+    { passive: true }
+  );
+  header.addEventListener("focusin", () => {
+    header.removeAttribute("data-hidden");
+  });
+}
